@@ -34,17 +34,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         
         const roleType = credentials.roleType as string;
         const username = credentials.username as string;
+        const password = credentials.password as string;
         
-        // ------------------------------------
-        // FAILSAFE: BYPASS DATABASE ENTIRELY
-        // ------------------------------------
-        
+        // Ensure specific hardcoded login for ADMIN to prevent board members logging in with arbitrary emails
         if (roleType === "STAFF") {
-          return { id: "admin-1", name: "System Admin", email: "admin@school.com", role: "ADMIN" };
+          if (username === "admin@ditmur.com" && password === "admin123") {
+            return { id: "admin-1", name: "System Admin", email: "admin@ditmur.com", role: "ADMIN" };
+          }
+          return null;
         }
         
         if (roleType === "STUDENT") {
-          // Literally just log them in as a student using whatever they typed as their ID
           return { id: username.toUpperCase(), name: "Test Student", email: username.toUpperCase(), role: "STUDENT" };
         }
 

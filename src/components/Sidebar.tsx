@@ -10,7 +10,7 @@ import {
   Settings, School, FileQuestion, Trophy, Gamepad2, Lightbulb, Library, FileText
 } from 'lucide-react';
 
-export default function Sidebar() {
+export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
   const pathname = usePathname();
   const { data: session } = useSession();
   
@@ -69,7 +69,7 @@ export default function Sidebar() {
   const activeMenu = userRole === 'STUDENT' ? studentMenu : userRole === 'PARENT' ? parentMenu : staffMenu;
 
   return (
-    <aside className="w-64 bg-[#0A192F] text-white min-h-screen flex flex-col hidden md:flex border-r border-[#0033A0]">
+    <aside className={`w-64 bg-[#0A192F] text-white min-h-screen flex flex-col border-r border-[#0033A0] ${isMobile ? '' : 'hidden md:flex'}`}>
       <div className="p-5 flex items-center gap-3 border-b border-[#112240] shrink-0">
         <div className="bg-white p-1 rounded-full flex-shrink-0 shadow-[0_0_10px_rgba(255,215,0,0.3)]">
           <img src="/logo.jpg" alt="Ditmur Academy" className="w-10 h-10 rounded-full object-contain" />

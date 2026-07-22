@@ -1,6 +1,8 @@
-import { Bell, Search, Menu, LogOut } from 'lucide-react';
+import { Bell, Search, LogOut } from 'lucide-react';
 import { signOut } from '@/auth'; 
 import { auth } from '@/auth';
+import MobileMenu from './MobileMenu';
+import Sidebar from './Sidebar';
 
 export default async function Header() {
   const session = await auth();
@@ -15,9 +17,9 @@ export default async function Header() {
   return (
     <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 lg:px-8 shrink-0">
       <div className="flex items-center gap-4">
-        <button className="md:hidden text-slate-500 hover:text-slate-700">
-          <Menu className="w-6 h-6" />
-        </button>
+        <MobileMenu>
+          <Sidebar isMobile={true} />
+        </MobileMenu>
         {userRole !== 'STUDENT' && userRole !== 'PARENT' && (
           <div className="relative hidden sm:block">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />

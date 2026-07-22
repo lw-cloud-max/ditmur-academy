@@ -6,16 +6,32 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const classes = await prisma.class.findMany({
-      orderBy: { createdAt: 'asc' },
-      include: {
-        _count: {
-          select: { students: true }
-        }
-      }
+      orderBy: { name: 'asc' }
     });
-    return NextResponse.json({ success: true, data: classes });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to fetch classes" }, { status: 500 });
+
+    // To prevent Vercel caching issues with aggregate count sub-queries, 
+    // we fetch the counts manually and attach them.
+    const classIds = classes.map(c => c.id);
+    const studentCounts = await prisma.student.groupBy({
+      by: ['classId'],
+      where: { classId: { in: classIds } },
+      _count: { id: true }
+    });
+
+    const countMap: Record<string, number> = {};
+    studentCounts.forEach(sc => {
+      if (sc.classId) countMap[sc.classId] = sc._count.id;
+    });
+
+    const sanitizedClasses = classes.map(c => ({
+      ...c,
+      _count: { students: countMap[c.id] || 0 }
+    }));
+
+    return NextResponse.json({ success: true, data: sanitizedClasses });
+  } catch (error: any) {
+    console.error("GET Classes Error:", error);
+    return NextResponse.json({ success: false, error: error.message || "Failed to fetch classes" }, { status: 500 });
   }
 }
 
