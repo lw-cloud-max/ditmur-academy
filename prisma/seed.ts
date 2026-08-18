@@ -1,4 +1,6 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -28,7 +30,67 @@ async function main() {
       create: { name: c.name, level: c.level },
     });
   }
-  console.log("Default classes seeded!");
+
+  const adminPassword = await bcrypt.hash('admin123', 10);
+  await prisma.user.upsert({
+    where: { email: 'admin@ditmur.com' },
+    update: {
+      name: 'System Admin',
+      password: adminPassword,
+      role: 'ADMIN',
+    },
+    create: {
+      email: 'admin@ditmur.com',
+      name: 'System Admin',
+      password: adminPassword,
+      role: 'ADMIN',
+    },
+  });
+
+  const jss1 = await prisma.class.findUnique({ where: { name: 'JSS 1' } });
+  if (jss1) {
+    const parent = await prisma.parent.upsert({
+      where: { id: 'demo-parent-1' },
+      update: {
+        fullName: 'Demo Parent',
+        email: 'parent@ditmur.com',
+        phone: '08030000001',
+        password: await bcrypt.hash('parent123', 10),
+      },
+      create: {
+        id: 'demo-parent-1',
+        fullName: 'Demo Parent',
+        email: 'parent@ditmur.com',
+        phone: '08030000001',
+        password: await bcrypt.hash('parent123', 10),
+      },
+    });
+
+    await prisma.student.upsert({
+      where: { id: 'DIT/STU/001' },
+      update: {
+        firstName: 'Demo',
+        lastName: 'Student',
+        dob: new Date('2012-01-15'),
+        gender: 'MALE',
+        classId: jss1.id,
+        parentId: parent.id,
+        password: await bcrypt.hash('student123', 10),
+      },
+      create: {
+        id: 'DIT/STU/001',
+        firstName: 'Demo',
+        lastName: 'Student',
+        dob: new Date('2012-01-15'),
+        gender: 'MALE',
+        classId: jss1.id,
+        parentId: parent.id,
+        password: await bcrypt.hash('student123', 10),
+      },
+    });
+  }
+
+  console.log('Default classes and login accounts seeded!');
 }
 
 main()

@@ -79,22 +79,52 @@ export default function ConfigurationPage() {
 
   // Create Handlers
   const handleAddClass = async (e: React.FormEvent) => {
-    e.preventDefault(); setError('');
+    e.preventDefault();
+    setError('');
+    setSuccessMsg('');
+
+    const trimmedName = newClassName.trim();
+    if (!trimmedName) {
+      setError('Class name is required.');
+      return;
+    }
+
     try {
-      const res = await fetch('/api/classes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newClassName, level: newClassLevel }) });
+      const res = await fetch('/api/classes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmedName, level: newClassLevel })
+      });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setNewClassName(''); fetchClasses();
+      if (!res.ok) throw new Error(data.error || 'Unable to create class');
+      setNewClassName('');
+      setSuccessMsg(`Class "${trimmedName}" added successfully.`);
+      fetchClasses();
     } catch (err: any) { setError(err.message); }
   };
 
   const handleAddSubject = async (e: React.FormEvent) => {
-    e.preventDefault(); setError('');
+    e.preventDefault();
+    setError('');
+    setSuccessMsg('');
+
+    const trimmedName = newSubjectName.trim();
+    if (!trimmedName) {
+      setError('Subject name is required.');
+      return;
+    }
+
     try {
-      const res = await fetch('/api/subjects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newSubjectName }) });
+      const res = await fetch('/api/subjects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmedName })
+      });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setNewSubjectName(''); fetchSubjects();
+      if (!res.ok) throw new Error(data.error || 'Unable to create subject');
+      setNewSubjectName('');
+      setSuccessMsg(`Subject "${trimmedName}" added successfully.`);
+      fetchSubjects();
     } catch (err: any) { setError(err.message); }
   };
 
