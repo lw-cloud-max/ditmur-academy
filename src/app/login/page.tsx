@@ -98,7 +98,7 @@ export default function LoginPage() {
                 name="username"
                 required 
                 className={`w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#0033A0] outline-none transition-all ${roleType === 'STUDENT' ? 'uppercase font-mono font-bold text-[#0033A0]' : ''}`}
-                placeholder={roleType === 'STUDENT' ? 'DIT/STU/001' : roleType === 'PARENT' ? 'parent@email.com' : 'admin@ditmur.com'}
+                placeholder={roleType === 'STUDENT' ? 'DIT/STU/001' : roleType === 'PARENT' ? 'parent@email.com' : 'admin@school.com'}
               />
             </div>
             
@@ -131,8 +131,8 @@ export default function LoginPage() {
           {roleType === 'STAFF' && (
             <div className="mt-8 pt-6 border-t border-slate-100 text-center">
               <p className="text-xs text-slate-500 font-medium">
-                Use the school admin account:<br/>
-                <span className="font-mono bg-slate-100 px-1 rounded text-slate-700 mt-1 inline-block">admin@ditmur.com</span> / <span className="font-mono bg-slate-100 px-1 rounded text-slate-700">admin123</span>
+                For demo purposes, use:<br/>
+                <span className="font-mono bg-slate-100 px-1 rounded text-slate-700 mt-1 inline-block">admin@school.com</span> / <span className="font-mono bg-slate-100 px-1 rounded text-slate-700">admin123</span>
               </p>
             </div>
           )}

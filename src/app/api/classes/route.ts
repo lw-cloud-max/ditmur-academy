@@ -38,40 +38,15 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const name = String(body?.name ?? '').trim();
-    const level = String(body?.level ?? '').trim();
-
-    if (!name || !level) {
-      return NextResponse.json({ success: false, error: "Class name and level are required." }, { status: 400 });
-    }
-
-    const normalizedName = name.toLowerCase();
-    const existingClass = await prisma.class.findFirst({
-      where: {
-        name: {
-          equals: name,
-        }
-      }
-    });
-
-    const duplicateClass = existingClass || (await prisma.class.findMany()).find(c => c.name.toLowerCase() === normalizedName);
-
-    if (duplicateClass) {
-      return NextResponse.json({ success: false, error: `Class "${name}" already exists.` }, { status: 409 });
-    }
+    const { name, level } = body;
 
     const newClass = await prisma.class.create({
       data: { name, level }
     });
 
     return NextResponse.json({ success: true, data: newClass }, { status: 201 });
-  } catch (error: any) {
-    if (error?.code === 'P2002') {
-      return NextResponse.json({ success: false, error: "This class already exists." }, { status: 409 });
-    }
-
-    console.error("Failed to create class:", error);
-    return NextResponse.json({ success: false, error: "Failed to create class." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: "Failed to create class. It may already exist." }, { status: 500 });
   }
 }
 

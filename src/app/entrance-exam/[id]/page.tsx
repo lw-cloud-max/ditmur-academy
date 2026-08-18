@@ -160,7 +160,7 @@ export default function ManageExamQuestions() {
       {isGeneratingAI && (
         <div className="fixed inset-0 z-[100] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl">
           <Wand2 className="w-16 h-16 text-[#0033A0] animate-pulse mb-4" />
-          <h3 className="text-2xl font-black text-[#0033A0] mb-2">EduManage AI is working...</h3>
+          <h3 className="text-2xl font-black text-[#0033A0] mb-2">Ditmur AI is working...</h3>
           <p className="text-blue-700 font-medium">Generating multiple-choice questions for {aiTopic}.</p>
         </div>
       )}

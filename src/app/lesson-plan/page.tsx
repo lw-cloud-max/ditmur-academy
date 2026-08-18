@@ -294,7 +294,7 @@ export default function LessonPlanPage() {
                 <div className="w-24 h-24 bg-indigo-100 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-indigo-200/50">
                   <Wand2 className="w-12 h-12 text-indigo-600 animate-pulse" />
                 </div>
-                <h3 className="text-2xl font-black text-indigo-900 mb-2">EduManage AI is typing...</h3>
+                <h3 className="text-2xl font-black text-indigo-900 mb-2">Ditmur AI is typing...</h3>
                 <p className="text-indigo-700 font-medium">Generating comprehensive lesson notes, evaluations, and assignments.</p>
               </div>
             )}

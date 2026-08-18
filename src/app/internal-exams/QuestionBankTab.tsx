@@ -128,7 +128,7 @@ export default function QuestionBankTab({ classes, subjects }: { classes: any[],
       {isGeneratingAI && (
         <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl min-h-[500px]">
           <Wand2 className="w-16 h-16 text-indigo-600 animate-pulse mb-4" />
-          <h3 className="text-2xl font-black text-indigo-900 mb-2">EduManage AI is working...</h3>
+          <h3 className="text-2xl font-black text-indigo-900 mb-2">Ditmur AI is working...</h3>
           <p className="text-indigo-700 font-medium">Generating multiple-choice questions for {aiTopic}.</p>
         </div>
       )}

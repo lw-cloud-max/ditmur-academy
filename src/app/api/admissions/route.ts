@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
@@ -40,7 +39,6 @@ export async function POST(req: Request) {
             fullName: parentName,
             email: email,
             phone: phone,
-            password: await bcrypt.hash("parent123", 10),
           }
         });
       }
@@ -55,8 +53,7 @@ export async function POST(req: Request) {
           gender,
           previousSchool,
           parentId: parent.id,
-          classId: classId !== "" ? classId : null,
-          password: await bcrypt.hash("student123", 10),
+          classId: classId !== "" ? classId : null, // Assign to class
         }
       });
 

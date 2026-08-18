@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
@@ -64,12 +63,7 @@ export async function PATCH(req: Request) {
       
       if (!parent) {
         parent = await prisma.parent.create({
-          data: {
-            fullName: data.parentName,
-            email: data.email,
-            phone: data.phone,
-            password: await bcrypt.hash('parent123', 10),
-          }
+          data: { fullName: data.parentName, email: data.email, phone: data.phone }
         });
       } else {
         parent = await prisma.parent.update({

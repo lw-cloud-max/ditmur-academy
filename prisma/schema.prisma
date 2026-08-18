@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -37,8 +37,7 @@ model Student {
   invoices         Invoice[]
   skillRatings     SkillRating[]
   cbtResults       CBTResult[] 
-  internalResults  InternalResult[]
-  studyResults     StudyResult[]
+  internalResults  InternalResult[] 
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -95,8 +94,7 @@ model Subject {
   internalExams    InternalExam[]
   questionBank     QuestionBank[] 
   lessonPlans      LessonPlan[] 
-  ministrySchemes  MinistryScheme[]
-  studyResults     StudyResult[]
+  ministrySchemes  MinistryScheme[] 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -255,20 +253,6 @@ model InternalResult {
   totalMarks  Float
   submittedAt DateTime @default(now())
   @@unique([studentId, examId])
-}
-
-model StudyResult {
-  id              String   @id @default(cuid())
-  studentId       String
-  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  subjectId       String
-  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  score           Int
-  totalQuestions  Int
-  percentage      Int
-  completedAt     DateTime @default(now())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
 }
 
 // ------------------------------------------------------

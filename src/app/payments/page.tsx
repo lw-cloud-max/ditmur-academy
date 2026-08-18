@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { usePaystackPayment } from 'react-paystack';
 import { 
   CreditCard, Search, Filter, ArrowUpRight, ArrowDownRight, 
   Wallet, Receipt, CheckCircle2, Clock, Plus, Loader2, X
@@ -108,47 +109,39 @@ export default function PaymentsPage() {
     } catch (err) { console.error("Failed to record payment"); }
   };
 
-  const handlePayOnline = async (invoice: any) => {
-    if (typeof window === 'undefined') return;
+  const handlePayOnline = (invoice: any) => {
+    const config = {
+      reference: (new Date()).getTime().toString(),
+      email: session?.user?.email || "parent@school.com",
+      amount: invoice.amount * 100, // Paystack expects Kobo (amount * 100)
+      publicKey: process.env.NEXT_PUBLIC_PAYSTACK_KEY || 'pk_test_mock_key',
+    };
 
-    try {
-      const { usePaystackPayment } = await import('react-paystack');
-      const config = {
-        reference: (new Date()).getTime().toString(),
-        email: session?.user?.email || "parent@school.com",
-        amount: invoice.amount * 100,
-        publicKey: process.env.NEXT_PUBLIC_PAYSTACK_KEY || 'pk_test_mock_key',
-      };
+    const initializePayment = usePaystackPayment(config);
 
-      const initializePayment = usePaystackPayment(config);
-
-      initializePayment({
-        onSuccess: async (reference: any) => {
-          try {
-            const res = await fetch('/api/payments/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ reference: reference.reference, invoiceId: invoice.id })
-            });
-            const data = await res.json();
-            if (data.success) {
-              alert("Payment successful! Invoice is now marked as PAID.");
-              fetchData();
-            } else {
-              alert("Payment verification failed. Contact admin.");
-            }
-          } catch (err) {
-            console.error("Verification error", err);
+    initializePayment({
+      onSuccess: async (reference: any) => {
+        try {
+          const res = await fetch('/api/payments/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reference: reference.reference, invoiceId: invoice.id })
+          });
+          const data = await res.json();
+          if (data.success) {
+            alert("Payment successful! Invoice is now marked as PAID.");
+            fetchData();
+          } else {
+            alert("Payment verification failed. Contact admin.");
           }
-        },
-        onClose: () => {
-          console.log("Payment window closed.");
+        } catch (err) {
+          console.error("Verification error", err);
         }
-      });
-    } catch (error) {
-      console.error("Failed to initialize payment gateway:", error);
-      alert("Payment gateway is unavailable right now. Please try again later.");
-    }
+      },
+      onClose: () => {
+        console.log("Payment window closed.");
+      }
+    });
   };
 
   return (

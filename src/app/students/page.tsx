@@ -153,7 +153,7 @@ export default function StudentsPage() {
   const handleQuickAction = (actionName: string) => {
     setActiveDropdown(null);
     if (actionName === 'Reset Password') {
-      alert(`Password reset successfully! New temporary password is: edumanage2026`);
+      alert(`Password reset successfully! New temporary password is: ditmur2026`);
     } else if (actionName === 'Resend Activation') {
       alert(`Activation link has been resent to the parent's email address.`);
     }
