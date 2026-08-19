@@ -15,7 +15,7 @@ export default async function Header() {
   };
 
   return (
-    <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 lg:px-8 shrink-0">
+    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 h-16 flex items-center justify-between px-4 lg:px-8 shrink-0 shadow-sm">
       <div className="flex items-center gap-4">
         <MobileMenu>
           <Sidebar isMobile={true} />
@@ -42,7 +42,7 @@ export default async function Header() {
             <p className="text-sm font-bold text-slate-700">{userName}</p>
             <p className="text-xs font-bold text-[#0033A0] uppercase tracking-wider">{userRole}</p>
           </div>
-          <div className="w-9 h-9 bg-blue-50 text-[#0033A0] border border-blue-200 flex items-center justify-center rounded-full font-black text-sm">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 text-[#0033A0] shadow-inner border border-blue-300 flex items-center justify-center rounded-full font-black text-sm">
             {getInitials(userName)}
           </div>
           

@@ -69,13 +69,13 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
   const activeMenu = userRole === 'STUDENT' ? studentMenu : userRole === 'PARENT' ? parentMenu : staffMenu;
 
   return (
-    <aside className={`w-64 bg-[#0A192F] text-white min-h-screen flex flex-col border-r border-[#0033A0] ${isMobile ? '' : 'hidden md:flex'}`}>
-      <div className="p-5 flex items-center gap-3 border-b border-[#112240] shrink-0">
-        <div className="bg-white p-1 rounded-full flex-shrink-0 shadow-[0_0_10px_rgba(255,215,0,0.3)]">
-          <img src="/logo.jpg" alt="Ditmur Academy" className="w-10 h-10 rounded-full object-contain" />
+    <aside className={`w-64 bg-gradient-to-b from-[#0A192F] to-[#001744] text-white min-h-screen flex flex-col border-r border-[#0033A0]/50 shadow-xl ${isMobile ? '' : 'hidden md:flex'}`}>
+      <div className="p-5 flex items-center gap-3 border-b border-[#112240] shrink-0 bg-[#0A192F]">
+        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(255,215,0,0.3)] overflow-hidden border border-[#FFD700] p-1">
+          <img src="/logo.jpg" alt="Ditmur Academy" className="w-full h-full object-contain rounded-full" />
         </div>
         <div>
-          <h1 className="text-base font-black tracking-tight text-white uppercase leading-tight">Ditmur<br/><span className="text-[#FFD700]">Academy</span></h1>
+          <h1 className="text-base font-black tracking-tight text-white uppercase leading-tight drop-shadow-md">Ditmur<br/><span className="text-[#FFD700]">Academy</span></h1>
         </div>
       </div>
       
