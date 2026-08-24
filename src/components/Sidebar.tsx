@@ -19,7 +19,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
 
   // 1. ADMIN / STAFF MENU
   const staffMenu = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { name: 'Admissions', icon: UserPlus, path: '/admissions' },
     { name: 'Students', icon: Users, path: '/students' },
     { name: 'Parents', icon: UserCircle, path: '/parents' },
@@ -46,7 +46,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
 
   // 2. STUDENT MENU
   const studentMenu = [
-    { name: 'My Dashboard', icon: LayoutDashboard, path: '/' },
+    { name: 'My Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { name: 'My Timetable', icon: CalendarDays, path: '/timetable' },
     { name: 'Study Notes', icon: FileText, path: '/lesson-plan' },
     { name: 'Take Exam (CBT)', icon: MonitorPlay, path: '/cbt' },
@@ -58,7 +58,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
 
   // 3. PARENT MENU
   const parentMenu = [
-    { name: 'Parent Dashboard', icon: LayoutDashboard, path: '/' },
+    { name: 'Parent Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { name: 'My Children', icon: Users, path: '/students' },
     { name: 'Fee Payments', icon: CreditCard, path: '/payments' },
     { name: 'School Calendar', icon: CalendarDays, path: '/calendar' },

@@ -33,7 +33,7 @@ export default function LoginPage() {
         setError(`Invalid ${roleType === 'STUDENT' ? 'Student ID' : 'Email'} or password`);
         setLoading(false);
       } else {
-        router.push('/');
+        router.push('/dashboard');
         router.refresh();
       }
     } catch (err) {

@@ -11,19 +11,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Protect all routes EXCEPT /login
-  if (!session && path !== '/login') {
-    // If it is an API request, return a 401 Unauthorized JSON response
+  // Define public routes
+  const isPublicRoute = path === '/' || path.startsWith('/apply') || path.startsWith('/api/apply') || path === '/login';
+
+  // Protect all non-public routes
+  if (!session && !isPublicRoute) {
     if (path.startsWith('/api/')) {
       return NextResponse.json({ success: false, error: 'Unauthorized access. Please log in.' }, { status: 401 });
     }
-    // If it is a page request, redirect to the login page
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // If they ARE logged in but trying to visit the login page, redirect to dashboard
-  if (session && path === '/login') {
-    return NextResponse.redirect(new URL('/', request.url));
+  // Redirect logged-in users away from public marketing/auth pages to the dashboard
+  if (session && (path === '/' || path === '/login' || path === '/apply')) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   return NextResponse.next();
