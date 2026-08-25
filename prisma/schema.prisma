@@ -60,6 +60,7 @@ model Student {
 }
 
 model Parent {
+  tickets   Ticket[]
   id        String    @id @default(cuid())
   password  String    @default("parent123") // NEW: Parent Login Password
   fullName  String
@@ -355,4 +356,24 @@ model CalendarEvent {
   type        String   @default("GENERAL") 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Ticket {
+  id        String   @id @default(cuid())
+  subject   String
+  status    String   @default("OPEN")
+  parentId  String
+  parent    Parent   @relation(fields: [parentId], references: [id])
+  messages  TicketMessage[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  body      String
+  sender    String   
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }
