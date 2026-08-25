@@ -324,8 +324,8 @@ export default function BroadsheetPage() {
         <div className="flex-1 w-full">
           <label className="block text-xs font-medium text-slate-500 mb-1">Term and Session</label>
           <select className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium text-slate-700">
-            <option>First Term 2024-2025</option>
-            <option>Second Term 2024-2025</option>
+            <option>First Term 2026-2027</option>
+            <option>Second Term 2026-2027</option>
           </select>
         </div>
       </div>

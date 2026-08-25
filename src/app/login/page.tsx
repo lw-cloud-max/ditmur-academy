@@ -53,11 +53,11 @@ export default function LoginPage() {
         
         {/* Header Branding */}
         <div className="relative z-10 flex items-center gap-4">
-          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(255,215,0,0.4)] p-2 shrink-0 border-2 border-white/20">
-             <img src="/logo.jpg" alt="Ditmur Logo" className="w-[85%] h-[85%] object-contain rounded-full" />
+          <div className="w-20 h-20 flex items-center justify-center shrink-0">
+             <img src="/logo.jpg" alt="Ditmur Logo" className="w-full h-full object-contain drop-shadow-md mix-blend-multiply" />
           </div>
           <div>
-            <h1 className="text-2xl font-black tracking-tight uppercase font-serif drop-shadow-md">Ditmur Academy</h1>
+            <h1 className="text-3xl font-black tracking-tight uppercase font-serif drop-shadow-md">Ditmur Academy</h1>
             <p className="text-[#FFD700] font-bold text-xs tracking-[0.2em] uppercase mt-0.5 opacity-90">Cloud Management</p>
           </div>
         </div>
@@ -95,8 +95,8 @@ export default function LoginPage() {
           {/* Mobile Header (Only visible on small screens) */}
           <div className="md:hidden bg-gradient-to-br from-[#0A192F] to-[#002277] p-10 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#FFD700] rounded-full blur-[60px] opacity-20 -mr-10 -mt-10"></div>
-            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-5 shadow-[0_0_20px_rgba(255,215,0,0.4)] p-1.5 border-2 border-white/20">
-              <img src="/logo.jpg" alt="Ditmur Academy Logo" className="w-[85%] h-[85%] object-contain rounded-full" />
+            <div className="w-24 h-24 flex items-center justify-center mx-auto mb-3">
+              <img src="/logo.jpg" alt="Ditmur Academy Logo" className="w-full h-full object-contain drop-shadow-md mix-blend-multiply" />
             </div>
             <h1 className="text-2xl font-black text-white tracking-tight uppercase font-serif">Ditmur Academy</h1>
             <p className="text-[#FFD700] mt-1.5 text-[10px] font-bold uppercase tracking-[0.2em] opacity-90">Cloud Management</p>

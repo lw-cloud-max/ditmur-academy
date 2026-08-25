@@ -71,8 +71,8 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
   return (
     <aside className={`w-64 bg-gradient-to-b from-[#0A192F] to-[#001744] text-white min-h-screen flex flex-col border-r border-[#0033A0]/50 shadow-xl ${isMobile ? '' : 'hidden md:flex'}`}>
       <div className="p-5 flex items-center gap-3 border-b border-[#112240] shrink-0 bg-[#0A192F]">
-        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(255,215,0,0.3)] overflow-hidden border border-[#FFD700] p-1">
-          <img src="/logo.jpg" alt="Ditmur Academy" className="w-full h-full object-contain rounded-full" />
+        <div className="w-14 h-14 flex items-center justify-center flex-shrink-0">
+          <img src="/logo.jpg" alt="Ditmur Academy" className="w-full h-full object-contain mix-blend-screen" />
         </div>
         <div>
           <h1 className="text-base font-black tracking-tight text-white uppercase leading-tight drop-shadow-md">Ditmur<br/><span className="text-[#FFD700]">Academy</span></h1>

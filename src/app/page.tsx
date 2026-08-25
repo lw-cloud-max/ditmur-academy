@@ -10,10 +10,10 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="absolute top-0 w-full z-50 px-6 py-6 lg:px-12 flex justify-between items-center bg-transparent">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center p-0.5 shadow-md">
-            <img src="/logo.jpg" alt="Ditmur Academy" className="w-full h-full object-contain rounded-full" />
+          <div className="w-14 h-14 flex items-center justify-center shadow-md">
+            <img src="/logo.jpg" alt="Ditmur Academy" className="w-full h-full object-contain mix-blend-multiply" />
           </div>
-          <span className="font-black text-white text-xl tracking-tight uppercase drop-shadow-md">Ditmur Academy</span>
+          <span className="font-serif font-black text-white text-xl tracking-widest uppercase drop-shadow-md">Ditmur Academy</span>
         </div>
         <div className="flex gap-4">
           <Link href="/login" className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-md rounded-full font-bold text-sm transition-all shadow-sm">
@@ -33,7 +33,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-200 text-xs font-bold uppercase tracking-wider mb-6">
-              <Sparkles className="w-4 h-4 text-[#FFD700]" /> Admission for 2025/2026 is open
+              <Sparkles className="w-4 h-4 text-[#FFD700]" /> Admission for 2026/2027 is open
             </div>
             <h1 className="text-5xl lg:text-7xl font-black text-white leading-[1.1] mb-6 tracking-tight">
               Cultivating <span className="text-[#FFD700]">Excellence</span> <br/>& Discipline.

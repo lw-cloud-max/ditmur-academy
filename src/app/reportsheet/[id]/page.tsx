@@ -157,8 +157,8 @@ export default function ReportSheetPage() {
           
           <div className="flex flex-col items-center justify-center border-b-2 border-[#0033A0] pb-6 mb-6">
             <div className="flex flex-col md:flex-row items-center justify-center gap-6 mb-3">
-              <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center overflow-hidden shrink-0">
-                <img src="/logo.jpg" alt="Ditmur Academy Logo" className="w-[85%] h-[85%] object-contain" />
+              <div className="w-24 h-24 flex items-center justify-center shrink-0">
+                <img src="/logo.jpg" alt="Ditmur Academy Logo" className="w-full h-full object-contain mix-blend-multiply" />
               </div>
               <div className="text-center md:text-left">
                 <h1 className="text-3xl font-black text-[#0033A0] tracking-tight uppercase">Ditmur Academy</h1>
@@ -167,7 +167,7 @@ export default function ReportSheetPage() {
               </div>
             </div>
             <h2 className="text-xl font-bold text-slate-900 uppercase mt-4 text-center">Academic Report Sheet</h2>
-            <p className="text-sm font-bold text-slate-600 uppercase text-center">First Term of 2025-2026</p>
+            <p className="text-sm font-bold text-slate-600 uppercase text-center">First Term of 2026-2027</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 text-sm border border-slate-200 p-4 rounded-lg bg-slate-50">

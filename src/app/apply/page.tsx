@@ -93,11 +93,11 @@ export default function ApplicationForm() {
         
         {/* Header */}
         <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-md p-1 border-2 border-[#0033A0]">
-             <img src="/logo.jpg" alt="Ditmur Logo" className="w-[85%] h-[85%] object-contain rounded-full" />
+          <div className="w-20 h-20 flex items-center justify-center mx-auto mb-3">
+             <img src="/logo.jpg" alt="Ditmur Logo" className="w-full h-full object-contain mix-blend-multiply" />
           </div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Ditmur Academy</h1>
-          <p className="text-[#0033A0] mt-1 text-sm font-bold uppercase tracking-widest">2025/2026 Admissions Portal</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-widest font-serif uppercase">Ditmur Academy</h1>
+          <p className="text-[#0033A0] mt-1 text-sm font-bold uppercase tracking-widest">2026/2027 Admissions Portal</p>
         </div>
 
         <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">

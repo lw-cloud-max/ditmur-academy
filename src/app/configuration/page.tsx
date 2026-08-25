@@ -22,7 +22,7 @@ export default function ConfigurationPage() {
   // States for Terms/Sessions
   const [terms, setTerms] = useState<any[]>([]);
   const [loadingTerms, setLoadingTerms] = useState(true);
-  const [newTerm, setNewTerm] = useState({ name: 'First Term', session: '2024-2025', isCurrent: false, startDate: '', endDate: '' });
+  const [newTerm, setNewTerm] = useState({ name: 'First Term', session: '2026-2027', isCurrent: false, startDate: '', endDate: '' });
 
   // States for Calendar Events
   const [events, setEvents] = useState<any[]>([]);
@@ -104,7 +104,7 @@ export default function ConfigurationPage() {
       const res = await fetch('/api/terms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newTerm) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setNewTerm({ name: 'First Term', session: '2024-2025', isCurrent: false, startDate: '', endDate: '' });
+      setNewTerm({ name: 'First Term', session: '2026-2027', isCurrent: false, startDate: '', endDate: '' });
       fetchTerms();
     } catch (err: any) { setError(err.message); }
   };
@@ -294,7 +294,7 @@ export default function ConfigurationPage() {
             <form onSubmit={handleAddTerm} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Academic Session</label>
-                <input type="text" required value={newTerm.session} onChange={(e) => setNewTerm({...newTerm, session: e.target.value})} placeholder="e.g. 2024-2025" className="w-full px-4 py-2 bg-slate-50 border rounded-lg text-sm outline-none" />
+                <input type="text" required value={newTerm.session} onChange={(e) => setNewTerm({...newTerm, session: e.target.value})} placeholder="e.g. 2026-2027" className="w-full px-4 py-2 bg-slate-50 border rounded-lg text-sm outline-none" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Term</label>
