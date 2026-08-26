@@ -60,15 +60,16 @@ model Student {
 }
 
 model Parent {
-  tickets   Ticket[]
-  id        String    @id @default(cuid())
-  password  String    @default("parent123") // NEW: Parent Login Password
-  fullName  String
-  email     String?
-  phone     String
-  students  Student[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  tickets       Ticket[]
+  conversations Conversation[]
+  id            String    @id @default(cuid())
+  password      String    @default("parent123") // NEW: Parent Login Password
+  fullName      String
+  email         String?
+  phone         String
+  students      Student[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model Staff {
@@ -82,6 +83,7 @@ model Staff {
   classes     Class[]  
   timetableEntries TimetableEntry[] 
   lessonPlans LessonPlan[] 
+  conversations Conversation[]
 
   hireDate    DateTime @default(now())
   createdAt   DateTime @default(now())
@@ -372,8 +374,38 @@ model Ticket {
 model TicketMessage {
   id        String   @id @default(cuid())
   body      String
-  sender    String   
+  sender    String  
   ticketId  String
   ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+}
+
+// ------------------------------------------------------
+// PARENT-TEACHER CHAT
+// ------------------------------------------------------
+model Conversation {
+  id          String   @id @default(cuid())
+  parentId    String
+  parent      Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  teacherId   String
+  teacher     Staff    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  studentId   String?
+  student     Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  lastMessage String?
+  status      String   @default("ACTIVE") // ACTIVE, ARCHIVED
+  messages    ChatMessage[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([parentId, teacherId, studentId])
+}
+
+model ChatMessage {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String       // Parent ID or Staff ID
+  senderType     String       // PARENT or TEACHER
+  content        String
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
 }

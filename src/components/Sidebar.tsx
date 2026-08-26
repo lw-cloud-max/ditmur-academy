@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import { 
   LayoutDashboard, UserPlus, MonitorPlay, Users, UserCircle, 
   GraduationCap, CalendarDays, ClipboardCheck, FileSpreadsheet,
-  Settings2, BookOpen, MessageSquare, CreditCard, HelpCircle,
+  Settings2, BookOpen, MessageSquare, MessageCircle, CreditCard, HelpCircle,
   Settings, School, FileQuestion, Trophy, Gamepad2, Lightbulb, Library, FileText, Bot
 } from 'lucide-react';
 
@@ -38,6 +38,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'Study Hub', icon: Gamepad2, path: '/study-hub', isFun: true },
     { name: 'Hall of Fame', icon: Trophy, path: '/hall-of-fame', isFun: true },
     { name: 'Daily Trivia', icon: Lightbulb, path: '/trivia', isFun: true },
+    { name: 'Parent Chat', icon: MessageCircle, path: '/chat', isNew: true },
     { name: 'Messaging', icon: MessageSquare, path: '/messaging' },
     { name: 'Payments', icon: CreditCard, path: '/payments' },
     { name: 'Configuration', icon: Settings, path: '/configuration' },
@@ -61,6 +62,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
   const parentMenu = [
     { name: 'Parent Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { name: 'My Children', icon: Users, path: '/students' },
+    { name: 'Teacher Chat', icon: MessageCircle, path: '/chat', isNew: true },
     { name: 'Fee Payments', icon: CreditCard, path: '/payments' },
     { name: 'School Calendar', icon: CalendarDays, path: '/calendar' },
     { name: 'Support', icon: HelpCircle, path: '/help' },
