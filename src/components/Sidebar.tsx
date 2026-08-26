@@ -5,9 +5,9 @@ import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { 
   LayoutDashboard, UserPlus, MonitorPlay, Users, UserCircle, 
-  GraduationCap, CalendarDays, ClipboardCheck, FileSpreadsheet, 
-  Settings2, BookOpen, MessageSquare, CreditCard, HelpCircle, 
-  Settings, School, FileQuestion, Trophy, Gamepad2, Lightbulb, Library, FileText
+  GraduationCap, CalendarDays, ClipboardCheck, FileSpreadsheet,
+  Settings2, BookOpen, MessageSquare, CreditCard, HelpCircle,
+  Settings, School, FileQuestion, Trophy, Gamepad2, Lightbulb, Library, FileText, Bot
 } from 'lucide-react';
 
 export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
@@ -47,6 +47,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
   // 2. STUDENT MENU
   const studentMenu = [
     { name: 'My Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+    { name: 'AI Tutor', icon: Bot, path: '/ai-tutor', isNew: true },
     { name: 'My Timetable', icon: CalendarDays, path: '/timetable' },
     { name: 'Study Notes', icon: FileText, path: '/lesson-plan' },
     { name: 'Take Exam (CBT)', icon: MonitorPlay, path: '/cbt' },
@@ -99,6 +100,11 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
                 >
                   <item.icon className={`w-5 h-5 flex-shrink-0 ${((item as any).isFun) && !isActive ? 'text-[#FFD700]/70' : ''}`} />
                   <span className="text-sm tracking-wide">{item.name}</span>
+                  {(item as any).isNew && (
+                    <span className="ml-auto px-2 py-0.5 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-[10px] font-black rounded-full text-[#0A192F]">
+                      NEW
+                    </span>
+                  )}
                 </Link>
               </div>
             );
