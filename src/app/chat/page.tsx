@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { MessageCircle, Send, Loader2, Search, Plus, ArrowLeft, User, GraduationCap, Check, CheckCheck } from 'lucide-react';
+import { MessageCircle, Send, Loader2, Search, Plus, ArrowLeft, User, GraduationCap, Check, CheckCheck, X } from 'lucide-react';
 
 interface Conversation {
   id: string;
@@ -24,6 +24,20 @@ interface Message {
   createdAt: string;
 }
 
+interface Teacher {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+}
+
+interface Student {
+  id: string;
+  firstName: string;
+  lastName: string;
+  class?: { name: string };
+}
+
 export default function ChatPage() {
   const { data: session } = useSession();
   const userRole = session?.user?.role || 'STAFF';
@@ -39,9 +53,21 @@ export default function ChatPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // New chat modal state
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [selectedTeacher, setSelectedTeacher] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState('');
+  const [firstMessage, setFirstMessage] = useState('');
+  const [creatingChat, setCreatingChat] = useState(false);
+
   // Fetch conversations
   useEffect(() => {
     fetchConversations();
+    if (isParent) {
+      fetchTeachersAndStudents();
+    }
   }, []);
 
   // Fetch messages when conversation is selected
@@ -67,6 +93,26 @@ export default function ChatPage() {
       console.error('Error fetching conversations:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTeachersAndStudents = async () => {
+    try {
+      // Fetch teachers
+      const teachersRes = await fetch('/api/staff?role=TEACHER');
+      const teachersData = await teachersRes.json();
+      if (teachersData.success) {
+        setTeachers(teachersData.data);
+      }
+
+      // Fetch parent's children
+      const studentsRes = await fetch(`/api/students?parentId=${userId}`);
+      const studentsData = await studentsRes.json();
+      if (studentsData.success) {
+        setStudents(studentsData.data);
+      }
+    } catch (error) {
+      console.error('Error fetching teachers/students:', error);
     }
   };
 
@@ -107,6 +153,46 @@ export default function ChatPage() {
     }
   };
 
+  const handleCreateConversation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTeacher || !firstMessage.trim() || creatingChat) return;
+
+    setCreatingChat(true);
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacherId: selectedTeacher,
+          studentId: selectedStudent || null,
+          message: firstMessage.trim()
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setShowNewChatModal(false);
+        setSelectedTeacher('');
+        setSelectedStudent('');
+        setFirstMessage('');
+        fetchConversations();
+        // Select the new conversation
+        setSelectedConversation(data.data);
+      } else if (data.error === 'Conversation already exists') {
+        // If conversation exists, select it
+        const existingConv = conversations.find(c => c.id === data.conversationId);
+        if (existingConv) {
+          setSelectedConversation(existingConv);
+        }
+        setShowNewChatModal(false);
+      }
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+    } finally {
+      setCreatingChat(false);
+    }
+  };
+
   const getOtherParty = (conversation: Conversation) => {
     if (isParent) {
       return conversation.teacher 
@@ -135,10 +221,20 @@ export default function ChatPage() {
       {/* Conversations List */}
       <div className={`${selectedConversation ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-96 bg-white rounded-l-2xl border border-slate-200 shadow-sm overflow-hidden`}>
         <div className="p-4 border-b border-slate-200 bg-slate-50">
-          <h2 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
-            <MessageCircle className="w-5 h-5 text-[#0033A0]" />
-            {isParent ? 'Teacher Chats' : 'Parent Messages'}
-          </h2>
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-[#0033A0]" />
+              {isParent ? 'Teacher Chats' : 'Parent Messages'}
+            </h2>
+            {isParent && (
+              <button
+                onClick={() => setShowNewChatModal(true)}
+                className="p-2 bg-[#0033A0] text-white rounded-lg hover:bg-[#002277] transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            )}
+          </div>
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -161,7 +257,7 @@ export default function ChatPage() {
               <MessageCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
               <p className="font-medium">No conversations yet</p>
               <p className="text-sm mt-1">
-                {isParent ? 'Start a chat with your child\'s teacher' : 'Parents will appear here when they message you'}
+                {isParent ? 'Click + to start a chat with a teacher' : 'Parents will appear here when they message you'}
               </p>
             </div>
           ) : (
@@ -209,7 +305,9 @@ export default function ChatPage() {
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
             <MessageCircle className="w-16 h-16 text-slate-200 mb-4" />
             <h3 className="font-bold text-slate-700 text-lg">Select a conversation</h3>
-            <p className="text-slate-500 text-sm mt-1">Choose a chat from the left to start messaging</p>
+            <p className="text-slate-500 text-sm mt-1">
+              {isParent ? 'Click + to start a new chat' : 'Choose a chat from the left to start messaging'}
+            </p>
           </div>
         ) : (
           <>
@@ -288,6 +386,87 @@ export default function ChatPage() {
           </>
         )}
       </div>
+
+      {/* New Chat Modal */}
+      {showNewChatModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animation-fade-in">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Start New Chat</h3>
+                <p className="text-xs text-slate-500 mt-1">Select a teacher and optionally a student</p>
+              </div>
+              <button onClick={() => setShowNewChatModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateConversation} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Select Teacher *</label>
+                <select
+                  required
+                  value={selectedTeacher}
+                  onChange={(e) => setSelectedTeacher(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
+                >
+                  <option value="">Choose a teacher...</option>
+                  {teachers.map(teacher => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.firstName} {teacher.lastName} ({teacher.role})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {students.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Regarding Student (Optional)</label>
+                  <select
+                    value={selectedStudent}
+                    onChange={(e) => setSelectedStudent(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
+                  >
+                    <option value="">General inquiry</option>
+                    {students.map(student => (
+                      <option key={student.id} value={student.id}>
+                        {student.firstName} {student.lastName} {student.class?.name ? `(${student.class.name})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Your Message *</label>
+                <textarea
+                  required
+                  value={firstMessage}
+                  onChange={(e) => setFirstMessage(e.target.value)}
+                  rows={4}
+                  placeholder="Type your message to the teacher..."
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0] resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={!selectedTeacher || !firstMessage.trim() || creatingChat}
+                className="w-full py-3.5 bg-[#0033A0] text-white rounded-xl font-bold hover:bg-[#002277] transition-all flex items-center justify-center gap-2 disabled:opacity-70 mt-2"
+              >
+                {creatingChat ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    Start Conversation
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
