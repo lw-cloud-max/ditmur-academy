@@ -1,5 +1,6 @@
 import NextAuth, { DefaultSession, type User } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { prisma } from "@/lib/prisma";
 
 // Extend NextAuth types to include our custom 'role' property
 declare module "next-auth" {
@@ -49,7 +50,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         if (roleType === "PARENT") {
-          return { id: username, name: "Test Parent", email: username, role: "PARENT" };
+          // Look up the actual parent record in the database to get the real ID
+          const parent = await prisma.parent.findFirst({
+            where: { email: username }
+          });
+          
+          if (!parent) {
+            return null;
+          }
+          
+          // Validate password (default password is "parent123")
+          if (parent.password !== password) {
+            return null;
+          }
+          
+          return { id: parent.id, name: parent.fullName, email: parent.email, role: "PARENT" };
         }
 
         return null;

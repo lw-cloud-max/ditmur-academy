@@ -215,6 +215,13 @@ export default function LoginPage() {
               </p>
             </div>
           )}
+          {roleType === 'PARENT' && (
+            <div className="pb-8 text-center">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                Default password: <span className="font-mono bg-slate-100 px-2 py-1 rounded text-slate-600 border border-slate-200 shadow-sm">parent123</span>
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

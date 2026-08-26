@@ -33,6 +33,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Missing fields' }, { status: 400 });
     }
 
+    // Verify the parent exists
+    const parent = await prisma.parent.findUnique({
+      where: { id: parentId }
+    });
+
+    if (!parent) {
+      return NextResponse.json({ success: false, error: 'Parent not found' }, { status: 404 });
+    }
+
     const ticket = await prisma.ticket.create({
       data: {
         subject,
@@ -49,6 +58,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, data: ticket }, { status: 201 });
   } catch (error) {
+    console.error('Ticket creation error:', error);
     return NextResponse.json({ success: false, error: 'Failed to create ticket' }, { status: 500 });
   }
 }
