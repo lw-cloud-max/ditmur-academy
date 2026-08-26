@@ -5,14 +5,17 @@ import { auth } from '@/auth';
 export const dynamic = 'force-dynamic';
 
 // GET: Fetch messages for a conversation
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const conversationId = params.id;
+    const { id: conversationId } = await params;
     const userId = session.user.id;
     const userRole = session.user.role;
 
@@ -61,14 +64,17 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 // POST: Send a message
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const conversationId = params.id;
+    const { id: conversationId } = await params;
     const userId = session.user.id;
     const userRole = session.user.role;
     const { content } = await req.json();
