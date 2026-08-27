@@ -1,7 +1,8 @@
 // Africa's Talking SMS API Integration using Official SDK
 // Documentation: https://africastalking.com/docs/sms
 
-import AfricasTalking from 'africastalking';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const AfricasTalking = require('africastalking');
 
 const AFRICASTALKING_API_KEY = process.env.AFRICASTALKING_API_KEY;
 const AFRICASTALKING_USERNAME = process.env.AFRICASTALKING_USERNAME || 'sandbox';
@@ -34,7 +35,7 @@ export async function sendSMS({ to, message, from }: AfricasTalkingSMSOptions): 
 
     // Format phone numbers
     const recipients = Array.isArray(to) ? to : [to];
-    const formattedRecipients = recipients.map(phone => {
+    const formattedRecipients = recipients.map((phone: string) => {
       let formatted = phone.replace(/\s+/g, '');
       if (formatted.startsWith('0')) {
         formatted = '+234' + formatted.substring(1);
