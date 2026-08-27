@@ -7,7 +7,7 @@ import {
   LayoutDashboard, UserPlus, MonitorPlay, Users, UserCircle, 
   GraduationCap, CalendarDays, ClipboardCheck, FileSpreadsheet,
   Settings2, BookOpen, MessageSquare, MessageCircle, CreditCard, HelpCircle,
-  Settings, School, FileQuestion, Trophy, Gamepad2, Lightbulb, Library, FileText, Bot
+  Settings, School, FileQuestion, Trophy, Gamepad2, Lightbulb, Library, FileText, Bot, Award
 } from 'lucide-react';
 
 export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
@@ -28,6 +28,8 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'Timetable', icon: CalendarDays, path: '/timetable' },
     { name: 'School Calendar', icon: CalendarDays, path: '/calendar' },
     { name: 'Attendance', icon: ClipboardCheck, path: '/school-attendance' },  
+    { name: 'SMS Notifications', icon: MessageSquare, path: '/sms-notifications', isNew: true },
+    { name: 'Behavior System', icon: Award, path: '/behavior', isNew: true },
     { name: 'Broadsheet', icon: FileSpreadsheet, path: '/broadsheet' },
     { name: 'Assessment Format', icon: Settings2, path: '/assessment-format' },
     { name: 'Internal Exams', icon: FileQuestion, path: '/internal-exams' },
@@ -38,7 +40,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'Study Hub', icon: Gamepad2, path: '/study-hub', isFun: true },
     { name: 'Hall of Fame', icon: Trophy, path: '/hall-of-fame', isFun: true },
     { name: 'Daily Trivia', icon: Lightbulb, path: '/trivia', isFun: true },
-    { name: 'Parent Chat', icon: MessageCircle, path: '/chat', isNew: true },
+    { name: 'Parent Chat', icon: MessageCircle, path: '/chat' },
     { name: 'Messaging', icon: MessageSquare, path: '/messaging' },
     { name: 'Payments', icon: CreditCard, path: '/payments' },
     { name: 'Configuration', icon: Settings, path: '/configuration' },

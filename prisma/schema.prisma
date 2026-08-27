@@ -55,22 +55,26 @@ model Student {
   cbtResults       CBTResult[] 
   internalResults  InternalResult[] 
   conversations    Conversation[]
+  attendance       Attendance[]
+  behaviorRecords  BehaviorRecord[]
+  smsNotifications SMSNotification[]
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
 
 model Parent {
-  tickets       Ticket[]
-  conversations Conversation[]
-  id            String    @id @default(cuid())
-  password      String    @default("parent123") // NEW: Parent Login Password
-  fullName      String
-  email         String?
-  phone         String
-  students      Student[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  tickets           Ticket[]
+  conversations     Conversation[]
+  smsNotifications  SMSNotification[]
+  id                String    @id @default(cuid())
+  password          String    @default("parent123") // NEW: Parent Login Password
+  fullName          String
+  email             String?
+  phone             String
+  students          Student[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 model Staff {
@@ -102,6 +106,7 @@ model Class {
   internalExams    InternalExam[]
   questionBank     QuestionBank[] 
   lessonPlans      LessonPlan[] 
+  attendance        Attendance[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -409,4 +414,55 @@ model ChatMessage {
   content        String
   isRead         Boolean      @default(false)
   createdAt      DateTime     @default(now())
+}
+
+// ------------------------------------------------------
+// ATTENDANCE SYSTEM
+// ------------------------------------------------------
+model Attendance {
+  id        String   @id @default(cuid())
+  date      DateTime
+  status    String   // PRESENT, ABSENT, LATE
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  markedBy  String?  // Staff ID who marked attendance
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([studentId, date])
+}
+
+// ------------------------------------------------------
+// BEHAVIORAL MERIT/DEMERIT SYSTEM
+// ------------------------------------------------------
+model BehaviorRecord {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  type        String   // MERIT, DEMERIT
+  points      Int      // Positive for merit, negative for demerit
+  category    String   // ACADEMIC, DISCIPLINE, LEADERSHIP, COMMUNITY, SPORTS
+  title       String   // e.g., "Perfect Attendance", "Helping a Classmate"
+  description String?
+  awardedBy   String   // Staff ID
+  term        String
+  createdAt   DateTime @default(now())
+}
+
+// ------------------------------------------------------
+// SMS NOTIFICATIONS
+// ------------------------------------------------------
+model SMSNotification {
+  id          String   @id @default(cuid())
+  parentId    String
+  parent      Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  studentId   String?
+  student     Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  type        String   // ATTENDANCE, RESULT, ANNOUNCEMENT, FEE_REMINDER
+  message     String
+  status      String   @default("PENDING") // PENDING, SENT, FAILED, DELIVERED
+  termiiMessageId String? // Termii API message ID
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
 }
