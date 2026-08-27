@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
-import { sendSMS, SMS_TEMPLATES } from '@/lib/africastalking';
+import { sendSMS, SMS_TEMPLATES } from '@/lib/africastalking-sdk';
 
 export const dynamic = 'force-dynamic';
 
