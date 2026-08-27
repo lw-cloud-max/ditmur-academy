@@ -1,8 +1,15 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Save, Users, Loader2, CheckCircle2 } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Save, Users, Loader2, CheckCircle2, X } from 'lucide-react';
 import Link from 'next/link';
+
+interface AbsenceReason {
+  studentId: string;
+  studentName: string;
+  isExcused: boolean;
+  reason: string;
+}
 
 export default function AttendancePage() {
   const [classes, setClasses] = useState<any[]>([]);
@@ -18,6 +25,13 @@ export default function AttendancePage() {
   // Local state to hold attendance for the UI
   const [attendanceRecord, setAttendanceRecord] = useState<Record<string, Record<string, string>>>({});
   const [saving, setSaving] = useState(false);
+
+  // Absence reason modal state
+  const [showAbsenceModal, setShowAbsenceModal] = useState(false);
+  const [currentAbsentStudent, setCurrentAbsentStudent] = useState<any>(null);
+  const [absenceReason, setAbsenceReason] = useState('');
+  const [isExcused, setIsExcused] = useState(false);
+  const [absenceReasons, setAbsenceReasons] = useState<Record<string, AbsenceReason>>({});
 
   // Fetch Classes on load
   useEffect(() => {
@@ -78,6 +92,25 @@ export default function AttendancePage() {
   const dateString = selectedDate.toISOString().split('T')[0];
 
   const handleMarkAttendance = (studentId: string, status: string) => {
+    // If marking as absent, show the reason modal
+    if (status === 'ABSENT') {
+      const student = students.find(s => s.id === studentId);
+      setCurrentAbsentStudent(student);
+      setAbsenceReason('');
+      setIsExcused(false);
+      setShowAbsenceModal(true);
+      return;
+    }
+
+    // If changing from absent to present/late, remove the absence reason
+    if (absenceReasons[studentId]) {
+      setAbsenceReasons(prev => {
+        const newReasons = { ...prev };
+        delete newReasons[studentId];
+        return newReasons;
+      });
+    }
+
     setAttendanceRecord(prev => ({
       ...prev,
       [dateString]: {
@@ -85,6 +118,33 @@ export default function AttendancePage() {
         [studentId]: status
       }
     }));
+  };
+
+  const handleAbsenceSubmit = () => {
+    if (!currentAbsentStudent) return;
+
+    // Save the absence reason
+    setAbsenceReasons(prev => ({
+      ...prev,
+      [currentAbsentStudent.id]: {
+        studentId: currentAbsentStudent.id,
+        studentName: `${currentAbsentStudent.firstName} ${currentAbsentStudent.lastName}`,
+        isExcused: isExcused,
+        reason: absenceReason
+      }
+    }));
+
+    // Mark as absent
+    setAttendanceRecord(prev => ({
+      ...prev,
+      [dateString]: {
+        ...prev[dateString],
+        [currentAbsentStudent.id]: 'ABSENT'
+      }
+    }));
+
+    setShowAbsenceModal(false);
+    setCurrentAbsentStudent(null);
   };
 
   const handleSaveAttendance = async () => {
@@ -95,7 +155,10 @@ export default function AttendancePage() {
         studentId,
         status,
         date: dateString,
-        classId: selectedClass
+        classId: selectedClass,
+        // Include absence reason if available
+        absenceReason: absenceReasons[studentId]?.reason || null,
+        isExcused: absenceReasons[studentId]?.isExcused || false
       }));
 
       // Call API to save attendance
@@ -111,22 +174,50 @@ export default function AttendancePage() {
         // Automatically award behavior points based on attendance
         for (const record of attendanceData) {
           try {
-            await fetch('/api/behavior/auto', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                studentId: record.studentId,
-                attendanceStatus: record.status,
-                date: record.date,
-                term: 'Term 1 - 2024' // You can make this dynamic
-              })
-            });
+            // Only award demerit for UNEXCUSED absences
+            if (record.status === 'ABSENT' && !record.isExcused) {
+              await fetch('/api/behavior/auto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  studentId: record.studentId,
+                  attendanceStatus: 'ABSENT',
+                  date: record.date,
+                  term: 'Term 1 - 2024',
+                  reason: record.absenceReason
+                })
+              });
+            } else if (record.status === 'LATE') {
+              await fetch('/api/behavior/auto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  studentId: record.studentId,
+                  attendanceStatus: 'LATE',
+                  date: record.date,
+                  term: 'Term 1 - 2024'
+                })
+              });
+            } else if (record.status === 'PRESENT') {
+              await fetch('/api/behavior/auto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  studentId: record.studentId,
+                  attendanceStatus: 'PRESENT',
+                  date: record.date,
+                  term: 'Term 1 - 2024'
+                })
+              });
+            }
           } catch (err) {
             console.error('Failed to award behavior points:', err);
           }
         }
 
-        alert(`Attendance for ${selectedDate.toDateString()} saved successfully! Behavior points have been automatically awarded.`);
+        alert(`Attendance for ${selectedDate.toDateString()} saved successfully!`);
+        // Clear absence reasons after saving
+        setAbsenceReasons({});
       } else {
         alert('Failed to save attendance');
       }
@@ -257,11 +348,13 @@ export default function AttendancePage() {
                     <th className="px-6 py-4 text-xs font-bold text-emerald-600 uppercase tracking-wider text-center bg-emerald-50/50">Present</th>
                     <th className="px-6 py-4 text-xs font-bold text-red-600 uppercase tracking-wider text-center bg-red-50/50">Absent</th>
                     <th className="px-6 py-4 text-xs font-bold text-amber-600 uppercase tracking-wider text-center bg-amber-50/50">Late</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Reason</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {students.map((student) => {
                     const status = getStatus(student.id);
+                    const reason = absenceReasons[student.id];
                     return (
                       <tr key={student.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4">
@@ -295,6 +388,22 @@ export default function AttendancePage() {
                             className="w-5 h-5 text-amber-500 focus:ring-amber-500 cursor-pointer" 
                           />
                         </td>
+                        <td className="px-6 py-4">
+                          {status === 'ABSENT' && reason ? (
+                            <div className="text-xs">
+                              <span className={`px-2 py-0.5 rounded-full font-bold ${
+                                reason.isExcused ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                              }`}>
+                                {reason.isExcused ? 'Excused' : 'Unexcused'}
+                              </span>
+                              {reason.reason && (
+                                <p className="text-slate-500 mt-1 truncate max-w-[150px]">{reason.reason}</p>
+                              )}
+                            </div>
+                          ) : status === 'ABSENT' ? (
+                            <span className="text-xs text-slate-400">Click to add reason</span>
+                          ) : null}
+                        </td>
                       </tr>
                     );
                   })}
@@ -304,6 +413,86 @@ export default function AttendancePage() {
           </div>
         </div>
       </div>
+
+      {/* Absence Reason Modal */}
+      {showAbsenceModal && currentAbsentStudent && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animation-fade-in">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Absence Reason</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  {currentAbsentStudent.firstName} {currentAbsentStudent.lastName}
+                </p>
+              </div>
+              <button onClick={() => setShowAbsenceModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Is this absence excused?</label>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setIsExcused(false)}
+                    className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
+                      !isExcused 
+                        ? 'bg-red-500 text-white shadow-md' 
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    ❌ Unexcused
+                  </button>
+                  <button
+                    onClick={() => setIsExcused(true)}
+                    className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
+                      isExcused 
+                        ? 'bg-emerald-500 text-white shadow-md' 
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    ✅ Excused
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Reason (Optional)</label>
+                <textarea
+                  value={absenceReason}
+                  onChange={(e) => setAbsenceReason(e.target.value)}
+                  rows={3}
+                  placeholder="e.g., Sick, Family emergency, Medical appointment..."
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0] resize-none"
+                />
+              </div>
+
+              <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                <p className="text-xs text-blue-800">
+                  <strong>Note:</strong> Only <span className="font-bold text-red-600">unexcused absences</span> will result in demerit points. 
+                  Excused absences will not affect the student's behavior score.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowAbsenceModal(false)}
+                  className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAbsenceSubmit}
+                  className="flex-1 px-4 py-3 bg-[#0033A0] text-white rounded-xl font-bold hover:bg-[#002277] transition-colors"
+                >
+                  Save Reason
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -12,7 +12,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { studentId, attendanceStatus, date, term } = await req.json();
+    const { studentId, attendanceStatus, date, term, reason, isExcused } = await req.json();
 
     if (!studentId || !attendanceStatus || !term) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     // Award points based on attendance status
     switch (attendanceStatus) {
       case 'PRESENT':
-        // Award merit for perfect attendance (can be weekly/monthly)
+        // Award merit for perfect attendance
         behaviorData = {
           type: 'MERIT',
           points: 2,
@@ -60,15 +60,31 @@ export async function POST(req: Request) {
         break;
 
       case 'ABSENT':
-        // Demerit for unexcused absence
-        behaviorData = {
-          type: 'DEMERIT',
-          points: 3,
-          category: 'DISCIPLINE',
-          title: 'Unexcused Absence',
-          description: `Absent on ${new Date(date).toLocaleDateString()}`,
-          awardedBy: session.user.id
-        };
+        // Only award demerit for UNEXCUSED absences
+        if (!isExcused) {
+          behaviorData = {
+            type: 'DEMERIT',
+            points: 3,
+            category: 'DISCIPLINE',
+            title: 'Unexcused Absence',
+            description: reason 
+              ? `Absent on ${new Date(date).toLocaleDateString()} - Reason: ${reason}`
+              : `Absent on ${new Date(date).toLocaleDateString()} - No reason provided`,
+            awardedBy: session.user.id
+          };
+        } else {
+          // Excused absence - no demerit, but log it
+          behaviorData = {
+            type: 'MERIT',
+            points: 0,
+            category: 'DISCIPLINE',
+            title: 'Excused Absence',
+            description: reason 
+              ? `Excused absence on ${new Date(date).toLocaleDateString()} - Reason: ${reason}`
+              : `Excused absence on ${new Date(date).toLocaleDateString()}`,
+            awardedBy: session.user.id
+          };
+        }
         break;
 
       default:
