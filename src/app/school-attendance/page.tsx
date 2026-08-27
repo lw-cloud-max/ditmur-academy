@@ -87,12 +87,55 @@ export default function AttendancePage() {
     }));
   };
 
-  const handleSaveAttendance = () => {
+  const handleSaveAttendance = async () => {
     setSaving(true);
-    setTimeout(() => {
+    try {
+      // Save attendance records
+      const attendanceData = Object.entries(attendanceRecord[dateString] || {}).map(([studentId, status]) => ({
+        studentId,
+        status,
+        date: dateString,
+        classId: selectedClass
+      }));
+
+      // Call API to save attendance
+      const res = await fetch('/api/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attendance: attendanceData, date: dateString })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // Automatically award behavior points based on attendance
+        for (const record of attendanceData) {
+          try {
+            await fetch('/api/behavior/auto', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                studentId: record.studentId,
+                attendanceStatus: record.status,
+                date: record.date,
+                term: 'Term 1 - 2024' // You can make this dynamic
+              })
+            });
+          } catch (err) {
+            console.error('Failed to award behavior points:', err);
+          }
+        }
+
+        alert(`Attendance for ${selectedDate.toDateString()} saved successfully! Behavior points have been automatically awarded.`);
+      } else {
+        alert('Failed to save attendance');
+      }
+    } catch (error) {
+      console.error('Error saving attendance:', error);
+      alert('Failed to save attendance');
+    } finally {
       setSaving(false);
-      alert(`Attendance for ${selectedDate.toDateString()} saved successfully!`);
-    }, 800);
+    }
   };
 
   const getStatus = (studentId: string) => {
