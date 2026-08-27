@@ -3,10 +3,10 @@
 
 const AFRICASTALKING_API_KEY = process.env.AFRICASTALKING_API_KEY;
 const AFRICASTALKING_USERNAME = process.env.AFRICASTALKING_USERNAME || 'sandbox';
-const AFRICASTALKING_SENDER_ID = process.env.AFRICASTALKING_SENDER_ID || '';
 
-// Africa's Talking API endpoint
+// Africa's Talking API endpoints
 const AFRICASTALKING_API_URL = 'https://api.africastalking.com/version1/messaging';
+const AFRICASTALKING_SANDBOX_URL = 'https://sandbox.africastalking.com/version1/messaging';
 
 interface AfricasTalkingSMSOptions {
   to: string | string[]; // Phone number(s) in international format (e.g., +2348012345678)
@@ -39,17 +39,29 @@ export async function sendSMS({ to, message, from }: AfricasTalkingSMSOptions): 
       return formatted;
     });
 
+    // Use sandbox URL for testing, production URL for live
+    const apiUrl = AFRICASTALKING_USERNAME === 'sandbox' 
+      ? AFRICASTALKING_SANDBOX_URL 
+      : AFRICASTALKING_API_URL;
+
     // Prepare form data
     const formData = new URLSearchParams();
     formData.append('username', AFRICASTALKING_USERNAME);
     formData.append('to', formattedRecipients.join(','));
     formData.append('message', message);
     
-    if (from || AFRICASTALKING_SENDER_ID) {
-      formData.append('from', from || AFRICASTALKING_SENDER_ID);
+    if (from) {
+      formData.append('from', from);
     }
 
-    const response = await fetch(AFRICASTALKING_API_URL, {
+    console.log('Sending SMS via Africa\'s Talking:', {
+      username: AFRICASTALKING_USERNAME,
+      to: formattedRecipients,
+      messageLength: message.length,
+      apiUrl
+    });
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'apiKey': AFRICASTALKING_API_KEY,
@@ -59,7 +71,29 @@ export async function sendSMS({ to, message, from }: AfricasTalkingSMSOptions): 
       body: formData.toString(),
     });
 
-    const data = await response.json();
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    let data: any;
+    
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      // If not JSON, get as text and try to parse
+      const text = await response.text();
+      console.log('Africa\'s Talking response (not JSON):', text);
+      
+      try {
+        data = JSON.parse(text);
+      } catch {
+        // If still can't parse, return error
+        return { 
+          success: false, 
+          error: `API returned non-JSON response: ${text.substring(0, 200)}` 
+        };
+      }
+    }
+
+    console.log('Africa\'s Talking response:', data);
 
     if (data.SMSMessageData && data.SMSMessageData.Recipients) {
       const recipients = data.SMSMessageData.Recipients;
@@ -75,12 +109,14 @@ export async function sendSMS({ to, message, from }: AfricasTalkingSMSOptions): 
         const failedRecipients = recipients.filter((r: any) => r.status !== 'Success');
         return { 
           success: false, 
-          error: `Failed to send to ${failedRecipients.length} recipient(s)`,
+          error: `Failed to send to ${failedRecipients.length} recipient(s): ${failedRecipients.map((r: any) => r.status).join(', ')}`,
           recipients: recipients 
         };
       }
+    } else if (data.SMSMessageData && data.SMSMessageData.Message) {
+      return { success: false, error: data.SMSMessageData.Message };
     } else {
-      return { success: false, error: data.SMSMessageData?.Message || 'Failed to send SMS' };
+      return { success: false, error: 'Unexpected response format from Africa\'s Talking' };
     }
   } catch (error: any) {
     console.error('Africa\'s Talking SMS Error:', error);
