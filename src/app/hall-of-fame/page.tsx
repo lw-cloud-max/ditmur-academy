@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Trophy, Star, Crown, Zap, Calculator, Medal, Loader2, Award } from 'lucide-react';
+import { Trophy, Star, Crown, Zap, Calculator, Medal, Loader2, Award, TrendingUp, TrendingDown } from 'lucide-react';
 
 export default function HallOfFamePage() {
   const [leaders, setLeaderboard] = useState<any[]>([]);
@@ -21,6 +21,8 @@ export default function HallOfFamePage() {
       case 'Crown': return <Crown className={className} />;
       case 'Zap': return <Zap className={className} />;
       case 'Calculator': return <Calculator className={className} />;
+      case 'Award': return <Award className={className} />;
+      case 'Shield': return <Star className={className} />;
       default: return <Star className={className} />;
     }
   };
@@ -35,7 +37,7 @@ export default function HallOfFamePage() {
       <div className="text-center space-y-4 pt-8">
         <Trophy className="w-20 h-20 text-[#FFD700] mx-auto drop-shadow-[0_0_15px_rgba(255,215,0,0.5)]" />
         <h1 className="text-5xl font-black text-[#0A192F] uppercase tracking-tight">Hall of Fame</h1>
-        <p className="text-lg text-slate-500 font-medium">Celebrating Academic Excellence at Ditmur Academy</p>
+        <p className="text-lg text-slate-500 font-medium">Celebrating Academic Excellence & Good Behavior at Ditmur Academy</p>
       </div>
 
       {leaders.length === 0 ? (
@@ -56,9 +58,19 @@ export default function HallOfFamePage() {
                 <div className="bg-gradient-to-t from-slate-200 to-slate-50 w-full rounded-t-2xl p-6 text-center shadow-lg border border-slate-200 relative pt-8 md:h-48">
                   <Medal className="w-8 h-8 text-slate-400 absolute -top-4 left-1/2 -translate-x-1/2" />
                   <h3 className="font-bold text-slate-900 text-lg leading-tight">{top3[1].firstName} {top3[1].lastName}</h3>
-                  <p className="text-slate-500 text-sm font-medium mb-3">{top3[1].className}</p>
-                  <div className="inline-block bg-white px-3 py-1 rounded-full shadow-sm">
-                    <span className="font-black text-slate-700">{top3[1].averageGrade}%</span>
+                  <p className="text-slate-500 text-sm font-medium mb-2">{top3[1].className}</p>
+                  <div className="inline-block bg-white px-3 py-1 rounded-full shadow-sm mb-2">
+                    <span className="font-black text-slate-700">{top3[1].overallScore}%</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-xs">
+                    <span className="text-emerald-600 flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3" /> +{top3[1].meritPoints}
+                    </span>
+                    {top3[1].demeritPoints > 0 && (
+                      <span className="text-red-600 flex items-center gap-1">
+                        <TrendingDown className="w-3 h-3" /> -{top3[1].demeritPoints}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -74,11 +86,21 @@ export default function HallOfFamePage() {
                 <div className="bg-gradient-to-t from-yellow-100 to-[#FFD700]/10 w-full rounded-t-3xl p-8 text-center shadow-xl border border-yellow-200 relative pt-10 md:h-56 transform md:-translate-y-4">
                   <Crown className="w-10 h-10 text-[#FFD700] absolute -top-5 left-1/2 -translate-x-1/2 drop-shadow-md" />
                   <h3 className="font-black text-[#0A192F] text-xl leading-tight mb-1">{top3[0].firstName} {top3[0].lastName}</h3>
-                  <p className="text-[#0033A0] text-sm font-bold mb-4">{top3[0].className}</p>
-                  <div className="inline-block bg-white px-4 py-2 rounded-full shadow-md border border-yellow-100">
-                    <span className="font-black text-yellow-600 text-lg">{top3[0].averageGrade}%</span>
+                  <p className="text-[#0033A0] text-sm font-bold mb-3">{top3[0].className}</p>
+                  <div className="inline-block bg-white px-4 py-2 rounded-full shadow-md border border-yellow-100 mb-2">
+                    <span className="font-black text-yellow-600 text-lg">{top3[0].overallScore}%</span>
                   </div>
-                  <div className="mt-4 flex flex-wrap justify-center gap-1">
+                  <div className="flex items-center justify-center gap-3 text-xs mb-3">
+                    <span className="text-emerald-600 flex items-center gap-1 font-bold">
+                      <TrendingUp className="w-3 h-3" /> +{top3[0].meritPoints} merit
+                    </span>
+                    {top3[0].demeritPoints > 0 && (
+                      <span className="text-red-600 flex items-center gap-1 font-bold">
+                        <TrendingDown className="w-3 h-3" /> -{top3[0].demeritPoints} demerit
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-3 flex flex-wrap justify-center gap-1">
                     {top3[0].badges.map((b: any) => (
                       <span key={b.name} className={`text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1 ${b.color}`}>
                         {getIcon(b.icon, "w-3 h-3")} {b.name}
@@ -99,9 +121,19 @@ export default function HallOfFamePage() {
                 <div className="bg-gradient-to-t from-orange-100 to-orange-50 w-full rounded-t-2xl p-6 text-center shadow-lg border border-orange-200 relative pt-8 md:h-44">
                   <Medal className="w-8 h-8 text-orange-400 absolute -top-4 left-1/2 -translate-x-1/2" />
                   <h3 className="font-bold text-slate-900 text-lg leading-tight">{top3[2].firstName} {top3[2].lastName}</h3>
-                  <p className="text-slate-500 text-sm font-medium mb-3">{top3[2].className}</p>
-                  <div className="inline-block bg-white px-3 py-1 rounded-full shadow-sm border border-orange-100">
-                    <span className="font-black text-orange-700">{top3[2].averageGrade}%</span>
+                  <p className="text-slate-500 text-sm font-medium mb-2">{top3[2].className}</p>
+                  <div className="inline-block bg-white px-3 py-1 rounded-full shadow-sm border border-orange-100 mb-2">
+                    <span className="font-black text-orange-700">{top3[2].overallScore}%</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-xs">
+                    <span className="text-emerald-600 flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3" /> +{top3[2].meritPoints}
+                    </span>
+                    {top3[2].demeritPoints > 0 && (
+                      <span className="text-red-600 flex items-center gap-1">
+                        <TrendingDown className="w-3 h-3" /> -{top3[2].demeritPoints}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -136,8 +168,14 @@ export default function HallOfFamePage() {
                           </span>
                         ))}
                       </div>
-                      <div className="font-black text-[#0033A0] bg-blue-50 px-3 py-1 rounded-lg">
-                        {stu.averageGrade}%
+                      <div className="flex items-center gap-3">
+                        <div className="font-black text-[#0033A0] bg-blue-50 px-3 py-1 rounded-lg">
+                          {stu.overallScore}%
+                        </div>
+                        <div className="flex items-center gap-1 text-xs">
+                          <span className="text-emerald-600">+{stu.meritPoints}</span>
+                          {stu.demeritPoints > 0 && <span className="text-red-600">-{stu.demeritPoints}</span>}
+                        </div>
                       </div>
                     </div>
                   </div>
