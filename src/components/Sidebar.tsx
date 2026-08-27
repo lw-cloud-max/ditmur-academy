@@ -7,7 +7,7 @@ import {
   LayoutDashboard, UserPlus, MonitorPlay, Users, UserCircle, 
   GraduationCap, CalendarDays, ClipboardCheck, FileSpreadsheet,
   Settings2, BookOpen, MessageSquare, MessageCircle, CreditCard, HelpCircle,
-  Settings, School, FileQuestion, Trophy, Gamepad2, Lightbulb, Library, FileText, Bot, Award
+  Settings, School, FileQuestion, Trophy, Gamepad2, Lightbulb, Library, FileText, Bot, Award, FolderOpen, Video
 } from 'lucide-react';
 
 export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
@@ -28,8 +28,10 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'Timetable', icon: CalendarDays, path: '/timetable' },
     { name: 'School Calendar', icon: CalendarDays, path: '/calendar' },
     { name: 'Attendance', icon: ClipboardCheck, path: '/school-attendance' },  
-    { name: 'SMS Notifications', icon: MessageSquare, path: '/sms-notifications', isNew: true },
-    { name: 'Behavior System', icon: Award, path: '/behavior', isNew: true },
+    { name: 'SMS Notifications', icon: MessageSquare, path: '/sms-notifications' },
+    { name: 'Behavior System', icon: Award, path: '/behavior' },
+    { name: 'Student Portfolios', icon: FolderOpen, path: '/portfolio', isNew: true },
+    { name: 'Video Meetings', icon: Video, path: '/video-meetings', isNew: true },
     { name: 'Broadsheet', icon: FileSpreadsheet, path: '/broadsheet' },
     { name: 'Assessment Format', icon: Settings2, path: '/assessment-format' },
     { name: 'Internal Exams', icon: FileQuestion, path: '/internal-exams' },
@@ -50,7 +52,9 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
   // 2. STUDENT MENU
   const studentMenu = [
     { name: 'My Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-    { name: 'AI Tutor', icon: Bot, path: '/ai-tutor', isNew: true },
+    { name: 'AI Tutor', icon: Bot, path: '/ai-tutor' },
+    { name: 'My Portfolio', icon: FolderOpen, path: '/portfolio', isNew: true },
+    { name: 'Video Meetings', icon: Video, path: '/video-meetings' },
     { name: 'My Timetable', icon: CalendarDays, path: '/timetable' },
     { name: 'Study Notes', icon: FileText, path: '/lesson-plan' },
     { name: 'Take Exam (CBT)', icon: MonitorPlay, path: '/cbt' },
@@ -64,7 +68,9 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
   const parentMenu = [
     { name: 'Parent Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { name: 'My Children', icon: Users, path: '/students' },
-    { name: 'Teacher Chat', icon: MessageCircle, path: '/chat', isNew: true },
+    { name: 'Teacher Chat', icon: MessageCircle, path: '/chat' },
+    { name: 'Video Meetings', icon: Video, path: '/video-meetings', isNew: true },
+    { name: 'Child Portfolio', icon: FolderOpen, path: '/portfolio' },
     { name: 'Fee Payments', icon: CreditCard, path: '/payments' },
     { name: 'School Calendar', icon: CalendarDays, path: '/calendar' },
     { name: 'Support', icon: HelpCircle, path: '/help' },

@@ -58,6 +58,7 @@ model Student {
   attendance       Attendance[]
   behaviorRecords  BehaviorRecord[]
   smsNotifications SMSNotification[]
+  portfolio        Portfolio[]
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -89,6 +90,7 @@ model Staff {
   timetableEntries TimetableEntry[] 
   lessonPlans LessonPlan[] 
   conversations Conversation[]
+  videoMeetings VideoMeeting[]
 
   hireDate    DateTime @default(now())
   createdAt   DateTime @default(now())
@@ -465,4 +467,49 @@ model SMSNotification {
   termiiMessageId String? // Termii API message ID
   sentAt      DateTime?
   createdAt   DateTime @default(now())
+}
+
+// ------------------------------------------------------
+// STUDENT DIGITAL PORTFOLIO
+// ------------------------------------------------------
+model Portfolio {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  category    String   // ACADEMIC, ARTS, SPORTS, LEADERSHIP, COMMUNITY, PROJECT
+  fileUrl     String?  // URL to uploaded file
+  imageUrl    String?  // URL to image/thumbnail
+  isPublic    Boolean  @default(true)
+  term        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model VideoMeeting {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  hostId      String   // Staff ID who created the meeting
+  host        Staff    @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  meetingUrl  String   // Video meeting URL
+  scheduledAt DateTime
+  duration    Int      @default(30) // Duration in minutes
+  type        String   // PARENT_TEACHER, CLASS, EVENT, OFFICE_HOURS
+  status      String   @default("SCHEDULED") // SCHEDULED, ONGOING, COMPLETED, CANCELLED
+  participants VideoParticipant[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model VideoParticipant {
+  id          String       @id @default(cuid())
+  meetingId   String
+  meeting     VideoMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  userId      String       // Parent ID or Staff ID
+  userType    String       // PARENT, TEACHER, STUDENT
+  joinedAt    DateTime?
+  leftAt      DateTime?
+  createdAt   DateTime     @default(now())
 }
