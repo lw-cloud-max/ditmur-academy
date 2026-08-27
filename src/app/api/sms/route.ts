@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
-import { sendSMS, SMS_TEMPLATES } from '@/lib/termii';
+import { sendSMS, SMS_TEMPLATES } from '@/lib/africastalking';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +42,16 @@ export async function POST(req: Request) {
       case 'ATTENDANCE_ABSENT':
         smsMessage = SMS_TEMPLATES.attendanceAbsent(
           `${student.firstName} ${student.lastName}`,
-          new Date().toLocaleDateString()
+          new Date().toLocaleDateString(),
+          false
+        );
+        break;
+      case 'ATTENDANCE_ABSENT_EXCUSED':
+        smsMessage = SMS_TEMPLATES.attendanceAbsent(
+          `${student.firstName} ${student.lastName}`,
+          new Date().toLocaleDateString(),
+          true,
+          customMessage
         );
         break;
       case 'ATTENDANCE_LATE':
@@ -74,7 +83,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, error: 'Invalid SMS type' }, { status: 400 });
     }
 
-    // Send SMS via Termii
+    // Send SMS via Africa's Talking
     const result = await sendSMS({ to: student.parent.phone, message: smsMessage });
 
     // Save notification to database
