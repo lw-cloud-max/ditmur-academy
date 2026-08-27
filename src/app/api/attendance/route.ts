@@ -20,21 +20,22 @@ export async function POST(req: Request) {
 
     const attendanceDate = new Date(date);
 
-    // Save each attendance record
+    // Delete existing attendance for this date and class first
+    const classId = attendance[0]?.classId;
+    if (classId) {
+      await prisma.attendance.deleteMany({
+        where: {
+          classId: classId,
+          date: attendanceDate
+        }
+      });
+    }
+
+    // Create new attendance records
     const results = await Promise.all(
       attendance.map(async (record: { studentId: string; status: string; classId: string }) => {
-        return prisma.attendance.upsert({
-          where: {
-            studentId_date: {
-              studentId: record.studentId,
-              date: attendanceDate
-            }
-          },
-          update: {
-            status: record.status,
-            markedBy: session.user.id
-          },
-          create: {
+        return prisma.attendance.create({
+          data: {
             studentId: record.studentId,
             classId: record.classId,
             date: attendanceDate,
