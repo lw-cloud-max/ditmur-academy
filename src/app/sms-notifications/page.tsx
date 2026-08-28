@@ -97,15 +97,20 @@ export default function SMSNotificationsPage() {
     if (!confirm('Are you sure you want to delete this notification?')) return;
 
     try {
+      console.log('Deleting notification:', id);
       const res = await fetch(`/api/sms?id=${id}`, { method: 'DELETE' });
       const data = await res.json();
+      console.log('Delete response:', data);
+      
       if (data.success) {
         fetchNotifications();
+        alert('Notification deleted successfully!');
       } else {
         alert(`Failed to delete: ${data.error}`);
       }
     } catch (error) {
       console.error('Error deleting notification:', error);
+      alert('Failed to delete notification. Check console for details.');
     }
   };
 
@@ -113,8 +118,11 @@ export default function SMSNotificationsPage() {
     if (!confirm('Are you sure you want to delete ALL SMS notifications? This cannot be undone.')) return;
 
     try {
+      console.log('Clearing all notifications');
       const res = await fetch('/api/sms?deleteAll=true', { method: 'DELETE' });
       const data = await res.json();
+      console.log('Clear all response:', data);
+      
       if (data.success) {
         fetchNotifications();
         alert('All notifications cleared!');
@@ -123,6 +131,7 @@ export default function SMSNotificationsPage() {
       }
     } catch (error) {
       console.error('Error clearing notifications:', error);
+      alert('Failed to clear notifications. Check console for details.');
     }
   };
 

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
-import { sendSMS, SMS_TEMPLATES } from '@/lib/africastalking-sdk';
+import { sendSMS, SMS_TEMPLATES } from '@/lib/africastalking';
 
 export const dynamic = 'force-dynamic';
 
@@ -140,5 +140,48 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error('Fetch SMS notifications error:', error);
     return NextResponse.json({ success: false, error: 'Failed to fetch notifications' }, { status: 500 });
+  }
+}
+
+// DELETE: Delete SMS notification(s)
+export async function DELETE(req: Request) {
+  try {
+    console.log('DELETE request received');
+    
+    const session = await auth();
+    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'STAFF')) {
+      console.log('Unauthorized delete attempt');
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    const deleteAll = searchParams.get('deleteAll');
+
+    console.log('Delete params:', { id, deleteAll });
+
+    if (deleteAll === 'true') {
+      // Delete all SMS notifications
+      console.log('Deleting all notifications');
+      const result = await prisma.sMSNotification.deleteMany({});
+      console.log('Deleted count:', result.count);
+      return NextResponse.json({ success: true, message: `Deleted ${result.count} notifications` });
+    }
+
+    if (!id) {
+      console.log('No ID provided');
+      return NextResponse.json({ success: false, error: 'Notification ID required' }, { status: 400 });
+    }
+
+    console.log('Deleting notification:', id);
+    await prisma.sMSNotification.delete({
+      where: { id }
+    });
+
+    console.log('Notification deleted successfully');
+    return NextResponse.json({ success: true, message: 'Notification deleted' });
+  } catch (error) {
+    console.error('Delete SMS notification error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to delete notification' }, { status: 500 });
   }
 }
