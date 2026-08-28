@@ -149,10 +149,10 @@ export default function VideoMeetingsPage() {
             {isParent ? 'Join parent-teacher meetings and school events' : 'Schedule and manage video meetings'}
           </p>
         </div>
-        {!isParent && (
+        {!isParent && userRole !== 'STUDENT' && (
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-6 py-3 bg-[#0033A0] text-white rounded-xl font-bold hover:bg-[#002277] transition-colors flex items-center gap-2"
+            className="px-6 py-3 bg-[#0033A0] text-white rounded-xl font-bold hover:bg-[#002277] transition-colors flex items-center gap-2 shadow-lg hover:shadow-xl"
           >
             <Plus className="w-5 h-5" />
             Create Meeting
