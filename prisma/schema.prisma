@@ -518,7 +518,7 @@ model VideoParticipant {
 // ------------------------------------------------------
 // JAMB, WAEC & NECO CBT PRACTICE SYSTEM
 // ------------------------------------------------------
-model QuestionBank {
+model ExamQuestionBank {
   id            String   @id @default(cuid())
   examType      String   // JAMB, WAEC, NECO
   subject       String

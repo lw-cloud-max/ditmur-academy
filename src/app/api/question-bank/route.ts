@@ -20,7 +20,7 @@ export async function GET(req: Request) {
     if (year) whereClause.year = parseInt(year);
     if (isActive !== null) whereClause.isActive = isActive === 'true';
 
-    const questions = await prisma.questionBank.findMany({
+    const questions = await prisma.examQuestionBank.findMany({
       where: whereClause,
       orderBy: [
         { examType: 'asc' },
@@ -32,19 +32,19 @@ export async function GET(req: Request) {
     });
 
     // Get available filters
-    const examTypes = await prisma.questionBank.findMany({
+    const examTypes = await prisma.examQuestionBank.findMany({
       select: { examType: true },
       distinct: ['examType']
     });
 
-    const subjects = await prisma.questionBank.findMany({
+    const subjects = await prisma.examQuestionBank.findMany({
       where: examType ? { examType } : {},
       select: { subject: true },
       distinct: ['subject'],
       orderBy: { subject: 'asc' }
     });
 
-    const years = await prisma.questionBank.findMany({
+    const years = await prisma.examQuestionBank.findMany({
       where: {
         ...(examType ? { examType } : {}),
         ...(subject ? { subject } : {}),
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
 
-    const question = await prisma.questionBank.create({
+    const question = await prisma.examQuestionBank.create({
       data: {
         examType,
         subject,
@@ -125,7 +125,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: false, error: 'Questions array required' }, { status: 400 });
     }
 
-    const result = await prisma.questionBank.createMany({
+    const result = await prisma.examQuestionBank.createMany({
       data: questions.map((q: any) => ({
         examType: q.examType,
         subject: q.subject,
@@ -170,7 +170,7 @@ export async function PATCH(req: Request) {
       updateData.correctAnswer = updateData.correctAnswer.toUpperCase();
     }
 
-    const question = await prisma.questionBank.update({
+    const question = await prisma.examQuestionBank.update({
       where: { id },
       data: updateData
     });
@@ -198,7 +198,7 @@ export async function DELETE(req: Request) {
 
     if (deleteAll === 'true' && examType && subject) {
       // Delete all questions for a specific exam type and subject
-      const result = await prisma.questionBank.deleteMany({
+      const result = await prisma.examQuestionBank.deleteMany({
         where: { examType, subject }
       });
       return NextResponse.json({ success: true, message: `Deleted ${result.count} questions` });
@@ -208,7 +208,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ success: false, error: 'Question ID required' }, { status: 400 });
     }
 
-    await prisma.questionBank.delete({
+    await prisma.examQuestionBank.delete({
       where: { id }
     });
 
