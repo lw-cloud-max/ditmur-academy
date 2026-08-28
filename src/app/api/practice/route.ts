@@ -4,8 +4,8 @@ import { auth } from '@/auth';
 
 export const dynamic = 'force-dynamic';
 
-// Sample questions database (in production, this would come from a database)
-const QUESTIONS_DB: Record<string, Record<string, any[]>> = {
+// Default questions database - will be supplemented by database questions
+const DEFAULT_QUESTIONS_DB: Record<string, Record<string, any[]>> = {
   'JAMB': {
     'Mathematics': [
       {
@@ -282,28 +282,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Exam type and subject required' }, { status: 400 });
     }
 
-    // Verify student exists in database
-    const student = await prisma.student.findUnique({
-      where: { id: session.user.id }
-    });
-
-    if (!student) {
-      console.log('Student not found in database:', session.user.id);
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Student profile not found. Please contact support.' 
-      }, { status: 404 });
-    }
-
-    // Get questions from database
-    const examQuestions = QUESTIONS_DB[examType]?.[subject] || [];
+    // Get questions from default database
+    const examQuestions = DEFAULT_QUESTIONS_DB[examType]?.[subject] || [];
     
     console.log('Available questions:', examQuestions.length);
     
     if (examQuestions.length === 0) {
       console.log('No questions found for:', examType, subject);
-      console.log('Available exam types:', Object.keys(QUESTIONS_DB));
-      console.log('Available subjects for', examType + ':', Object.keys(QUESTIONS_DB[examType] || {}));
+      console.log('Available exam types:', Object.keys(DEFAULT_QUESTIONS_DB));
+      console.log('Available subjects for', examType + ':', Object.keys(DEFAULT_QUESTIONS_DB[examType] || {}));
       
       return NextResponse.json({ 
         success: false, 
@@ -314,7 +301,7 @@ export async function POST(req: Request) {
     // Limit questions
     const questions = examQuestions.slice(0, numberOfQuestions || 20);
 
-    // Create practice session
+    // Create practice session (studentId is optional now)
     const practiceSession = await prisma.practiceSession.create({
       data: {
         studentId: session.user.id,
@@ -377,16 +364,21 @@ export async function PUT(req: Request) {
       where: { id: sessionId }
     });
 
-    if (!practiceSession || practiceSession.studentId !== session.user.id) {
+    if (!practiceSession) {
       return NextResponse.json({ success: false, error: 'Session not found' }, { status: 404 });
+    }
+
+    // Check if user owns this session (studentId might be null)
+    if (practiceSession.studentId && practiceSession.studentId !== session.user.id) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
     }
 
     if (practiceSession.completed) {
       return NextResponse.json({ success: false, error: 'Session already completed' }, { status: 400 });
     }
 
-    // Get questions from database to check answers
-    const examQuestions = QUESTIONS_DB[practiceSession.examType]?.[practiceSession.subject] || [];
+    // Get questions from default database to check answers
+    const examQuestions = DEFAULT_QUESTIONS_DB[practiceSession.examType]?.[practiceSession.subject] || [];
     const questionMap = new Map(examQuestions.map(q => [q.id, q]));
 
     // Calculate score and save answers
@@ -524,5 +516,29 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error('Fetch practice results error:', error);
     return NextResponse.json({ success: false, error: 'Failed to fetch results' }, { status: 500 });
+  }
+}
+
+// GET: Fetch available subjects for an exam type
+export async function OPTIONS(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const examType = searchParams.get('examType');
+
+    if (!examType) {
+      // Return all exam types and their subjects
+      const allSubjects: Record<string, string[]> = {};
+      for (const [type, subjects] of Object.entries(DEFAULT_QUESTIONS_DB)) {
+        allSubjects[type] = Object.keys(subjects);
+      }
+      return NextResponse.json({ success: true, data: allSubjects });
+    }
+
+    // Return subjects for specific exam type
+    const subjects = Object.keys(DEFAULT_QUESTIONS_DB[examType] || {});
+    return NextResponse.json({ success: true, data: subjects });
+  } catch (error) {
+    console.error('Fetch subjects error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to fetch subjects' }, { status: 500 });
   }
 }

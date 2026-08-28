@@ -7,7 +7,7 @@ import {
   LayoutDashboard, UserPlus, MonitorPlay, Users, UserCircle, 
   GraduationCap, CalendarDays, ClipboardCheck, FileSpreadsheet,
   Settings2, BookOpen, MessageSquare, MessageCircle, CreditCard, HelpCircle,
-  Settings, School, FileQuestion, Trophy, Gamepad2, Lightbulb, Library, FileText, Bot, Award, FolderOpen, Video
+  Settings, School, FileQuestion, Trophy, Gamepad2, Lightbulb, Library, FileText, Bot, Award, FolderOpen, Video, Database
 } from 'lucide-react';
 
 export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
@@ -30,7 +30,8 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'Attendance', icon: ClipboardCheck, path: '/school-attendance' },  
     { name: 'SMS Notifications', icon: MessageSquare, path: '/sms-notifications' },
     { name: 'Behavior System', icon: Award, path: '/behavior' },
-    { name: 'Exam Practice', icon: BookOpen, path: '/exam-practice', isNew: true },
+    { name: 'Question Bank', icon: Database, path: '/question-bank', isNew: true },
+    { name: 'Exam Practice', icon: BookOpen, path: '/exam-practice' },
     { name: 'Student Portfolios', icon: FolderOpen, path: '/portfolio' },
     { name: 'Video Meetings', icon: Video, path: '/video-meetings' },
     { name: 'Broadsheet', icon: FileSpreadsheet, path: '/broadsheet' },

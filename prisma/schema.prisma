@@ -518,6 +518,28 @@ model VideoParticipant {
 // ------------------------------------------------------
 // JAMB, WAEC & NECO CBT PRACTICE SYSTEM
 // ------------------------------------------------------
+model QuestionBank {
+  id            String   @id @default(cuid())
+  examType      String   // JAMB, WAEC, NECO
+  subject       String
+  year          Int?
+  questionNumber Int
+  text          String
+  imageUrl      String?
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctAnswer String   // A, B, C, or D
+  explanation   String?  // Detailed solution
+  topic         String?  // e.g., "Algebra", "Organic Chemistry"
+  difficulty    String   @default("MEDIUM") // EASY, MEDIUM, HARD
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@unique([examType, subject, year, questionNumber])
+}
+
 model PracticeSession {
   id          String   @id @default(cuid())
   studentId   String?
