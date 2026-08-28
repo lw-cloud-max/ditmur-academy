@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { MessageSquare, Send, Loader2, CheckCircle2, XCircle, Clock, Search, Filter } from 'lucide-react';
+import { MessageSquare, Send, Loader2, CheckCircle2, XCircle, Clock, Search, Filter, Trash2, AlertCircle } from 'lucide-react';
 
 interface SMSNotification {
   id: string;
@@ -81,7 +81,7 @@ export default function SMSNotificationsPage() {
         setSelectedStudent('');
         setCustomMessage('');
         fetchNotifications();
-        alert('SMS sent successfully!');
+        alert('SMS sent successfully! (In sandbox mode, messages appear in the Africa\'s Talking simulator, not on real phones)');
       } else {
         alert(`Failed to send SMS: ${data.error}`);
       }
@@ -90,6 +90,39 @@ export default function SMSNotificationsPage() {
       alert('Failed to send SMS');
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDeleteNotification = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this notification?')) return;
+
+    try {
+      const res = await fetch(`/api/sms?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        fetchNotifications();
+      } else {
+        alert(`Failed to delete: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
+  };
+
+  const handleClearAllNotifications = async () => {
+    if (!confirm('Are you sure you want to delete ALL SMS notifications? This cannot be undone.')) return;
+
+    try {
+      const res = await fetch('/api/sms?deleteAll=true', { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        fetchNotifications();
+        alert('All notifications cleared!');
+      } else {
+        alert(`Failed to clear: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
     }
   };
 
@@ -132,21 +165,44 @@ export default function SMSNotificationsPage() {
 
   return (
     <div className="space-y-6 pb-32 max-w-6xl mx-auto animation-fade-in">
+      {/* Sandbox Notice */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+        <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+        <div>
+          <p className="text-sm font-bold text-amber-800">Sandbox Mode Active</p>
+          <p className="text-xs text-amber-700 mt-1">
+            You're using Africa's Talking sandbox. Messages are sent to the <a href="https://simulator.africastalking.com:1517/" target="_blank" rel="noopener noreferrer" className="underline font-medium">SMS Simulator</a>, not to real phones. 
+            Switch to production mode when ready to send real SMS.
+          </p>
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <MessageSquare className="w-7 h-7 text-[#0033A0]" />
             SMS Notifications
           </h1>
-          <p className="text-slate-500 mt-1">Send automated SMS alerts to parents via Termii</p>
+          <p className="text-slate-500 mt-1">Send automated SMS alerts to parents via Africa's Talking</p>
         </div>
-        <button
-          onClick={() => setShowSendForm(true)}
-          className="px-6 py-3 bg-[#0033A0] text-white rounded-xl font-bold hover:bg-[#002277] transition-colors flex items-center gap-2"
-        >
-          <Send className="w-5 h-5" />
-          Send SMS
-        </button>
+        <div className="flex gap-3">
+          {notifications.length > 0 && (
+            <button
+              onClick={handleClearAllNotifications}
+              className="px-4 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors flex items-center gap-2 border border-red-200"
+            >
+              <Trash2 className="w-5 h-5" />
+              Clear All
+            </button>
+          )}
+          <button
+            onClick={() => setShowSendForm(true)}
+            className="px-6 py-3 bg-[#0033A0] text-white rounded-xl font-bold hover:bg-[#002277] transition-colors flex items-center gap-2"
+          >
+            <Send className="w-5 h-5" />
+            Send SMS
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -191,6 +247,7 @@ export default function SMSNotificationsPage() {
           <div className="text-center p-12 text-slate-500">
             <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <p className="font-medium">No SMS notifications found</p>
+            <p className="text-sm mt-1">Send your first SMS to see it here</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
@@ -223,8 +280,17 @@ export default function SMSNotificationsPage() {
                       )}
                     </div>
                   </div>
-                  <div className="text-xs text-slate-400 shrink-0">
-                    {new Date(notification.createdAt).toLocaleString()}
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs text-slate-400">
+                      {new Date(notification.createdAt).toLocaleString()}
+                    </div>
+                    <button
+                      onClick={() => handleDeleteNotification(notification.id)}
+                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Delete notification"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -239,7 +305,7 @@ export default function SMSNotificationsPage() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animation-fade-in">
             <div className="p-6 border-b border-slate-100">
               <h3 className="text-lg font-bold text-slate-900">Send SMS Notification</h3>
-              <p className="text-xs text-slate-500 mt-1">Send an SMS alert to a student's parent</p>
+              <p className="text-xs text-slate-500 mt-1">Send an SMS alert to a student's parent via Africa's Talking</p>
             </div>
             
             <form onSubmit={handleSendSMS} className="p-6 space-y-4">
@@ -292,6 +358,12 @@ export default function SMSNotificationsPage() {
                   />
                 </div>
               )}
+
+              <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                <p className="text-xs text-blue-800">
+                  <strong>Note:</strong> In sandbox mode, SMS will be sent to the <a href="https://simulator.africastalking.com:1517/" target="_blank" rel="noopener noreferrer" className="underline font-medium">Africa's Talking Simulator</a>, not to real phones.
+                </p>
+              </div>
 
               <div className="flex gap-3 pt-2">
                 <button
