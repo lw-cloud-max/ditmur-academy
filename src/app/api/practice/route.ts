@@ -46,6 +46,32 @@ const QUESTIONS_DB: Record<string, Record<string, any[]>> = {
         explanation: '3/4 + 1/3 = 9/12 + 4/12 = 13/12\n(13/12) × 12 = 13',
         topic: 'Fractions',
         difficulty: 'MEDIUM'
+      },
+      {
+        id: 'jamb-math-4',
+        questionNumber: 4,
+        text: 'If the sum of angles in a triangle is 180°, what is the third angle if two angles are 45° and 65°?',
+        optionA: '60°',
+        optionB: '70°',
+        optionC: '80°',
+        optionD: '90°',
+        correctAnswer: 'B',
+        explanation: 'Sum of angles = 180°\n45° + 65° + x = 180°\n110° + x = 180°\nx = 180° - 110°\nx = 70°',
+        topic: 'Geometry',
+        difficulty: 'EASY'
+      },
+      {
+        id: 'jamb-math-5',
+        questionNumber: 5,
+        text: 'What is 15% of 200?',
+        optionA: '25',
+        optionB: '30',
+        optionC: '35',
+        optionD: '40',
+        correctAnswer: 'B',
+        explanation: '15% of 200 = (15/100) × 200 = 0.15 × 200 = 30',
+        topic: 'Percentage',
+        difficulty: 'EASY'
       }
     ],
     'English Language': [
@@ -60,6 +86,90 @@ const QUESTIONS_DB: Record<string, Record<string, any[]>> = {
         correctAnswer: 'B',
         explanation: 'Generous means willing to give freely. Stingy means unwilling to give or spend.',
         topic: 'Vocabulary',
+        difficulty: 'EASY'
+      },
+      {
+        id: 'jamb-eng-2',
+        questionNumber: 2,
+        text: 'Identify the part of speech of the underlined word: She sang beautifully.',
+        optionA: 'Noun',
+        optionB: 'Verb',
+        optionC: 'Adverb',
+        optionD: 'Adjective',
+        correctAnswer: 'C',
+        explanation: 'Beautifully describes how she sang, so it is an adverb.',
+        topic: 'Parts of Speech',
+        difficulty: 'EASY'
+      },
+      {
+        id: 'jamb-eng-3',
+        questionNumber: 3,
+        text: 'Choose the correct spelling:',
+        optionA: 'Accomodation',
+        optionB: 'Accommodation',
+        optionC: 'Acomodation',
+        optionD: 'Acommodation',
+        correctAnswer: 'B',
+        explanation: 'The correct spelling is "accommodation" with double c and double m.',
+        topic: 'Spelling',
+        difficulty: 'EASY'
+      }
+    ],
+    'Physics': [
+      {
+        id: 'jamb-phy-1',
+        questionNumber: 1,
+        text: 'What is the SI unit of force?',
+        optionA: 'Joule',
+        optionB: 'Newton',
+        optionC: 'Watt',
+        optionD: 'Pascal',
+        correctAnswer: 'B',
+        explanation: 'The SI unit of force is Newton (N), named after Sir Isaac Newton.',
+        topic: 'Units',
+        difficulty: 'EASY'
+      },
+      {
+        id: 'jamb-phy-2',
+        questionNumber: 2,
+        text: 'Which of the following is a vector quantity?',
+        optionA: 'Speed',
+        optionB: 'Distance',
+        optionC: 'Velocity',
+        optionD: 'Mass',
+        correctAnswer: 'C',
+        explanation: 'Velocity has both magnitude and direction, making it a vector quantity.',
+        topic: 'Vectors',
+        difficulty: 'EASY'
+      }
+    ],
+    'Chemistry': [
+      {
+        id: 'jamb-chem-1',
+        questionNumber: 1,
+        text: 'What is the chemical symbol for Gold?',
+        optionA: 'Go',
+        optionB: 'Gd',
+        optionC: 'Au',
+        optionD: 'Ag',
+        correctAnswer: 'C',
+        explanation: 'The chemical symbol for Gold is Au, from the Latin word "Aurum".',
+        topic: 'Chemical Symbols',
+        difficulty: 'EASY'
+      }
+    ],
+    'Biology': [
+      {
+        id: 'jamb-bio-1',
+        questionNumber: 1,
+        text: 'What is the powerhouse of the cell?',
+        optionA: 'Nucleus',
+        optionB: 'Mitochondria',
+        optionC: 'Ribosome',
+        optionD: 'Cell membrane',
+        correctAnswer: 'B',
+        explanation: 'Mitochondria are known as the powerhouse of the cell because they produce energy (ATP).',
+        topic: 'Cell Biology',
         difficulty: 'EASY'
       }
     ]
@@ -78,6 +188,34 @@ const QUESTIONS_DB: Record<string, Record<string, any[]>> = {
         explanation: 'x² - 9 is a difference of two squares.\na² - b² = (a + b)(a - b)\nx² - 9 = x² - 3² = (x + 3)(x - 3)',
         topic: 'Factorization',
         difficulty: 'EASY'
+      },
+      {
+        id: 'waec-math-2',
+        questionNumber: 2,
+        text: 'Solve: 3x - 7 = 14',
+        optionA: 'x = 5',
+        optionB: 'x = 6',
+        optionC: 'x = 7',
+        optionD: 'x = 8',
+        correctAnswer: 'C',
+        explanation: '3x - 7 = 14\n3x = 14 + 7\n3x = 21\nx = 21/3\nx = 7',
+        topic: 'Algebra',
+        difficulty: 'EASY'
+      }
+    ],
+    'English Language': [
+      {
+        id: 'waec-eng-1',
+        questionNumber: 1,
+        text: 'Choose the correct option: "The book is ___ the table."',
+        optionA: 'in',
+        optionB: 'on',
+        optionC: 'at',
+        optionD: 'by',
+        correctAnswer: 'B',
+        explanation: 'We use "on" for surfaces. The book is on the table.',
+        topic: 'Prepositions',
+        difficulty: 'EASY'
       }
     ]
   },
@@ -95,6 +233,34 @@ const QUESTIONS_DB: Record<string, Record<string, any[]>> = {
         explanation: '15% of 200 = (15/100) × 200 = 0.15 × 200 = 30',
         topic: 'Percentage',
         difficulty: 'EASY'
+      },
+      {
+        id: 'neco-math-2',
+        questionNumber: 2,
+        text: 'If a rectangle has length 8cm and width 5cm, what is its perimeter?',
+        optionA: '24 cm',
+        optionB: '26 cm',
+        optionC: '28 cm',
+        optionD: '30 cm',
+        correctAnswer: 'B',
+        explanation: 'Perimeter = 2(length + width)\n= 2(8 + 5)\n= 2(13)\n= 26 cm',
+        topic: 'Mensuration',
+        difficulty: 'EASY'
+      }
+    ],
+    'English Language': [
+      {
+        id: 'neco-eng-1',
+        questionNumber: 1,
+        text: 'Choose the word that best completes the sentence: "She ___ to school every day."',
+        optionA: 'go',
+        optionB: 'goes',
+        optionC: 'going',
+        optionD: 'gone',
+        correctAnswer: 'B',
+        explanation: 'For third person singular (she/he/it) in simple present tense, we add "s" to the verb. She goes to school every day.',
+        topic: 'Grammar',
+        difficulty: 'EASY'
       }
     ]
   }
@@ -110,6 +276,8 @@ export async function POST(req: Request) {
 
     const { examType, subject, numberOfQuestions } = await req.json();
 
+    console.log('Practice request:', { examType, subject, numberOfQuestions });
+
     if (!examType || !subject) {
       return NextResponse.json({ success: false, error: 'Exam type and subject required' }, { status: 400 });
     }
@@ -117,10 +285,16 @@ export async function POST(req: Request) {
     // Get questions from database
     const examQuestions = QUESTIONS_DB[examType]?.[subject] || [];
     
+    console.log('Available questions:', examQuestions.length);
+    
     if (examQuestions.length === 0) {
+      console.log('No questions found for:', examType, subject);
+      console.log('Available exam types:', Object.keys(QUESTIONS_DB));
+      console.log('Available subjects for', examType + ':', Object.keys(QUESTIONS_DB[examType] || {}));
+      
       return NextResponse.json({ 
         success: false, 
-        error: 'No questions available for this selection. Please try another subject or exam type.' 
+        error: `No questions available for ${examType} ${subject}. Please try another subject or exam type.` 
       }, { status: 404 });
     }
 
@@ -140,6 +314,8 @@ export async function POST(req: Request) {
         completed: false
       }
     });
+
+    console.log('Practice session created:', practiceSession.id);
 
     // Return questions WITHOUT correct answers and explanations
     const questionsForPractice = questions.map(q => ({
