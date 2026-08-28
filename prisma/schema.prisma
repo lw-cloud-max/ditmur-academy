@@ -516,36 +516,14 @@ model VideoParticipant {
 }
 
 // ------------------------------------------------------
-// JAMB, WAEC & NECO PAST QUESTIONS
+// JAMB, WAEC & NECO CBT PRACTICE SYSTEM
 // ------------------------------------------------------
-model PastQuestion {
-  id            String   @id @default(cuid())
-  examType      String   // JAMB, WAEC, NECO
-  subject       String
-  year          Int
-  questionNumber Int
-  text          String
-  imageUrl      String?
-  optionA       String
-  optionB       String
-  optionC       String
-  optionD       String
-  correctAnswer String   // A, B, C, or D
-  explanation   String?  // Detailed solution/explanation
-  topic         String?  // e.g., "Algebra", "Organic Chemistry"
-  difficulty    String   @default("MEDIUM") // EASY, MEDIUM, HARD
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  @@unique([examType, subject, year, questionNumber])
-}
-
 model PracticeSession {
   id          String   @id @default(cuid())
   studentId   String
   student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   examType    String   // JAMB, WAEC, NECO
   subject     String
-  year        Int?
   totalQuestions Int
   correctAnswers Int
   score       Float    // Percentage
@@ -560,10 +538,17 @@ model PracticeAnswer {
   id            String   @id @default(cuid())
   sessionId     String
   session       PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  questionId    String
-  question      PastQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionNumber Int
+  questionText  String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctAnswer String   // A, B, C, or D
   selectedAnswer String? // A, B, C, D, or null if skipped
   isCorrect     Boolean
+  explanation   String?  // Detailed solution
+  topic         String?  // e.g., "Algebra", "Organic Chemistry"
   timeTaken     Int      // In seconds
   createdAt     DateTime @default(now())
 }

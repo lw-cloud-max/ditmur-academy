@@ -4,6 +4,102 @@ import { auth } from '@/auth';
 
 export const dynamic = 'force-dynamic';
 
+// Sample questions database (in production, this would come from a database)
+const QUESTIONS_DB: Record<string, Record<string, any[]>> = {
+  'JAMB': {
+    'Mathematics': [
+      {
+        id: 'jamb-math-1',
+        questionNumber: 1,
+        text: 'If 2x + 5 = 15, what is the value of x?',
+        optionA: '3',
+        optionB: '5',
+        optionC: '7',
+        optionD: '10',
+        correctAnswer: 'B',
+        explanation: '2x + 5 = 15\n2x = 15 - 5\n2x = 10\nx = 10/2\nx = 5',
+        topic: 'Algebra',
+        difficulty: 'EASY'
+      },
+      {
+        id: 'jamb-math-2',
+        questionNumber: 2,
+        text: 'What is the area of a circle with radius 7cm? (Take π = 22/7)',
+        optionA: '154 cm²',
+        optionB: '148 cm²',
+        optionC: '144 cm²',
+        optionD: '140 cm²',
+        correctAnswer: 'A',
+        explanation: 'Area = πr²\n= (22/7) × 7²\n= (22/7) × 49\n= 22 × 7\n= 154 cm²',
+        topic: 'Geometry',
+        difficulty: 'EASY'
+      },
+      {
+        id: 'jamb-math-3',
+        questionNumber: 3,
+        text: 'Simplify: (3/4 + 1/3) × 12',
+        optionA: '13',
+        optionB: '12',
+        optionC: '11',
+        optionD: '10',
+        correctAnswer: 'A',
+        explanation: '3/4 + 1/3 = 9/12 + 4/12 = 13/12\n(13/12) × 12 = 13',
+        topic: 'Fractions',
+        difficulty: 'MEDIUM'
+      }
+    ],
+    'English Language': [
+      {
+        id: 'jamb-eng-1',
+        questionNumber: 1,
+        text: 'Choose the word that is opposite in meaning to "generous":',
+        optionA: 'Kind',
+        optionB: 'Stingy',
+        optionC: 'Wealthy',
+        optionD: 'Happy',
+        correctAnswer: 'B',
+        explanation: 'Generous means willing to give freely. Stingy means unwilling to give or spend.',
+        topic: 'Vocabulary',
+        difficulty: 'EASY'
+      }
+    ]
+  },
+  'WAEC': {
+    'Mathematics': [
+      {
+        id: 'waec-math-1',
+        questionNumber: 1,
+        text: 'Factorize: x² - 9',
+        optionA: '(x + 3)(x - 3)',
+        optionB: '(x + 3)(x + 3)',
+        optionC: '(x - 3)(x - 3)',
+        optionD: 'x(x - 9)',
+        correctAnswer: 'A',
+        explanation: 'x² - 9 is a difference of two squares.\na² - b² = (a + b)(a - b)\nx² - 9 = x² - 3² = (x + 3)(x - 3)',
+        topic: 'Factorization',
+        difficulty: 'EASY'
+      }
+    ]
+  },
+  'NECO': {
+    'Mathematics': [
+      {
+        id: 'neco-math-1',
+        questionNumber: 1,
+        text: 'What is 15% of 200?',
+        optionA: '25',
+        optionB: '30',
+        optionC: '35',
+        optionD: '40',
+        correctAnswer: 'B',
+        explanation: '15% of 200 = (15/100) × 200 = 0.15 × 200 = 30',
+        topic: 'Percentage',
+        difficulty: 'EASY'
+      }
+    ]
+  }
+};
+
 // POST: Start a new practice session
 export async function POST(req: Request) {
   try {
@@ -12,26 +108,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { examType, subject, year, numberOfQuestions } = await req.json();
+    const { examType, subject, numberOfQuestions } = await req.json();
 
     if (!examType || !subject) {
       return NextResponse.json({ success: false, error: 'Exam type and subject required' }, { status: 400 });
     }
 
-    // Build query for questions
-    const whereClause: any = { examType, subject };
-    if (year) whereClause.year = parseInt(year);
-
-    // Get questions
-    const questions = await prisma.pastQuestion.findMany({
-      where: whereClause,
-      orderBy: { questionNumber: 'asc' },
-      take: numberOfQuestions ? parseInt(numberOfQuestions) : 50
-    });
-
-    if (questions.length === 0) {
-      return NextResponse.json({ success: false, error: 'No questions found for this selection' }, { status: 404 });
+    // Get questions from database
+    const examQuestions = QUESTIONS_DB[examType]?.[subject] || [];
+    
+    if (examQuestions.length === 0) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'No questions available for this selection. Please try another subject or exam type.' 
+      }, { status: 404 });
     }
+
+    // Limit questions
+    const questions = examQuestions.slice(0, numberOfQuestions || 20);
 
     // Create practice session
     const practiceSession = await prisma.practiceSession.create({
@@ -39,7 +133,6 @@ export async function POST(req: Request) {
         studentId: session.user.id,
         examType,
         subject,
-        year: year ? parseInt(year) : null,
         totalQuestions: questions.length,
         correctAnswers: 0,
         score: 0,
@@ -53,7 +146,6 @@ export async function POST(req: Request) {
       id: q.id,
       questionNumber: q.questionNumber,
       text: q.text,
-      imageUrl: q.imageUrl,
       optionA: q.optionA,
       optionB: q.optionB,
       optionC: q.optionC,
@@ -104,13 +196,9 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: false, error: 'Session already completed' }, { status: 400 });
     }
 
-    // Get correct answers
-    const questionIds = answers.map((a: any) => a.questionId);
-    const questions = await prisma.pastQuestion.findMany({
-      where: { id: { in: questionIds } }
-    });
-
-    const questionMap = new Map(questions.map(q => [q.id, q]));
+    // Get questions from database to check answers
+    const examQuestions = QUESTIONS_DB[practiceSession.examType]?.[practiceSession.subject] || [];
+    const questionMap = new Map(examQuestions.map(q => [q.id, q]));
 
     // Calculate score and save answers
     let correctCount = 0;
@@ -125,9 +213,17 @@ export async function PUT(req: Request) {
 
       practiceAnswers.push({
         sessionId,
-        questionId: answer.questionId,
+        questionNumber: question.questionNumber,
+        questionText: question.text,
+        optionA: question.optionA,
+        optionB: question.optionB,
+        optionC: question.optionC,
+        optionD: question.optionD,
+        correctAnswer: question.correctAnswer,
         selectedAnswer: answer.selectedAnswer?.toUpperCase() || null,
         isCorrect,
+        explanation: question.explanation,
+        topic: question.topic,
         timeTaken: answer.timeTaken || 0
       });
     }
@@ -139,7 +235,7 @@ export async function PUT(req: Request) {
 
     // Update session
     const score = (correctCount / practiceSession.totalQuestions) * 100;
-    const updatedSession = await prisma.practiceSession.update({
+    await prisma.practiceSession.update({
       where: { id: sessionId },
       data: {
         correctAnswers: correctCount,
@@ -182,11 +278,7 @@ export async function GET(req: Request) {
       const practiceSession = await prisma.practiceSession.findUnique({
         where: { id: sessionId },
         include: {
-          answers: {
-            include: {
-              question: true
-            }
-          }
+          answers: true
         }
       });
 
@@ -196,20 +288,20 @@ export async function GET(req: Request) {
 
       // Format results with explanations
       const results = practiceSession.answers.map(answer => ({
-        questionId: answer.questionId,
-        questionText: answer.question.text,
-        questionNumber: answer.question.questionNumber,
+        questionId: answer.id,
+        questionText: answer.questionText,
+        questionNumber: answer.questionNumber,
         options: {
-          A: answer.question.optionA,
-          B: answer.question.optionB,
-          C: answer.question.optionC,
-          D: answer.question.optionD
+          A: answer.optionA,
+          B: answer.optionB,
+          C: answer.optionC,
+          D: answer.optionD
         },
         selectedAnswer: answer.selectedAnswer,
-        correctAnswer: answer.question.correctAnswer,
+        correctAnswer: answer.correctAnswer,
         isCorrect: answer.isCorrect,
-        explanation: answer.question.explanation,
-        topic: answer.question.topic
+        explanation: answer.explanation,
+        topic: answer.topic
       }));
 
       return NextResponse.json({ 
@@ -219,7 +311,6 @@ export async function GET(req: Request) {
             id: practiceSession.id,
             examType: practiceSession.examType,
             subject: practiceSession.subject,
-            year: practiceSession.year,
             totalQuestions: practiceSession.totalQuestions,
             correctAnswers: practiceSession.correctAnswers,
             score: practiceSession.score,
