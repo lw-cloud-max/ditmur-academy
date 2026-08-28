@@ -520,8 +520,8 @@ model VideoParticipant {
 // ------------------------------------------------------
 model PracticeSession {
   id          String   @id @default(cuid())
-  studentId   String
-  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId   String?
+  student     Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
   examType    String   // JAMB, WAEC, NECO
   subject     String
   totalQuestions Int

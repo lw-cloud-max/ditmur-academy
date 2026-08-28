@@ -276,10 +276,23 @@ export async function POST(req: Request) {
 
     const { examType, subject, numberOfQuestions } = await req.json();
 
-    console.log('Practice request:', { examType, subject, numberOfQuestions });
+    console.log('Practice request:', { examType, subject, numberOfQuestions, userId: session.user.id });
 
     if (!examType || !subject) {
       return NextResponse.json({ success: false, error: 'Exam type and subject required' }, { status: 400 });
+    }
+
+    // Verify student exists in database
+    const student = await prisma.student.findUnique({
+      where: { id: session.user.id }
+    });
+
+    if (!student) {
+      console.log('Student not found in database:', session.user.id);
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Student profile not found. Please contact support.' 
+      }, { status: 404 });
     }
 
     // Get questions from database
