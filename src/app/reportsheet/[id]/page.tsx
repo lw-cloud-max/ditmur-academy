@@ -149,8 +149,15 @@ export default function ReportSheetPage() {
       <div className="fixed inset-0 z-[100] bg-slate-100 overflow-y-auto pt-6 pb-20 px-4">
         
         <div className="max-w-5xl mx-auto flex justify-between items-center mb-6 no-print">
-          <Link href="/broadsheet" className="flex items-center gap-2 text-slate-600 hover:text-slate-900 font-medium bg-white px-4 py-2 rounded-lg shadow-sm border border-slate-200"><ArrowLeft className="w-4 h-4" /> Back to Broadsheet</Link>
-          <button onClick={() => window.print()} className="flex items-center gap-2 bg-[#0033A0] text-white px-6 py-2 rounded-lg hover:bg-[#002277] shadow-sm font-bold"><Printer className="w-4 h-4" /> Print Reportsheet</button>
+          {!isReadOnly && (
+            <Link href="/broadsheet" className="flex items-center gap-2 text-slate-600 hover:text-slate-900 font-medium bg-white px-4 py-2 rounded-lg shadow-sm border border-slate-200">
+              <ArrowLeft className="w-4 h-4" /> Back to Broadsheet
+            </Link>
+          )}
+          {isReadOnly && <div></div>}
+          <button onClick={() => window.print()} className="flex items-center gap-2 bg-[#0033A0] text-white px-6 py-2 rounded-lg hover:bg-[#002277] shadow-sm font-bold">
+            <Printer className="w-4 h-4" /> Print Reportsheet
+          </button>
         </div>
 
         <div className="max-w-5xl mx-auto bg-white p-8 md:p-12 border border-slate-200 shadow-lg rounded-xl print-container">
