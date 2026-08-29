@@ -2,223 +2,257 @@
 
 import { useState, useEffect } from 'react';
 import { 
-  BookOpen, Plus, Search, Filter, Upload, Download, Trash2, Edit, 
-  Loader2, X, CheckCircle2, AlertCircle, FileText, Database
+  Search, Plus, Upload, Loader2, Trash2, CheckCircle2, Type, Database, 
+  BookOpen, Edit2, X, Save, Sparkles, Wand2, GraduationCap, Filter
 } from 'lucide-react';
 
-interface Question {
-  id: string;
-  examType: string;
-  subject: string;
-  year: number | null;
-  questionNumber: number;
-  text: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
-  correctAnswer: string;
-  explanation: string | null;
-  topic: string | null;
-  difficulty: string;
-  isActive: boolean;
-}
-
 export default function QuestionBankPage() {
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterExamType, setFilterExamType] = useState('ALL');
-  const [filterSubject, setFilterSubject] = useState('ALL');
-  const [filters, setFilters] = useState<{ examTypes: string[]; subjects: string[]; years: number[] }>({ 
-    examTypes: [], subjects: [], years: [] 
-  });
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedExamType, setSelectedExamType] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [filters, setFilters] = useState<{ examTypes: string[]; subjects: string[] }>({ examTypes: [], subjects: [] });
 
-  // Add question modal
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  // Form state
-  const [formData, setFormData] = useState({
-    examType: 'JAMB',
-    subject: '',
-    year: '',
-    questionNumber: '',
-    text: '',
-    optionA: '',
-    optionB: '',
-    optionC: '',
-    optionD: '',
-    correctAnswer: 'A',
-    explanation: '',
-    topic: '',
-    difficulty: 'MEDIUM'
+  const [newQ, setNewQ] = useState({ 
+    text: '', optionA: '', optionB: '', optionC: '', optionD: '', 
+    correctAnswer: 'A', explanation: '', topic: '', difficulty: 'MEDIUM', year: ''
   });
 
-  // Upload state
-  const [uploadText, setUploadText] = useState('');
-  const [uploading, setUploading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [bulkCsv, setBulkCsv] = useState('');
+  const [uploadingBulk, setUploadingBulk] = useState(false);
 
-  useEffect(() => {
-    fetchQuestions();
-  }, [filterExamType, filterSubject]);
+  // AI GENERATOR STATE
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiNumQuestions, setAiNumQuestions] = useState(5);
+  const [generatingExplanation, setGeneratingExplanation] = useState<string | null>(null);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editQ, setEditQ] = useState<any>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const mathSymbols = ['÷', '×', '±', '−', '√', '∛', '≈', '≠', '≡', '≤', '≥', '∞', 'π', 'θ', '∑', '∫', '°', '²', '³', '½', '¼', '¾', '°C'];
+
+  const subjectsByExam: Record<string, string[]> = {
+    'JAMB': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature in English', 'Christian Religious Studies', 'Islamic Studies', 'Commerce', 'Accounting', 'Geography', 'History', 'Agricultural Science', 'Computer Studies'],
+    'WAEC': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature in English', 'Christian Religious Studies', 'Islamic Studies', 'Commerce', 'Financial Accounting', 'Geography', 'History', 'Agricultural Science', 'Computer Studies', 'Further Mathematics', 'Technical Drawing'],
+    'NECO': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature in English', 'Christian Religious Studies', 'Islamic Studies', 'Commerce', 'Financial Accounting', 'Geography', 'History', 'Agricultural Science', 'Computer Studies', 'Further Mathematics']
+  };
 
   const fetchQuestions = async () => {
+    if (!selectedExamType || !selectedSubject) return;
     setLoading(true);
     try {
-      let url = '/api/question-bank?';
-      if (filterExamType !== 'ALL') url += `examType=${filterExamType}&`;
-      if (filterSubject !== 'ALL') url += `subject=${filterSubject}&`;
-
+      let url = `/api/question-bank?examType=${selectedExamType}&subject=${selectedSubject}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
         setQuestions(data.data);
         setFilters(data.filters);
       }
-    } catch (error) {
-      console.error('Error fetching questions:', error);
+    } catch (err) {
+      console.error('Error fetching questions:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddQuestion = async (e: React.FormEvent) => {
+  useEffect(() => { 
+    fetchQuestions(); 
+  }, [selectedExamType, selectedSubject]);
+
+  const insertSymbol = (symbol: string, isEditing: boolean) => {
+    if (isEditing) setEditQ({ ...editQ, text: editQ.text + symbol });
+    else setNewQ({ ...newQ, text: newQ.text + symbol });
+  };
+
+  const handleSaveQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-
     try {
-      const url = editingQuestion ? '/api/question-bank' : '/api/question-bank';
-      const method = editingQuestion ? 'PATCH' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          editingQuestion 
-            ? { id: editingQuestion.id, ...formData }
-            : formData
-        )
+      const res = await fetch('/api/question-bank', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ 
+          ...newQ, 
+          examType: selectedExamType, 
+          subject: selectedSubject,
+          year: newQ.year ? parseInt(newQ.year) : null
+        }) 
       });
-
       const data = await res.json();
       if (data.success) {
-        setShowAddModal(false);
-        setEditingQuestion(null);
-        resetForm();
+        setNewQ({ text: '', optionA: '', optionB: '', optionC: '', optionD: '', correctAnswer: 'A', explanation: '', topic: '', difficulty: 'MEDIUM', year: '' });
+        setIsAdding(false);
         fetchQuestions();
-        alert(editingQuestion ? 'Question updated!' : 'Question added!');
       } else {
-        alert(`Error: ${data.error}`);
+        alert(data.error);
       }
-    } catch (error) {
-      console.error('Error saving question:', error);
-      alert('Failed to save question');
+    } catch (err) {
+      console.error('Error saving question:', err);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleBulkUpload = async () => {
-    if (!uploadText.trim()) {
-      alert('Please paste questions in JSON format');
-      return;
-    }
-
-    setUploading(true);
+  const handleUpdateQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingEdit(true);
     try {
-      const questions = JSON.parse(uploadText);
+      const res = await fetch('/api/question-bank', { 
+        method: 'PATCH', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(editQ) 
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEditingId(null);
+        fetchQuestions();
+      } else {
+        alert(data.error);
+      }
+    } catch (err) {
+      console.error('Error updating question:', err);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleBulkUpload = async () => {
+    if (!bulkCsv.trim()) return;
+    setUploadingBulk(true);
+    try {
+      const lines = bulkCsv.split('\n');
+      const parsedQuestions = [];
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const parts = line.split('|').map(s => s.trim());
+        if (parts.length >= 6) {
+          const [text, optionA, optionB, optionC, optionD, correctAnswer, explanation, topic, difficulty] = parts;
+          if (text && optionA && optionB && optionC && optionD && correctAnswer) {
+            parsedQuestions.push({ 
+              text, optionA, optionB, optionC, optionD, 
+              correctAnswer: correctAnswer.toUpperCase(), 
+              explanation: explanation || '',
+              topic: topic || '',
+              difficulty: difficulty || 'MEDIUM'
+            });
+          }
+        }
+      }
       
-      if (!Array.isArray(questions)) {
-        alert('Invalid format. Expected an array of questions.');
+      if (parsedQuestions.length === 0) {
+        alert("No valid questions found. Format: Question | A | B | C | D | Answer | Explanation | Topic | Difficulty");
+        setUploadingBulk(false);
         return;
       }
 
-      const res = await fetch('/api/question-bank', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questions })
+      const res = await fetch('/api/question-bank', { 
+        method: 'PUT', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ questions: parsedQuestions.map(q => ({ ...q, examType: selectedExamType, subject: selectedSubject })) }) 
       });
-
       const data = await res.json();
       if (data.success) {
-        setShowUploadModal(false);
-        setUploadText('');
+        alert(`Imported ${data.count} questions!`);
+        setBulkCsv('');
+        setIsUploading(false);
         fetchQuestions();
-        alert(`Successfully imported ${data.count} questions!`);
       } else {
-        alert(`Error: ${data.error}`);
+        alert(data.error);
       }
     } catch (error) {
       console.error('Error uploading questions:', error);
-      alert('Invalid JSON format. Please check the format and try again.');
     } finally {
-      setUploading(false);
+      setUploadingBulk(false);
     }
   };
 
   const handleDeleteQuestion = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this question?')) return;
-
+    if (!confirm("Delete this question?")) return;
     try {
-      const res = await fetch(`/api/question-bank?id=${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        fetchQuestions();
-      } else {
-        alert(`Error: ${data.error}`);
-      }
-    } catch (error) {
-      console.error('Error deleting question:', error);
+      await fetch(`/api/question-bank?id=${id}`, { method: 'DELETE' });
+      setQuestions(questions.filter(q => q.id !== id));
+    } catch (err) {
+      console.error('Error deleting question:', err);
     }
   };
 
-  const handleEditQuestion = (question: Question) => {
-    setEditingQuestion(question);
-    setFormData({
-      examType: question.examType,
-      subject: question.subject,
-      year: question.year?.toString() || '',
-      questionNumber: question.questionNumber.toString(),
-      text: question.text,
-      optionA: question.optionA,
-      optionB: question.optionB,
-      optionC: question.optionC,
-      optionD: question.optionD,
-      correctAnswer: question.correctAnswer,
-      explanation: question.explanation || '',
-      topic: question.topic || '',
-      difficulty: question.difficulty
-    });
-    setShowAddModal(true);
+  // AI GENERATOR - Generate questions with explanations
+  const handleAIGenerate = async () => {
+    if (!aiTopic) return alert("Please enter a topic.");
+    setIsGeneratingAI(true);
+    try {
+      const res = await fetch('/api/ai/cbt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          topic: aiTopic, 
+          numQuestions: aiNumQuestions,
+          examType: selectedExamType,
+          subject: selectedSubject
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Save generated questions to database
+        const saveRes = await fetch('/api/question-bank', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            questions: data.data.map((q: any) => ({
+              ...q,
+              examType: selectedExamType,
+              subject: selectedSubject
+            }))
+          })
+        });
+        if (saveRes.ok) {
+          alert(`AI successfully generated and saved ${aiNumQuestions} questions with explanations!`);
+          setIsGeneratingAI(false);
+          fetchQuestions();
+        }
+      }
+    } catch (err) {
+      alert("Failed to generate AI questions");
+      setIsGeneratingAI(false);
+    }
   };
 
-  const resetForm = () => {
-    setFormData({
-      examType: 'JAMB',
-      subject: '',
-      year: '',
-      questionNumber: '',
-      text: '',
-      optionA: '',
-      optionB: '',
-      optionC: '',
-      optionD: '',
-      correctAnswer: 'A',
-      explanation: '',
-      topic: '',
-      difficulty: 'MEDIUM'
-    });
+  // AI Generate Explanation for a single question
+  const handleGenerateExplanation = async (questionId: string, questionText: string, options: any, correctAnswer: string) => {
+    setGeneratingExplanation(questionId);
+    try {
+      const res = await fetch('/api/ai/cbt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'explain',
+          question: questionText,
+          options,
+          correctAnswer,
+          subject: selectedSubject
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Update the question with the explanation
+        await fetch('/api/question-bank', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: questionId, explanation: data.explanation })
+        });
+        fetchQuestions();
+      }
+    } catch (err) {
+      console.error('Error generating explanation:', err);
+    } finally {
+      setGeneratingExplanation(null);
+    }
   };
-
-  const filteredQuestions = questions.filter(q => {
-    const matchesSearch = 
-      q.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      q.topic?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
 
   return (
     <div className="space-y-6 pb-32 max-w-7xl mx-auto animation-fade-in">
@@ -226,427 +260,397 @@ export default function QuestionBankPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Database className="w-7 h-7 text-[#0033A0]" />
-            Question Bank
+            <GraduationCap className="w-7 h-7 text-[#0033A0]" />
+            JAMB, WAEC & NECO Question Bank
           </h1>
-          <p className="text-slate-500 mt-1">Manage JAMB, WAEC & NECO past questions</p>
+          <p className="text-slate-500 mt-1">Manage past questions for exam practice</p>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2"
+      </div>
+
+      {/* Exam Type & Subject Selectors */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 items-end">
+        <div className="flex-1 w-full">
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">1. Select Exam Type</label>
+          <select 
+            value={selectedExamType} 
+            onChange={(e) => { setSelectedExamType(e.target.value); setSelectedSubject(''); }}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg font-bold text-[#0033A0] outline-none"
           >
-            <Upload className="w-5 h-5" />
-            Bulk Upload
-          </button>
-          <button
-            onClick={() => { resetForm(); setEditingQuestion(null); setShowAddModal(true); }}
-            className="px-6 py-3 bg-[#0033A0] text-white rounded-xl font-bold hover:bg-[#002277] transition-colors flex items-center gap-2"
+            <option value="">-- Choose Exam Type --</option>
+            <option value="JAMB">JAMB (UTME)</option>
+            <option value="WAEC">WAEC (WASSCE)</option>
+            <option value="NECO">NECO (SSCE)</option>
+          </select>
+        </div>
+        <div className="flex-1 w-full">
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">2. Select Subject</label>
+          <select 
+            value={selectedSubject} 
+            onChange={(e) => setSelectedSubject(e.target.value)}
+            disabled={!selectedExamType}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 outline-none disabled:opacity-50"
           >
-            <Plus className="w-5 h-5" />
-            Add Question
-          </button>
+            <option value="">-- Choose Subject --</option>
+            {selectedExamType && subjectsByExam[selectedExamType]?.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <p className="text-sm text-slate-500">Total Questions</p>
-          <p className="text-2xl font-black text-slate-900">{questions.length}</p>
+      {!selectedExamType || !selectedSubject ? (
+        <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-16 text-center">
+          <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-slate-900 mb-1">Select exam type and subject</h3>
+          <p className="text-slate-500 text-sm">Choose above to view or add questions to the question bank.</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <p className="text-sm text-slate-500">JAMB Questions</p>
-          <p className="text-2xl font-black text-blue-600">{questions.filter(q => q.examType === 'JAMB').length}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <p className="text-sm text-slate-500">WAEC Questions</p>
-          <p className="text-2xl font-black text-emerald-600">{questions.filter(q => q.examType === 'WAEC').length}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <p className="text-sm text-slate-500">NECO Questions</p>
-          <p className="text-2xl font-black text-purple-600">{questions.filter(q => q.examType === 'NECO').length}</p>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search questions..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-            />
+      ) : (
+        <div className="space-y-6">
+          {/* Action Buttons */}
+          <div className="flex gap-3 justify-between items-center bg-white p-4 border border-slate-200 rounded-xl shadow-sm flex-wrap">
+            <div>
+              <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                <Database className="w-4 h-4 text-[#0033A0]"/> Question Repository
+              </h2>
+              <p className="text-xs text-slate-500">{questions.length} questions available</p>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <button 
+                onClick={() => { setIsUploading(true); setIsAdding(false); }} 
+                className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-lg hover:bg-emerald-100 font-bold text-sm border border-emerald-200"
+              >
+                <Upload className="w-4 h-4" /> Bulk Upload
+              </button>
+              <button 
+                onClick={() => { setIsAdding(true); setIsUploading(false); }} 
+                className="flex items-center gap-2 bg-[#0033A0] text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-[#002277]"
+              >
+                <Plus className="w-4 h-4" /> Add Question
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-400" />
-            <select
-              value={filterExamType}
-              onChange={(e) => { setFilterExamType(e.target.value); setFilterSubject('ALL'); }}
-              className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
+
+          {/* AI GENERATOR BLOCK */}
+          <div className="bg-indigo-50/50 rounded-xl border border-indigo-200 p-6 flex flex-col md:flex-row gap-4 items-end shadow-sm">
+            <div className="flex-1 w-full">
+              <label className="block text-xs font-bold text-indigo-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4" /> Generate Questions with AI
+              </label>
+              <input 
+                type="text" 
+                value={aiTopic} 
+                onChange={e => setAiTopic(e.target.value)} 
+                placeholder="Topic (e.g., Algebra, Organic Chemistry)" 
+                className="w-full px-4 py-2.5 bg-white border border-indigo-200 rounded-lg text-sm outline-none focus:border-indigo-500" 
+              />
+            </div>
+            <div className="w-32 shrink-0">
+              <label className="block text-xs font-bold text-indigo-900 uppercase tracking-wider mb-2">Quantity</label>
+              <input 
+                type="number" 
+                min="1" 
+                max="50" 
+                value={aiNumQuestions} 
+                onChange={e => setAiNumQuestions(parseInt(e.target.value) || 1)} 
+                className="w-full px-4 py-2.5 bg-white border border-indigo-200 rounded-lg text-sm outline-none" 
+              />
+            </div>
+            <button 
+              onClick={handleAIGenerate} 
+              disabled={isGeneratingAI || !aiTopic} 
+              className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-bold text-sm hover:bg-indigo-700 disabled:bg-indigo-300 flex items-center gap-2"
             >
-              <option value="ALL">All Exam Types</option>
-              {filters.examTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-            <select
-              value={filterSubject}
-              onChange={(e) => setFilterSubject(e.target.value)}
-              className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-            >
-              <option value="ALL">All Subjects</option>
-              {filters.subjects.map(subject => (
-                <option key={subject} value={subject}>{subject}</option>
-              ))}
-            </select>
+              {isGeneratingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+              Generate
+            </button>
           </div>
-        </div>
-      </div>
 
-      {/* Questions List */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center p-12">
-            <Loader2 className="w-8 h-8 animate-spin text-[#0033A0]" />
-          </div>
-        ) : filteredQuestions.length === 0 ? (
-          <div className="text-center p-12 text-slate-500">
-            <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="font-medium">No questions found</p>
-            <p className="text-sm mt-1">Add questions or upload a JSON file</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {filteredQuestions.map((question, index) => (
-              <div key={question.id} className="p-4 hover:bg-slate-50 transition-colors">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold">
-                        {question.examType}
-                      </span>
-                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-xs font-bold">
-                        {question.subject}
-                      </span>
-                      {question.year && (
-                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs">
-                          {question.year}
-                        </span>
-                      )}
-                      <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                        question.difficulty === 'EASY' ? 'bg-green-100 text-green-700' :
-                        question.difficulty === 'HARD' ? 'bg-red-100 text-red-700' :
-                        'bg-amber-100 text-amber-700'
-                      }`}>
-                        {question.difficulty}
-                      </span>
-                      {question.topic && (
-                        <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
-                          {question.topic}
-                        </span>
-                      )}
+          {/* AI Loading Overlay */}
+          {isGeneratingAI && (
+            <div className="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center">
+              <Wand2 className="w-16 h-16 text-indigo-600 animate-pulse mb-4" />
+              <h3 className="text-2xl font-black text-indigo-900 mb-2">Ditmur AI is working...</h3>
+              <p className="text-indigo-700 font-medium">Generating {aiNumQuestions} questions for {aiTopic} with explanations.</p>
+            </div>
+          )}
+
+          {/* BULK UPLOAD */}
+          {isUploading && (
+            <div className="bg-emerald-50/50 rounded-xl border border-emerald-200 p-6 relative">
+              <h3 className="font-bold text-emerald-900 mb-2">Bulk Import Questions</h3>
+              <p className="text-sm text-emerald-700 mb-4">
+                Format: Question | Option A | Option B | Option C | Option D | Correct Answer | Explanation | Topic | Difficulty
+              </p>
+              <textarea 
+                value={bulkCsv} 
+                onChange={(e) => setBulkCsv(e.target.value)} 
+                className="w-full h-48 px-4 py-3 bg-white border border-emerald-200 rounded-lg text-sm font-mono outline-none" 
+                placeholder="What is 2 + 2? | 3 | 4 | 5 | 6 | B | 2 + 2 = 4 | Arithmetic | EASY" 
+              />
+              <div className="flex justify-end gap-3 pt-4">
+                <button onClick={() => setIsUploading(false)} className="px-5 py-2 text-slate-600 bg-slate-100 rounded-lg font-bold text-sm">
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleBulkUpload} 
+                  disabled={uploadingBulk || !bulkCsv.trim()} 
+                  className="px-5 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm flex items-center gap-2"
+                >
+                  {uploadingBulk ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Import'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ADD QUESTION */}
+          {isAdding && (
+            <div className="bg-blue-50/50 rounded-xl border border-blue-200 p-6 relative">
+              <h3 className="font-bold text-[#0033A0] mb-4">New Question</h3>
+              <form onSubmit={handleSaveQuestion} className="space-y-4">
+                <div>
+                  <textarea 
+                    required 
+                    value={newQ.text} 
+                    onChange={e => setNewQ({...newQ, text: e.target.value})} 
+                    className="w-full px-4 py-3 bg-white border rounded-lg h-24 outline-none focus:border-[#0033A0]" 
+                    placeholder="Enter question..." 
+                  />
+                  <div className="mt-2 bg-white border p-2 rounded-lg flex flex-wrap gap-1">
+                    <div className="flex items-center text-xs font-bold text-slate-400 px-2">
+                      <Type className="w-3 h-3 mr-1" /> Symbol:
                     </div>
-                    <p className="text-sm font-medium text-slate-900 mb-2">
-                      Q{question.questionNumber}. {question.text}
-                    </p>
-                    <div className="grid grid-cols-2 gap-1 text-xs text-slate-600">
-                      <span>A. {question.optionA}</span>
-                      <span>B. {question.optionB}</span>
-                      <span>C. {question.optionC}</span>
-                      <span>D. {question.optionD}</span>
-                    </div>
-                    <p className="text-xs text-emerald-600 font-bold mt-2">
-                      Correct Answer: {question.correctAnswer}
-                    </p>
+                    {mathSymbols.map(sym => (
+                      <button 
+                        key={sym} 
+                        type="button" 
+                        onClick={() => insertSymbol(sym, false)} 
+                        className="w-8 h-8 bg-slate-50 rounded text-sm font-medium border border-slate-200"
+                      >
+                        {sym}
+                      </button>
+                    ))}
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEditQuestion(question)}
-                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Edit"
-                    >
-                      <Edit className="w-4 h-4" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <input type="text" required value={newQ.optionA} onChange={e => setNewQ({...newQ, optionA: e.target.value})} placeholder="Option A" className="w-full px-3 py-2 border rounded-md text-sm outline-none" />
+                  </div>
+                  <div>
+                    <input type="text" required value={newQ.optionB} onChange={e => setNewQ({...newQ, optionB: e.target.value})} placeholder="Option B" className="w-full px-3 py-2 border rounded-md text-sm outline-none" />
+                  </div>
+                  <div>
+                    <input type="text" required value={newQ.optionC} onChange={e => setNewQ({...newQ, optionC: e.target.value})} placeholder="Option C" className="w-full px-3 py-2 border rounded-md text-sm outline-none" />
+                  </div>
+                  <div>
+                    <input type="text" required value={newQ.optionD} onChange={e => setNewQ({...newQ, optionD: e.target.value})} placeholder="Option D" className="w-full px-3 py-2 border rounded-md text-sm outline-none" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t border-blue-100">
+                  <div>
+                    <select value={newQ.correctAnswer} onChange={e => setNewQ({...newQ, correctAnswer: e.target.value})} className="w-full px-3 py-2 bg-white border rounded-md text-sm font-bold text-emerald-700 outline-none">
+                      <option value="A">Answer: A</option>
+                      <option value="B">Answer: B</option>
+                      <option value="C">Answer: C</option>
+                      <option value="D">Answer: D</option>
+                    </select>
+                  </div>
+                  <div>
+                    <input type="text" value={newQ.topic} onChange={e => setNewQ({...newQ, topic: e.target.value})} placeholder="Topic (e.g., Algebra)" className="w-full px-3 py-2 border rounded-md text-sm outline-none" />
+                  </div>
+                  <div>
+                    <select value={newQ.difficulty} onChange={e => setNewQ({...newQ, difficulty: e.target.value})} className="w-full px-3 py-2 bg-white border rounded-md text-sm outline-none">
+                      <option value="EASY">Easy</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="HARD">Hard</option>
+                    </select>
+                  </div>
+                  <div>
+                    <input type="number" value={newQ.year} onChange={e => setNewQ({...newQ, year: e.target.value})} placeholder="Year (optional)" className="w-full px-3 py-2 border rounded-md text-sm outline-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Explanation (Optional)</label>
+                  <textarea 
+                    value={newQ.explanation} 
+                    onChange={e => setNewQ({...newQ, explanation: e.target.value})} 
+                    rows={3}
+                    className="w-full px-4 py-3 bg-white border rounded-lg text-sm outline-none focus:border-[#0033A0] resize-none" 
+                    placeholder="Step-by-step solution..." 
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-4">
+                  <button type="button" onClick={() => setIsAdding(false)} className="px-5 py-2 text-slate-600 bg-slate-100 rounded-lg text-sm font-bold">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={saving} className="px-5 py-2 bg-[#0033A0] text-white rounded-lg text-sm font-bold flex items-center gap-2">
+                    {saving && <Loader2 className="w-4 h-4 animate-spin" />} Save Question
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* EDIT MODAL */}
+          {editingId && editQ && (
+            <div className="fixed inset-0 z-50 bg-[#0A192F]/50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div className="p-4 border-b flex justify-between items-center bg-amber-50 sticky top-0 z-10">
+                  <h3 className="font-bold text-amber-900 flex items-center gap-2">
+                    <Edit2 className="w-5 h-5" /> Edit Question
+                  </h3>
+                  <button onClick={() => setEditingId(null)} className="text-slate-500 hover:text-slate-800">
+                    <X className="w-5 h-5"/>
+                  </button>
+                </div>
+                <form onSubmit={handleUpdateQuestion} className="p-6 space-y-4">
+                  <div>
+                    <textarea 
+                      required 
+                      value={editQ.text} 
+                      onChange={e => setEditQ({...editQ, text: e.target.value})} 
+                      className="w-full px-4 py-3 border rounded-lg h-24" 
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <input type="text" required value={editQ.optionA} onChange={e => setEditQ({...editQ, optionA: e.target.value})} className="w-full px-3 py-2 border rounded-md text-sm" />
+                    </div>
+                    <div>
+                      <input type="text" required value={editQ.optionB} onChange={e => setEditQ({...editQ, optionB: e.target.value})} className="w-full px-3 py-2 border rounded-md text-sm" />
+                    </div>
+                    <div>
+                      <input type="text" required value={editQ.optionC} onChange={e => setEditQ({...editQ, optionC: e.target.value})} className="w-full px-3 py-2 border rounded-md text-sm" />
+                    </div>
+                    <div>
+                      <input type="text" required value={editQ.optionD} onChange={e => setEditQ({...editQ, optionD: e.target.value})} className="w-full px-3 py-2 border rounded-md text-sm" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                    <div>
+                      <select value={editQ.correctAnswer} onChange={e => setEditQ({...editQ, correctAnswer: e.target.value})} className="w-full px-3 py-2 border rounded-md text-sm font-bold text-emerald-700">
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                      </select>
+                    </div>
+                    <div>
+                      <input type="text" value={editQ.topic || ''} onChange={e => setEditQ({...editQ, topic: e.target.value})} placeholder="Topic" className="w-full px-3 py-2 border rounded-md text-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Explanation</label>
+                    <textarea 
+                      value={editQ.explanation || ''} 
+                      onChange={e => setEditQ({...editQ, explanation: e.target.value})} 
+                      rows={3}
+                      className="w-full px-4 py-3 border rounded-lg text-sm resize-none" 
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button type="button" onClick={() => setEditingId(null)} className="px-5 py-2 bg-slate-100 rounded-lg text-sm font-bold">
+                      Cancel
                     </button>
-                    <button
-                      onClick={() => handleDeleteQuestion(question.id)}
-                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete"
+                    <button type="submit" disabled={savingEdit} className="px-5 py-2 bg-amber-500 text-white rounded-lg text-sm font-bold flex items-center gap-2">
+                      {savingEdit && <Loader2 className="w-4 h-4 animate-spin"/>} Update
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Questions List */}
+          {loading ? (
+            <div className="p-12 flex justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-[#0033A0]" />
+            </div>
+          ) : questions.length === 0 && !isAdding && !isUploading ? (
+            <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-12 text-center text-slate-500">
+              No questions in bank. Add questions or use AI to generate them.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {questions.map((q, index) => (
+                <div key={q.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 relative group">
+                  <div className="absolute top-4 right-4 flex gap-2">
+                    {/* AI Generate Explanation Button */}
+                    {!q.explanation && (
+                      <button 
+                        onClick={() => handleGenerateExplanation(q.id, q.text, { A: q.optionA, B: q.optionB, C: q.optionC, D: q.optionD }, q.correctAnswer)}
+                        disabled={generatingExplanation === q.id}
+                        className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-100"
+                        title="Generate AI Explanation"
+                      >
+                        {generatingExplanation === q.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-4 h-4" />
+                        )}
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => { setEditQ(q); setEditingId(q.id); }} 
+                      className="p-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors border border-amber-100"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteQuestion(q.id)} 
+                      className="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
+                  <div className="flex items-start gap-3 mb-4 pr-32">
+                    <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center text-sm border shrink-0">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-lg whitespace-pre-wrap">{q.text}</h4>
+                      <div className="flex items-center gap-2 mt-2">
+                        {q.topic && (
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold">
+                            {q.topic}
+                          </span>
+                        )}
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                          q.difficulty === 'EASY' ? 'bg-green-100 text-green-700' :
+                          q.difficulty === 'HARD' ? 'bg-red-100 text-red-700' :
+                          'bg-amber-100 text-amber-700'
+                        }`}>
+                          {q.difficulty}
+                        </span>
+                        {q.year && (
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs">
+                            {q.year}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-11">
+                    {['A', 'B', 'C', 'D'].map((letter) => {
+                      const isCorrect = q.correctAnswer === letter;
+                      return (
+                        <div key={letter} className={`p-3 rounded-lg border text-sm flex items-start gap-3 ${isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-900 font-medium' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
+                          <span className={`font-bold ${isCorrect ? 'text-emerald-600' : 'text-slate-400'}`}>{letter}.</span>
+                          <span>{q[`option${letter}`]}</span>
+                          {isCorrect && <CheckCircle2 className="w-4 h-4 text-emerald-500 ml-auto" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {q.explanation && (
+                    <div className="mt-4 ml-11 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-sm font-bold text-blue-800 mb-1">Explanation:</p>
+                      <p className="text-sm text-blue-700 whitespace-pre-wrap">{q.explanation}</p>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Add/Edit Question Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animation-fade-in max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 sticky top-0 bg-white z-10">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">
-                  {editingQuestion ? 'Edit Question' : 'Add New Question'}
-                </h3>
-                <p className="text-xs text-slate-500 mt-1">Add to JAMB, WAEC & NECO question bank</p>
-              </div>
-              <button onClick={() => { setShowAddModal(false); setEditingQuestion(null); }} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
+              ))}
             </div>
-            
-            <form onSubmit={handleAddQuestion} className="p-6 space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Exam Type *</label>
-                  <select
-                    required
-                    value={formData.examType}
-                    onChange={(e) => setFormData({...formData, examType: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-                  >
-                    <option value="JAMB">JAMB</option>
-                    <option value="WAEC">WAEC</option>
-                    <option value="NECO">NECO</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Subject *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.subject}
-                    onChange={(e) => setFormData({...formData, subject: e.target.value})}
-                    placeholder="e.g., Mathematics"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Year</label>
-                  <input
-                    type="number"
-                    value={formData.year}
-                    onChange={(e) => setFormData({...formData, year: e.target.value})}
-                    placeholder="e.g., 2024"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Question Number *</label>
-                  <input
-                    type="number"
-                    required
-                    value={formData.questionNumber}
-                    onChange={(e) => setFormData({...formData, questionNumber: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Difficulty</label>
-                  <select
-                    value={formData.difficulty}
-                    onChange={(e) => setFormData({...formData, difficulty: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-                  >
-                    <option value="EASY">Easy</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HARD">Hard</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Question Text *</label>
-                <textarea
-                  required
-                  value={formData.text}
-                  onChange={(e) => setFormData({...formData, text: e.target.value})}
-                  rows={3}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0] resize-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Option A *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.optionA}
-                    onChange={(e) => setFormData({...formData, optionA: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Option B *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.optionB}
-                    onChange={(e) => setFormData({...formData, optionB: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Option C *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.optionC}
-                    onChange={(e) => setFormData({...formData, optionC: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Option D *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.optionD}
-                    onChange={(e) => setFormData({...formData, optionD: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Correct Answer *</label>
-                  <select
-                    required
-                    value={formData.correctAnswer}
-                    onChange={(e) => setFormData({...formData, correctAnswer: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-                  >
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="C">C</option>
-                    <option value="D">D</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Topic</label>
-                  <input
-                    type="text"
-                    value={formData.topic}
-                    onChange={(e) => setFormData({...formData, topic: e.target.value})}
-                    placeholder="e.g., Algebra"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Explanation</label>
-                <textarea
-                  value={formData.explanation}
-                  onChange={(e) => setFormData({...formData, explanation: e.target.value})}
-                  rows={3}
-                  placeholder="Step-by-step solution..."
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0] resize-none"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => { setShowAddModal(false); setEditingQuestion(null); }}
-                  className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 px-4 py-3 bg-[#0033A0] text-white rounded-xl font-bold hover:bg-[#002277] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
-                  {editingQuestion ? 'Update Question' : 'Add Question'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animation-fade-in">
-            <div className="flex justify-between items-center p-6 border-b border-slate-100">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">Bulk Upload Questions</h3>
-                <p className="text-xs text-slate-500 mt-1">Upload multiple questions at once using JSON format</p>
-              </div>
-              <button onClick={() => setShowUploadModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <p className="text-sm font-bold text-blue-800 mb-2">JSON Format:</p>
-                <pre className="text-xs text-blue-700 bg-blue-100 p-2 rounded overflow-x-auto">
-{`[
-  {
-    "examType": "JAMB",
-    "subject": "Mathematics",
-    "year": 2024,
-    "questionNumber": 1,
-    "text": "Question text here",
-    "optionA": "Option A",
-    "optionB": "Option B",
-    "optionC": "Option C",
-    "optionD": "Option D",
-    "correctAnswer": "B",
-    "explanation": "Solution here",
-    "topic": "Algebra",
-    "difficulty": "EASY"
-  }
-]`}
-                </pre>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Paste JSON Data</label>
-                <textarea
-                  value={uploadText}
-                  onChange={(e) => setUploadText(e.target.value)}
-                  rows={10}
-                  placeholder='Paste your JSON array of questions here...'
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0] resize-none font-mono"
-                />
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowUploadModal(false)}
-                  className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleBulkUpload}
-                  disabled={uploading || !uploadText.trim()}
-                  className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-                  Upload Questions
-                </button>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       )}
     </div>
