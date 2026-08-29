@@ -197,7 +197,8 @@ export default function QuestionBankPage() {
         })
       });
       const data = await res.json();
-      if (data.success) {
+      
+      if (data.success && data.data && data.data.length > 0) {
         // Save generated questions to database
         const saveRes = await fetch('/api/question-bank', {
           method: 'PUT',
@@ -210,14 +211,22 @@ export default function QuestionBankPage() {
             }))
           })
         });
-        if (saveRes.ok) {
-          alert(`AI successfully generated and saved ${aiNumQuestions} questions with explanations!`);
+        const saveData = await saveRes.json();
+        if (saveData.success) {
+          alert(`Successfully generated and saved ${saveData.count} questions!`);
           setIsGeneratingAI(false);
           fetchQuestions();
+        } else {
+          alert(`Error saving questions: ${saveData.error}`);
+          setIsGeneratingAI(false);
         }
+      } else {
+        alert(data.error || 'Failed to generate questions. Please check if AI is configured.');
+        setIsGeneratingAI(false);
       }
     } catch (err) {
-      alert("Failed to generate AI questions");
+      console.error('AI generation error:', err);
+      alert("Failed to generate AI questions. Please try again or add questions manually.");
       setIsGeneratingAI(false);
     }
   };

@@ -122,11 +122,6 @@ export default function ExamPracticePage() {
 
   // Check student eligibility on mount
   useEffect(() => {
-    checkEligibility();
-    fetchHistory();
-  }, []);
-
-  const checkEligibility = async () => {
     // Admin/Staff can always access
     if (userRole === 'ADMIN' || userRole === 'STAFF') {
       setIsEligible(true);
@@ -134,27 +129,43 @@ export default function ExamPracticePage() {
       return;
     }
 
-    // Check if student is SS1-SS3
+    // For students, check their class
+    checkEligibility();
+    fetchHistory();
+  }, []);
+
+  const checkEligibility = async () => {
     try {
-      const res = await fetch(`/api/students?studentId=${studentId}`);
+      // Fetch student info to get their class
+      const res = await fetch('/api/students');
       const data = await res.json();
+      
       if (data.success && data.data.length > 0) {
-        const student = data.data[0];
-        const className = student.class?.name || '';
-        setStudentClass(className);
-        
-        // Check if class is SS1, SS2, or SS3
-        const isSS = className.toLowerCase().includes('ss1') || 
-                     className.toLowerCase().includes('ss2') || 
-                     className.toLowerCase().includes('ss3') ||
-                     className.toLowerCase().includes('senior secondary 1') ||
-                     className.toLowerCase().includes('senior secondary 2') ||
-                     className.toLowerCase().includes('senior secondary 3');
-        
-        setIsEligible(isSS);
+        // Find the current student
+        const student = data.data.find((s: any) => s.id === studentId);
+        if (student) {
+          const className = student.class?.name || '';
+          setStudentClass(className);
+          
+          // Check if class is SS1, SS2, or SS3
+          const isSS = className.toLowerCase().includes('ss1') || 
+                       className.toLowerCase().includes('ss2') || 
+                       className.toLowerCase().includes('ss3') ||
+                       className.toLowerCase().includes('senior secondary');
+          
+          setIsEligible(isSS);
+        } else {
+          // Student not found, allow access for now
+          setIsEligible(true);
+        }
+      } else {
+        // If can't fetch students, allow access
+        setIsEligible(true);
       }
     } catch (error) {
       console.error('Error checking eligibility:', error);
+      // On error, allow access
+      setIsEligible(true);
     } finally {
       setEligibilityChecked(true);
     }
