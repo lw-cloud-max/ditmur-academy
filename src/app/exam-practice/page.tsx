@@ -42,9 +42,6 @@ export default function ExamPracticePage() {
   const [examType, setExamType] = useState('JAMB');
   const [subject, setSubject] = useState('Mathematics');
   const [numberOfQuestions, setNumberOfQuestions] = useState(20);
-  const [studentClass, setStudentClass] = useState('');
-  const [isEligible, setIsEligible] = useState(false);
-  const [eligibilityChecked, setEligibilityChecked] = useState(false);
 
   // Practice state
   const [isStarted, setIsStarted] = useState(false);
@@ -67,43 +64,10 @@ export default function ExamPracticePage() {
   const [practiceHistory, setPracticeHistory] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
-  // Show loading while checking eligibility
-  if (!eligibilityChecked) {
-    return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#0033A0]" />
-      </div>
-    );
-  }
-
-  // Show access denied for non-SS students
-  if (!isEligible) {
-    return (
-      <div className="max-w-2xl mx-auto pb-32 animation-fade-in">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Lock className="w-10 h-10 text-red-600" />
-          </div>
-          <h2 className="text-2xl font-black text-slate-900 mb-3">Access Restricted</h2>
-          <p className="text-slate-600 mb-2">
-            JAMB, WAEC & NECO CBT Practice is only available for <strong>SS1, SS2, and SS3</strong> students.
-          </p>
-          <p className="text-sm text-slate-500 mb-6">
-            Your current class: <span className="font-bold text-slate-700">{studentClass || 'Not assigned'}</span>
-          </p>
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-800">
-              <strong>Why?</strong> These exams are designed for senior secondary students preparing for their final exams. 
-              Focus on building your foundation first, and you'll have access when you reach SS1!
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Available subjects by exam type
-  const subjectsByExam: Record<string, string[]> = {
+  // Fetch history on mount
+  useEffect(() => {
+    fetchHistory();
+  }, []);
     'JAMB': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature in English', 'Christian Religious Studies', 'Islamic Studies', 'Commerce', 'Accounting', 'Geography', 'History', 'Agricultural Science', 'Computer Studies'],
     'WAEC': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature in English', 'Christian Religious Studies', 'Islamic Studies', 'Commerce', 'Financial Accounting', 'Geography', 'History', 'Agricultural Science', 'Computer Studies', 'Further Mathematics', 'Technical Drawing'],
     'NECO': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature in English', 'Christian Religious Studies', 'Islamic Studies', 'Commerce', 'Financial Accounting', 'Geography', 'History', 'Agricultural Science', 'Computer Studies', 'Further Mathematics']
@@ -119,57 +83,6 @@ export default function ExamPracticePage() {
     }
     return () => clearInterval(interval);
   }, [isStarted, showResults]);
-
-  // Check student eligibility on mount
-  useEffect(() => {
-    // Admin/Staff can always access
-    if (userRole === 'ADMIN' || userRole === 'STAFF') {
-      setIsEligible(true);
-      setEligibilityChecked(true);
-      return;
-    }
-
-    // For students, check their class
-    checkEligibility();
-    fetchHistory();
-  }, []);
-
-  const checkEligibility = async () => {
-    try {
-      // Fetch student info to get their class
-      const res = await fetch('/api/students');
-      const data = await res.json();
-      
-      if (data.success && data.data.length > 0) {
-        // Find the current student
-        const student = data.data.find((s: any) => s.id === studentId);
-        if (student) {
-          const className = student.class?.name || '';
-          setStudentClass(className);
-          
-          // Check if class is SS1, SS2, or SS3
-          const isSS = className.toLowerCase().includes('ss1') || 
-                       className.toLowerCase().includes('ss2') || 
-                       className.toLowerCase().includes('ss3') ||
-                       className.toLowerCase().includes('senior secondary');
-          
-          setIsEligible(isSS);
-        } else {
-          // Student not found, allow access for now
-          setIsEligible(true);
-        }
-      } else {
-        // If can't fetch students, allow access
-        setIsEligible(true);
-      }
-    } catch (error) {
-      console.error('Error checking eligibility:', error);
-      // On error, allow access
-      setIsEligible(true);
-    } finally {
-      setEligibilityChecked(true);
-    }
-  };
 
   const fetchHistory = async () => {
     try {
