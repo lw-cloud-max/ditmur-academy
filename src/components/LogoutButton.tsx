@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOut } from 'lucide-react';
+import { signOut } from 'next-auth/react';
 import { useState } from 'react';
 
 export default function LogoutButton() {
@@ -10,40 +11,23 @@ export default function LogoutButton() {
     setIsLoggingOut(true);
     
     try {
-      // Method 1: Try NextAuth signout
-      await fetch('/api/auth/signout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({}),
+      // Use NextAuth's signOut function which handles CSRF properly
+      await signOut({ 
+        callbackUrl: '/login',
+        redirect: false 
       });
-    } catch (error) {
-      console.log('Signout API error (continuing anyway):', error);
-    }
-
-    // Method 2: Clear all storage
-    try {
+      
+      // Clear storage
       localStorage.clear();
       sessionStorage.clear();
-    } catch (e) {
-      console.log('Storage clear error:', e);
+      
+      // Force redirect
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Fallback: force redirect anyway
+      window.location.href = '/login';
     }
-
-    // Method 3: Clear cookies manually
-    try {
-      document.cookie.split(";").forEach(function(c) { 
-        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-      });
-    } catch (e) {
-      console.log('Cookie clear error:', e);
-    }
-
-    // Method 4: Force redirect to login page
-    // Use a small delay to ensure cleanup completes
-    setTimeout(() => {
-      window.location.replace('/login');
-    }, 100);
   };
 
   return (
