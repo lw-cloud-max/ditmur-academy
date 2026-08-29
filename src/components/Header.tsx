@@ -1,8 +1,8 @@
-import { Bell, Search, LogOut } from 'lucide-react';
-import { signOut } from '@/auth'; 
+import { Bell, Search } from 'lucide-react';
 import { auth } from '@/auth';
 import MobileMenu from './MobileMenu';
 import Sidebar from './Sidebar';
+import LogoutButton from './LogoutButton';
 
 export default async function Header() {
   const session = await auth();
@@ -47,18 +47,7 @@ export default async function Header() {
           </div>
           
           {/* Logout Button */}
-          <form action={async () => {
-            "use server";
-            await signOut({ redirectTo: '/login' });
-          }}>
-            <button 
-              type="submit" 
-              className="ml-2 p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              title="Sign Out"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </form>
+          <LogoutButton />
         </div>
       </div>
     </header>
