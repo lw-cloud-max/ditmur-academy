@@ -1,38 +1,49 @@
 "use client";
 
 import { LogOut } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 export default function LogoutButton() {
-  const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
+    
     try {
-      // Call the NextAuth signout endpoint directly
-      const response = await fetch('/api/auth/signout', {
+      // Method 1: Try NextAuth signout
+      await fetch('/api/auth/signout', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/json',
         },
-        body: new URLSearchParams({
-          csrfToken: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-        }),
+        body: JSON.stringify({}),
       });
+    } catch (error) {
+      console.log('Signout API error (continuing anyway):', error);
+    }
 
-      // Clear local storage and session storage
+    // Method 2: Clear all storage
+    try {
       localStorage.clear();
       sessionStorage.clear();
-
-      // Redirect to login page
-      window.location.href = '/login';
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Force redirect even if there's an error
-      window.location.href = '/login';
+    } catch (e) {
+      console.log('Storage clear error:', e);
     }
+
+    // Method 3: Clear cookies manually
+    try {
+      document.cookie.split(";").forEach(function(c) { 
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+      });
+    } catch (e) {
+      console.log('Cookie clear error:', e);
+    }
+
+    // Method 4: Force redirect to login page
+    // Use a small delay to ensure cleanup completes
+    setTimeout(() => {
+      window.location.replace('/login');
+    }, 100);
   };
 
   return (
