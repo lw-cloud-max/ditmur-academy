@@ -9,6 +9,7 @@ export default function ClassesPage() {
   const [staff, setStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Assign Teacher Modal State
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -75,6 +76,19 @@ export default function ClassesPage() {
     }
   };
 
+  // Filter classes based on search query
+  const filteredClasses = classes.filter(c => {
+    const teacher = staff.find(s => s.id === c.teacherId);
+    const teacherName = teacher ? `${teacher.firstName} ${teacher.lastName}` : '';
+    
+    return (
+      searchQuery === '' ||
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.level.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      teacherName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+
   return (
     <div className="space-y-6 pb-32">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -82,9 +96,6 @@ export default function ClassesPage() {
           <h1 className="text-2xl font-bold text-slate-900">Classes</h1>
           <p className="text-slate-500">Manage school classes and assign Form Teachers.</p>
         </div>
-        <Link href="/configuration" className="flex items-center gap-2 bg-[#0A192F] text-white px-4 py-2 rounded-lg hover:bg-[#060F1D] transition-colors text-sm font-medium">
-          <School className="w-4 h-4" /> Configure Classes
-        </Link>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
@@ -92,15 +103,27 @@ export default function ClassesPage() {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input 
             type="text" 
-            placeholder="Search classes..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search classes by name, level, or teacher..." 
             className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
           />
+        </div>
+        <div className="text-sm text-slate-500 flex items-center gap-2">
+          <Filter className="w-4 h-4" />
+          {filteredClasses.length} of {classes.length} classes
         </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-visible">
         {loading ? (
           <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-[#0033A0]" /></div>
+        ) : filteredClasses.length === 0 ? (
+          <div className="p-12 text-center text-slate-500">
+            <School className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <p className="font-medium">No classes found</p>
+            <p className="text-sm mt-1">{searchQuery ? 'Try adjusting your search' : 'No classes available'}</p>
+          </div>
         ) : (
           <div className="overflow-visible">
             <table className="w-full text-left border-collapse">
@@ -114,7 +137,7 @@ export default function ClassesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {classes.map((c) => {
+                {filteredClasses.map((c) => {
                   const teacher = staff.find(s => s.id === c.teacherId);
                   
                   return (
