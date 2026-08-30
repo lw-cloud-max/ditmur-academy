@@ -29,6 +29,10 @@ export default function StudentsPage() {
   const [classForm, setClassForm] = useState({ classId: '' });
   const [parentForm, setParentForm] = useState({ parentName: '', email: '', phone: '' });
   const [messageForm, setMessageForm] = useState({ message: '', subject: 'Message from School' });
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterClass, setFilterClass] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
@@ -159,6 +163,20 @@ export default function StudentsPage() {
     }
   };
 
+  // Filter students based on search query and class filter
+  const filteredStudents = students.filter(student => {
+    const matchesSearch = 
+      searchQuery === '' ||
+      student.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (student.parent?.fullName || '').toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesClass = filterClass === '' || student.classId === filterClass;
+    
+    return matchesSearch && matchesClass;
+  });
+
   if (userRole === 'PARENT') {
     return (
       <div className="space-y-6 pb-32">
@@ -238,8 +256,24 @@ export default function StudentsPage() {
       <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input type="text" placeholder="Search students by name or ID..." className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:border-blue-500 outline-none transition-all" />
+          <input 
+            type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search students by name, ID, or parent..." 
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:border-blue-500 outline-none transition-all" 
+          />
         </div>
+        <select
+          value={filterClass}
+          onChange={(e) => setFilterClass(e.target.value)}
+          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+        >
+          <option value="">All Classes</option>
+          {classes.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
         <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors">
           <Filter className="w-4 h-4" />
           <span className="text-sm font-medium">Filters</span>
@@ -250,13 +284,15 @@ export default function StudentsPage() {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 flex justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-[#0033A0]" />
         </div>
-      ) : students.length === 0 ? (
+      ) : filteredStudents.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
           <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
             <GraduationCap className="w-8 h-8" />
           </div>
           <h3 className="text-lg font-bold text-slate-900 mb-1">No students found</h3>
-          <p className="text-slate-500 text-sm mb-4">You haven't admitted any students into the system yet.</p>
+          <p className="text-slate-500 text-sm mb-4">
+            {searchQuery || filterClass ? 'Try adjusting your search or filters.' : "You haven't admitted any students into the system yet."}
+          </p>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-visible">
@@ -273,7 +309,7 @@ export default function StudentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {students.map((student) => {
+                {filteredStudents.map((student) => {
                   const encodedId = encodeURIComponent(student.id);
 
                   return (
