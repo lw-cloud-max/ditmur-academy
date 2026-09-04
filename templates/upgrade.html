@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Go Pro — Li3ht Clip</title>
+<style>
+  :root{--bg:#0B0F19;--card:#111827;--card2:#1F2937;--line:#1F2937;--line2:#2B3648;
+    --green:#10B981;--greenL:#34D399;--txt:#E5E7EB;--mut:#94A3B8;--dim:#64748B;--gold:#FBBF24}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.55}
+  .wrap{max-width:720px;margin:0 auto;padding:28px 20px 60px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;color:#fff;margin-bottom:26px}
+  .mark{width:36px;height:36px;border-radius:10px;background:var(--green);display:flex;align-items:center;justify-content:center}
+  h1{font-size:26px;color:#fff;letter-spacing:-.02em;margin-bottom:6px}
+  .sub{color:var(--mut);font-size:14px;margin-bottom:24px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px;margin-bottom:16px}
+  .plan-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px;
+    background:var(--card2);border:1px solid var(--line2);border-radius:16px;margin-bottom:12px;flex-wrap:wrap}
+  .plan-row .name{font-weight:800;color:#fff;font-size:16px}
+  .plan-row .price{font-weight:800;color:var(--greenL);font-size:18px}
+  .plan-row .note{color:var(--dim);font-size:12px;margin-top:2px}
+  .badge{font-size:10.5px;font-weight:800;letter-spacing:.8px;background:rgba(251,191,36,.12);color:var(--gold);
+    padding:3px 9px;border-radius:999px;margin-left:8px;vertical-align:middle}
+  .pay-btn{display:block;width:100%;text-align:center;border:none;border-radius:14px;padding:15px;
+    font-weight:800;font-size:15px;cursor:pointer;transition:.2s;margin-top:10px}
+  .pay-btn:disabled{opacity:.5;cursor:default}
+  .pay-paystack{background:var(--green);color:#04120C}
+  .pay-paystack:hover:not(:disabled){background:var(--greenL)}
+  .pay-stripe{background:#111827;color:#fff;border:1px solid var(--line2)}
+  .pay-stripe:hover:not(:disabled){border-color:var(--green);color:var(--greenL)}
+  .status{text-align:center;font-size:13.5px;font-weight:700;margin-top:14px;min-height:20px}
+  .status.err{color:#F87171}
+  .status.ok{color:var(--greenL)}
+  .note{font-size:12.5px;color:var(--dim);text-align:center;margin-top:18px}
+  .note a{color:var(--greenL)}
+  .back{display:inline-block;margin-top:20px;color:var(--mut);font-weight:700;font-size:13.5px;text-decoration:none}
+  .back:hover{color:var(--greenL)}
+  .soon{background:rgba(251,191,36,.08);border:1px dashed rgba(251,191,36,.4);border-radius:16px;
+    padding:16px 18px;font-size:13.5px;color:var(--gold);margin-bottom:16px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="logo" href="/"><span class="mark"><svg width="19" height="19" viewBox="0 0 24 24" fill="#0B0F19"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg></span> Li3ht Clip</a>
+  <h1>Go Pro 🚀</h1>
+  <p class="sub">300 min of premium rendering / month · clip from any link · up to 15 min per clip · priority queue.</p>
+
+  <div class="soon hidden" id="soonBox">Payments are being activated right now — this page will light up shortly. Meanwhile, your Free plan (15 min + uploads) works fully.</div>
+
+  <div class="card">
+    <div class="plan-row">
+      <div><span class="name">PRO Monthly</span><span class="badge">FLEXIBLE</span>
+        <div class="note">Billed monthly · cancel anytime · card via Paystack (₦) or Stripe ($)</div></div>
+      <div><div class="price" id="priceMo">$9.99/mo</div><div class="note" id="priceMoN">₦5,000/mo</div></div>
+    </div>
+    <div class="plan-row">
+      <div><span class="name">PRO Annual</span><span class="badge">SAVE 40%</span>
+        <div class="note">Billed yearly · best value · card via Paystack (₦) or Stripe ($)</div></div>
+      <div><div class="price" id="priceAn">$5.99/mo</div><div class="note" id="priceAnN">₦30,000/yr</div></div>
+    </div>
+
+    <button class="pay-btn pay-paystack" id="paystackBtn" onclick="pay('paystack','monthly')">💳 Pay with Paystack (Naira card / bank)</button>
+    <button class="pay-btn pay-stripe" id="stripeBtn" onclick="pay('stripe','monthly')">🌍 Pay with card (USD — Stripe)</button>
+    <div id="annoBtn" class="hidden" style="margin-top:14px">
+      <button class="pay-btn pay-paystack" style="margin-top:0" onclick="pay('paystack','annual')">💳 Paystack — Annual (save 40%)</button>
+      <button class="pay-btn pay-stripe" onclick="pay('stripe','annual')">🌍 Stripe — Annual (save 40%)</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="note">Already subscribed? Your credits appear automatically. Support: <a href="mailto:ispread2016@gmail.com">ispread2016@gmail.com</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></div>
+  <a class="back" href="/">← Back to studio</a>
+</div>
+
+<script>
+var USER=null;
+function getU(){try{return JSON.parse(localStorage.getItem('li3ht_user'))}catch(e){return null}}
+function setSt(t,c){var s=document.getElementById('status');s.textContent=t;s.className='status '+(c||'')}
+async function init(){
+  USER=getU();
+  if(!USER){setSt('You must be signed in to upgrade. Open the studio and create a free account first.','err');document.querySelectorAll('.pay-btn').forEach(b=>b.disabled=true);return}
+  try{
+    var r=await fetch('/api/payments/status');var d=await r.json();
+    if(!d.configured){document.getElementById('soonBox').classList.remove('hidden');
+      document.querySelectorAll('.pay-btn').forEach(b=>b.disabled=true);
+      // owner preview: activate instantly for testing
+      if(USER.email==='ispread2016@gmail.com'){
+        var fd=new FormData();fd.append('email',USER.email);fd.append('token',USER.token||'');
+        var g=await fetch('/dev/grant',{method:'POST',body:fd});var gd=await g.json();
+        if(g.ok&&gd.user){USER=gd.user;localStorage.setItem('li3ht_user',JSON.stringify(gd.user));
+          setSt('🧪 Owner preview: PRO active (+300 min) — no charge. Payments go live for everyone soon.','ok')}
+      }
+      return;
+    }
+    document.getElementById('priceMo').textContent='$9.99/mo';
+    document.getElementById('priceMoN').textContent='₦'+(d.ngn_monthly||5000)+'/mo';
+    document.getElementById('priceAn').textContent='$5.99/mo';
+    document.getElementById('priceAnN').textContent='₦'+(d.ngn_annual||30000)+'/yr';
+  }catch(e){setSt('Can\'t reach the server — try again.','err')}
+}
+async function pay(provider,plan){
+  if(!USER){setSt('Sign in first (from the studio) to upgrade.','err');return}
+  setSt('Opening secure payment…');
+  var fd=new FormData();fd.append('email',USER.email);fd.append('token',USER.token||'');fd.append('plan',plan);
+  try{
+    var r=await fetch(provider==='paystack'?'/api/paystack/init':'/api/stripe/checkout',{method:'POST',body:fd});
+    var d=await r.json();
+    if(r.ok&&d.url){window.location.href=d.url}
+    else{setSt(d.error||'Payment start failed.','err')}
+  }catch(e){setSt('Network error — try again.','err')}
+}
+if(new URLSearchParams(location.search).get('success')){setSt('✅ Payment successful! Your Pro credits are being added — check the studio in a moment.','ok')}
+if(new URLSearchParams(location.search).get('cancel')){setSt('Payment cancelled — no charge made.','err')}
+init();
+</script>
+</body>
+</html>
