@@ -10,19 +10,32 @@ export async function POST(req: Request) {
       previousSchool, classId 
     } = body;
 
+    // Validate required fields
+    if (!firstName || !lastName || !dob || !gender || !parentName || !email || !phone) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Missing required fields. Please fill in all required information." 
+      }, { status: 400 });
+    }
+
     // 1. Generate the Custom Student ID (e.g. DIT/STU/001)
-    const lastStudent = await prisma.student.findFirst({
-      orderBy: { createdAt: 'desc' }
+    // Find the highest existing DIT/STU/ ID
+    const allStudents = await prisma.student.findMany({
+      select: { id: true }
     });
 
-    let nextNumber = 1;
-    if (lastStudent && lastStudent.id.startsWith("DIT/STU/")) {
-      const lastNumberStr = lastStudent.id.split("/").pop();
-      if (lastNumberStr) {
-        nextNumber = parseInt(lastNumberStr, 10) + 1;
+    let maxNumber = 0;
+    allStudents.forEach(student => {
+      if (student.id.startsWith("DIT/STU/")) {
+        const numStr = student.id.split("/").pop();
+        if (numStr) {
+          const num = parseInt(numStr, 10);
+          if (num > maxNumber) maxNumber = num;
+        }
       }
-    }
-    
+    });
+
+    const nextNumber = maxNumber + 1;
     const formattedNumber = nextNumber.toString().padStart(3, '0');
     const newStudentId = `DIT/STU/${formattedNumber}`;
 
