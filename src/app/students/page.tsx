@@ -316,7 +316,10 @@ export default function StudentsPage() {
                     <tr key={student.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 text-sm font-bold text-[#0033A0]">{student.id}</td>
                       <td className="px-6 py-4">
-                        <p className="text-sm font-bold text-slate-900">{student.firstName} {student.lastName}</p>
+                        <p className="text-sm font-bold text-slate-900">
+                          {student.firstName} {student.lastName}
+                          {student.otherNames && <span className="text-slate-500 font-normal"> {student.otherNames}</span>}
+                        </p>
                         <p className="text-xs text-slate-500">DOB: {new Date(student.dob).toLocaleDateString()}</p>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-700 font-medium">{student.class?.name || 'Unassigned'}</td>

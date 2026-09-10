@@ -38,6 +38,7 @@ model Student {
   password         String   @default("student123") // NEW: Student Login Password
   firstName        String
   lastName         String
+  otherNames       String?  // Middle names, maiden names, etc.
   dob              DateTime
   gender           String
   imageUrl         String?

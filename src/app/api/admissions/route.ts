@@ -5,7 +5,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { 
-      firstName, lastName, dob, gender, 
+      firstName, lastName, otherNames, dob, gender, 
       parentName, email, phone, 
       previousSchool, classId 
     } = body;
@@ -62,6 +62,7 @@ export async function POST(req: Request) {
           id: newStudentId,
           firstName,
           lastName,
+          otherNames: otherNames || null,
           dob: new Date(dob),
           gender,
           previousSchool,
