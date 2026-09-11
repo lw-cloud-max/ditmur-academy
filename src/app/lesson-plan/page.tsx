@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Save, BookOpen, Plus, Loader2, Search, Filter, Trash2, Edit2, FileText, CheckCircle2, ChevronDown, ChevronUp, Sparkles, Wand2, Library } from 'lucide-react';
+import { Save, BookOpen, Plus, Loader2, Search, Filter, Trash2, Edit2, FileText, CheckCircle2, ChevronDown, ChevronUp, Sparkles, Wand2, Library, Upload, File, Download, X } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 
@@ -29,6 +29,11 @@ export default function LessonPlanPage() {
     title: '', week: 1, classId: '', subjectId: '', teacherId: '', 
     schemeOfWork: '', lessonNote: '', evaluation: '', assignment: '', status: 'SUBMITTED'
   });
+
+  // File upload state
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadedFileUrl, setUploadedFileUrl] = useState('');
 
   const fetchData = async () => {
     try {
@@ -69,16 +74,50 @@ export default function LessonPlanPage() {
   useEffect(() => { fetchData(); }, []);
 
   const handleCreatePlan = async (e: React.FormEvent) => {
-    e.preventDefault(); setIsSubmitting(true);
+    e.preventDefault(); 
+    setIsSubmitting(true);
+    
     try {
-      const res = await fetch('/api/lesson-plans', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) });
+      let fileData = null;
+      
+      // Upload file first if selected
+      if (selectedFile) {
+        fileData = await handleFileUpload();
+        if (!fileData) {
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      const planData = {
+        ...formData,
+        fileUrl: fileData?.url || null,
+        fileName: fileData?.name || null,
+        fileSize: fileData?.size || null,
+        fileType: fileData?.type || null,
+      };
+
+      const res = await fetch('/api/lesson-plans', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(planData) 
+      });
+      
       const data = await res.json();
       if (data.success) {
         setIsModalOpen(false);
         setFormData({ title: '', week: 1, classId: '', subjectId: '', teacherId: '', schemeOfWork: '', lessonNote: '', evaluation: '', assignment: '', status: 'SUBMITTED' });
+        setSelectedFile(null);
+        setUploadedFileUrl('');
         fetchData();
-      } else alert(data.error);
-    } catch (err) { alert("Failed to create lesson plan"); } finally { setIsSubmitting(false); }
+      } else {
+        alert(data.error);
+      }
+    } catch (err) { 
+      alert("Failed to create lesson plan"); 
+    } finally { 
+      setIsSubmitting(false); 
+    }
   };
 
   const handleDeletePlan = async (id: string) => {
@@ -151,6 +190,48 @@ export default function LessonPlanPage() {
     } finally {
       setIsGeneratingAI(false);
     }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile) return null;
+
+    setUploadingFile(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', selectedFile);
+      formDataUpload.append('folder', 'lesson-plans');
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formDataUpload
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setUploadedFileUrl(data.data.url);
+        return data.data;
+      } else {
+        alert(data.error);
+        return null;
+      }
+    } catch (error) {
+      alert('Failed to upload file');
+      return null;
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const removeSelectedFile = () => {
+    setSelectedFile(null);
+    setUploadedFileUrl('');
   };
 
   return (
@@ -247,6 +328,34 @@ export default function LessonPlanPage() {
                     <div className="flex justify-end gap-2 mb-2">
                       <button className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 flex items-center gap-1.5"><Edit2 className="w-3.5 h-3.5"/> Edit</button>
                       <button onClick={() => handleDeletePlan(plan.id)} className="px-3 py-1.5 bg-red-50 border border-red-100 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 flex items-center gap-1.5"><Trash2 className="w-3.5 h-3.5"/> Delete</button>
+                    </div>
+                  )}
+
+                  {/* Uploaded File */}
+                  {plan.fileUrl && (
+                    <div className="bg-white rounded-xl border border-slate-200 p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <File className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">{plan.fileName || 'Uploaded Document'}</p>
+                            <p className="text-xs text-slate-500">
+                              {plan.fileSize ? `${(plan.fileSize / 1024 / 1024).toFixed(2)} MB` : 'Document'}
+                            </p>
+                          </div>
+                        </div>
+                        <a
+                          href={plan.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-4 py-2 bg-[#0033A0] text-white rounded-lg text-sm font-bold hover:bg-[#002277] transition-colors"
+                        >
+                          <Download className="w-4 h-4" />
+                          Download
+                        </a>
+                      </div>
                     </div>
                   )}
 
@@ -386,6 +495,73 @@ export default function LessonPlanPage() {
                     <label className="block text-xs font-bold text-amber-600 uppercase tracking-wider mb-1 flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" /> Take-Home Assignment</label>
                     <textarea value={formData.assignment} onChange={e => setFormData({...formData, assignment: e.target.value})} className="w-full h-24 px-4 py-3 bg-amber-50/30 border border-amber-200 rounded-xl text-sm outline-none focus:ring-1 focus:ring-amber-500 resize-none leading-relaxed" placeholder="Homework or reading assignments..." />
                   </div>
+                </div>
+
+                {/* File Upload Section */}
+                <div className="border-t border-slate-200 pt-6">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <Upload className="w-3.5 h-3.5" /> Upload Document (Optional)
+                  </label>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Upload a PDF, DOCX, or PPTX file as an alternative to typing notes manually.
+                  </p>
+                  
+                  {!selectedFile ? (
+                    <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-[#0033A0] transition-colors">
+                      <Upload className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+                      <p className="text-sm font-medium text-slate-700 mb-2">
+                        Drag and drop or click to upload
+                      </p>
+                      <p className="text-xs text-slate-500 mb-4">
+                        PDF, DOCX, PPTX, XLSX, Images (Max 50MB)
+                      </p>
+                      <label className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0033A0] text-white rounded-lg font-bold text-sm hover:bg-[#002277] cursor-pointer transition-colors">
+                        <Upload className="w-4 h-4" />
+                        Choose File
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp"
+                          onChange={handleFileSelect}
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <File className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">{selectedFile.name}</p>
+                            <p className="text-xs text-slate-500">
+                              {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={removeSelectedFile}
+                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                      {uploadingFile && (
+                        <div className="mt-3 flex items-center gap-2 text-sm text-blue-600">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Uploading...
+                        </div>
+                      )}
+                      {uploadedFileUrl && (
+                        <div className="mt-3 flex items-center gap-2 text-sm text-emerald-600">
+                          <CheckCircle2 className="w-4 h-4" />
+                          File uploaded successfully!
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
               </form>

@@ -29,7 +29,11 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { title, week, subjectId, classId, teacherId, schemeOfWork, lessonNote, evaluation, assignment, status } = body;
+    const { 
+      title, week, subjectId, classId, teacherId, 
+      schemeOfWork, lessonNote, evaluation, assignment, status,
+      fileUrl, fileName, fileSize, fileType 
+    } = body;
 
     const plan = await prisma.lessonPlan.create({
       data: {
@@ -42,7 +46,11 @@ export async function POST(req: Request) {
         lessonNote,
         evaluation,
         assignment,
-        status: status || "DRAFT"
+        status: status || "DRAFT",
+        fileUrl: fileUrl || null,
+        fileName: fileName || null,
+        fileSize: fileSize || null,
+        fileType: fileType || null,
       }
     });
 

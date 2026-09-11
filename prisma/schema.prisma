@@ -336,9 +336,15 @@ model LessonPlan {
   teacher       Staff?   @relation(fields: [teacherId], references: [id], onDelete: SetNull)
   
   schemeOfWork  String?  
-  lessonNote    String?
-  evaluation    String?
-  assignment    String?
+  lessonNote    String?  
+  evaluation    String?  
+  assignment    String?  
+
+  // File uploads
+  fileUrl       String?  // URL to uploaded file (PDF, DOCX, PPTX)
+  fileName      String?  // Original file name
+  fileSize      Int?     // File size in bytes
+  fileType      String?  // MIME type (application/pdf, etc.)
 
   status        String   @default("DRAFT") 
 
