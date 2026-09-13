@@ -147,8 +147,8 @@ export default function LandingPage() {
                   Safe & nurturing environment
                 </li>
               </ul>
-              <Link href="/apply" className="text-pink-600 font-bold text-sm flex items-center gap-1 hover:gap-2 transition-all">
-                Learn More <ChevronRight className="w-4 h-4" />
+              <Link href="/programs/creche" className="text-pink-600 font-bold text-sm flex items-center gap-1 hover:gap-2 transition-all">
+                See More <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
 
@@ -175,8 +175,8 @@ export default function LandingPage() {
                   Extracurricular activities
                 </li>
               </ul>
-              <Link href="/apply" className="text-blue-600 font-bold text-sm flex items-center gap-1 hover:gap-2 transition-all">
-                Learn More <ChevronRight className="w-4 h-4" />
+              <Link href="/programs/primary" className="text-blue-600 font-bold text-sm flex items-center gap-1 hover:gap-2 transition-all">
+                See More <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
 
@@ -203,8 +203,8 @@ export default function LandingPage() {
                   Leadership & career guidance
                 </li>
               </ul>
-              <Link href="/apply" className="text-emerald-600 font-bold text-sm flex items-center gap-1 hover:gap-2 transition-all">
-                Learn More <ChevronRight className="w-4 h-4" />
+              <Link href="/programs/secondary" className="text-emerald-600 font-bold text-sm flex items-center gap-1 hover:gap-2 transition-all">
+                See More <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
@@ -471,8 +471,8 @@ export default function LandingPage() {
               © {new Date().getFullYear()} Ditmur Academy. All rights reserved.
             </p>
             <div className="flex gap-6">
-              <a href="#" className="text-blue-400 hover:text-[#FFD700] text-sm transition-colors">Privacy Policy</a>
-              <a href="#" className="text-blue-400 hover:text-[#FFD700] text-sm transition-colors">Terms of Service</a>
+              <Link href="/terms" className="text-blue-400 hover:text-[#FFD700] text-sm transition-colors">Terms of Service</Link>
+              <Link href="/privacy" className="text-blue-400 hover:text-[#FFD700] text-sm transition-colors">Privacy Policy</Link>
             </div>
           </div>
         </div>
