@@ -28,19 +28,23 @@ export async function middleware(request: NextRequest) {
     path === route || path.startsWith(route + '/')
   );
 
-  // Protect all non-public routes
+  // If user is not logged in and trying to access a protected route
   if (!session && !isPublicRoute) {
+    // For API routes, return 401
     if (path.startsWith('/api/')) {
       return NextResponse.json({ success: false, error: 'Unauthorized access. Please log in.' }, { status: 401 });
     }
+    // For page routes, redirect to login
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Redirect logged-in users away from public marketing/auth pages to the dashboard
+  // If user IS logged in and trying to access public marketing pages
   if (session && (path === '/' || path === '/login' || path === '/apply')) {
+    // Redirect to dashboard
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
+  // Allow all other requests
   return NextResponse.next();
 }
 
