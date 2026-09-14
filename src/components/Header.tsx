@@ -1,7 +1,6 @@
-import { Bell, Search } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { auth } from '@/auth';
-import MobileMenu from './MobileMenu';
-import Sidebar from './Sidebar';
+import MobileNav from './MobileNav';
 import LogoutButton from './LogoutButton';
 
 export default async function Header() {
@@ -17,9 +16,7 @@ export default async function Header() {
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 h-16 flex items-center justify-between px-4 lg:px-8 shrink-0 shadow-sm">
       <div className="flex items-center gap-4">
-        <MobileMenu>
-          <Sidebar isMobile={true} />
-        </MobileMenu>
+        <MobileNav />
       </div>
       
       <div className="flex items-center gap-4">
