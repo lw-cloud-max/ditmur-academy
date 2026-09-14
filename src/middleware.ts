@@ -11,8 +11,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Define public routes
-  const isPublicRoute = path === '/' || path.startsWith('/apply') || path.startsWith('/api/apply') || path === '/login';
+  // Define public routes (accessible without login)
+  const publicRoutes = [
+    '/',
+    '/login',
+    '/apply',
+    '/api/apply',
+    '/programs/creche',
+    '/programs/primary',
+    '/programs/secondary',
+    '/terms',
+    '/privacy'
+  ];
+
+  const isPublicRoute = publicRoutes.some(route => 
+    path === route || path.startsWith(route + '/')
+  );
 
   // Protect all non-public routes
   if (!session && !isPublicRoute) {
