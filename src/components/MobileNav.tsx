@@ -96,15 +96,19 @@ export default function MobileNav() {
 
       {/* Mobile Menu Overlay */}
       {isOpen && (
-        <div className="md:hidden fixed inset-0 z-[100]">
+        <div className="md:hidden fixed inset-0" style={{ zIndex: 9999 }}>
           {/* Backdrop */}
           <div 
             className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" 
             onClick={() => setIsOpen(false)} 
+            style={{ zIndex: 10000 }}
           />
           
           {/* Menu Panel */}
-          <div className="fixed inset-y-0 left-0 w-80 max-w-[85vw] bg-gradient-to-b from-[#0A192F] to-[#001744] shadow-xl">
+          <div 
+            className="fixed inset-y-0 left-0 w-80 max-w-[85vw] bg-gradient-to-b from-[#0A192F] to-[#001744] shadow-xl"
+            style={{ zIndex: 10001 }}
+          >
             {/* Header */}
             <div className="p-5 flex items-center justify-between border-b border-[#112240]">
               <div className="flex items-center gap-3">
