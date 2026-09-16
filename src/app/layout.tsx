@@ -99,6 +99,8 @@ export default async function RootLayout({
               </main>
             </div>
           </div>
+          {/* Mobile Menu Portal - Rendered outside overflow container */}
+          <div id="mobile-menu-portal"></div>
         </SessionProvider>
         <script
           dangerouslySetInnerHTML={{
