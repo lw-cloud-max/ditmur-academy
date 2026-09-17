@@ -16,13 +16,13 @@ export default function LandingPage() {
       <div className="bg-[#0A192F] text-white py-2 px-6 lg:px-12 text-sm hidden md:block">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-6">
-            <a href="mailto:info@ditmuracademy.edu.ng" className="flex items-center gap-2 hover:text-[#FFD700] transition-colors">
+            <a href="mailto:ditmuracademy@gmail.com" className="flex items-center gap-2 hover:text-[#FFD700] transition-colors">
               <Mail className="w-3.5 h-3.5" />
-              info@ditmuracademy.edu.ng
+              ditmuracademy@gmail.com
             </a>
-            <a href="tel:+2348012345678" className="flex items-center gap-2 hover:text-[#FFD700] transition-colors">
+            <a href="tel:+2348038164705" className="flex items-center gap-2 hover:text-[#FFD700] transition-colors">
               <Phone className="w-3.5 h-3.5" />
-              +234 801 234 5678
+              08038164705
             </a>
           </div>
           <div className="flex items-center gap-4">
@@ -448,15 +448,18 @@ export default function LandingPage() {
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <MapPin className="w-5 h-5 text-[#FFD700] mt-0.5 shrink-0" />
-                  <p className="text-blue-300 text-sm">123 Academy Road, Lagos, Nigeria</p>
+                  <p className="text-blue-300 text-sm">11, Adeshina Close Off Pipeline, Ishasi Akute, Ogun State</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <Phone className="w-5 h-5 text-[#FFD700] shrink-0" />
-                  <p className="text-blue-300 text-sm">+234 801 234 5678</p>
+                  <div className="text-blue-300 text-sm">
+                    <p>08038164705</p>
+                    <p>09069937111</p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-[#FFD700] shrink-0" />
-                  <p className="text-blue-300 text-sm">info@ditmuracademy.edu.ng</p>
+                  <p className="text-blue-300 text-sm">ditmuracademy@gmail.com</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <Clock className="w-5 h-5 text-[#FFD700] shrink-0" />
