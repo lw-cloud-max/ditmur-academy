@@ -7,7 +7,7 @@ import {
   LayoutDashboard, UserPlus, MonitorPlay, Users, UserCircle, 
   GraduationCap, CalendarDays, ClipboardCheck, FileSpreadsheet,
   Settings2, BookOpen, MessageSquare, MessageCircle, CreditCard, HelpCircle,
-  Settings, School, FileQuestion, Trophy, Gamepad2, Lightbulb, Library, FileText, Bot, Award, FolderOpen, Video, Database
+  Settings, School, FileQuestion, Trophy, Gamepad2, Lightbulb, Library, FileText, Bot, Award, FolderOpen, Video, Database, Lock
 } from 'lucide-react';
 
 export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
@@ -48,6 +48,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'Messaging', icon: MessageSquare, path: '/messaging' },
     { name: 'Payments', icon: CreditCard, path: '/payments' },
     { name: 'Configuration', icon: Settings, path: '/configuration' },
+    { name: 'Change Password', icon: Lock, path: '/change-password' },
     { name: 'Help', icon: HelpCircle, path: '/help' },
   ];
 
@@ -65,6 +66,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'Study Hub', icon: Gamepad2, path: '/study-hub', isFun: true },
     { name: 'Hall of Fame', icon: Trophy, path: '/hall-of-fame', isFun: true },
     { name: 'Daily Trivia', icon: Lightbulb, path: '/trivia', isFun: true },
+    { name: 'Change Password', icon: Lock, path: '/change-password' },
   ];
 
   // 3. PARENT MENU
@@ -76,6 +78,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'Child Portfolio', icon: FolderOpen, path: '/portfolio' },
     { name: 'Fee Payments', icon: CreditCard, path: '/payments' },
     { name: 'School Calendar', icon: CalendarDays, path: '/calendar' },
+    { name: 'Change Password', icon: Lock, path: '/change-password' },
     { name: 'Support', icon: HelpCircle, path: '/help' },
   ];
 
