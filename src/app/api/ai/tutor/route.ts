@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createOpenAIClient, getAIModel, isAIConfigured } from '@/lib/ai-config';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -9,57 +10,57 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Message is required' }, { status: 400 });
     }
 
-    console.log('AI Tutor Request:', { message: message.substring(0, 50), subject, studentLevel });
-
-    const openai = createOpenAIClient();
-
-    if (!openai || !isAIConfigured()) {
-      console.log('AI not configured, returning mock response');
+    // Check for API key
+    const apiKey = process.env.OPENAI_API_KEY;
+    
+    if (!apiKey) {
+      console.log('OPENAI_API_KEY not found in environment');
       return NextResponse.json({ 
         success: true, 
-        response: `I'd love to help you with "${message}"! However, the AI Tutor is currently in demo mode. To enable full AI capabilities, please configure the AGENTROUTER_API_KEY in your environment variables.\n\nIn the meantime, here are some study tips:\n• Break down complex problems into smaller parts\n• Practice regularly with different examples\n• Don't hesitate to ask your teacher for help\n• Use the Study Hub for flashcards and trivia!` 
+        response: `I'd love to help with "${message}"! However, the AI Tutor needs an OpenAI API key to be configured. Please ask your administrator to add OPENAI_API_KEY to the environment variables.`
       });
     }
 
-    const systemPrompt = `You are Ditmur Academy's AI Tutor, a friendly and knowledgeable educational assistant. 
-Your role is to help students understand concepts, solve problems, and learn effectively.
-
-Guidelines:
-- Be encouraging and supportive
-- Explain concepts clearly with examples
-- Break down complex topics into simpler parts
-- Use age-appropriate language for ${studentLevel || 'secondary school'} students
-- If a student asks about ${subject || 'a subject'}, provide subject-specific help
-- Encourage critical thinking rather than just giving answers
-- Use emojis occasionally to make learning fun 📚✨
-
-Current context:
-- Student level: ${studentLevel || 'Secondary School'}
-- Subject focus: ${subject || 'General'} (if specified by student)`;
-
-    const model = getAIModel();
-    console.log('Calling AI API with model:', model);
-
-    const completion = await openai.chat.completions.create({
-      model: model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message }
-      ],
-      max_tokens: 1000,
-      temperature: 0.7,
+    // Make direct API call to OpenAI
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: process.env.AI_MODEL || 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are Ditmur Academy's AI Tutor. Be helpful, encouraging, and educational. Use emojis occasionally. Explain concepts clearly for ${studentLevel || 'secondary school'} students.`
+          },
+          { role: 'user', content: message }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7,
+      }),
     });
 
-    const response = completion.choices[0]?.message?.content || 'I apologize, I could not generate a response. Please try again.';
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('OpenAI API error:', response.status, errorData);
+      return NextResponse.json({ 
+        success: false, 
+        error: `OpenAI API error: ${response.status}` 
+      }, { status: 500 });
+    }
 
-    console.log('AI response received successfully');
+    const data = await response.json();
+    const aiResponse = data.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
 
-    return NextResponse.json({ success: true, response });
+    return NextResponse.json({ success: true, response: aiResponse });
+
   } catch (error: any) {
-    console.error('AI Tutor Error:', error.message);
+    console.error('AI Tutor Error:', error);
     return NextResponse.json({ 
       success: false, 
-      error: `AI Tutor error: ${error.message}` 
+      error: `Error: ${error.message}` 
     }, { status: 500 });
   }
 }
