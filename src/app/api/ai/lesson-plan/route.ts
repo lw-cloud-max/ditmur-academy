@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
+  let title = '';
+
   try {
-    const { title } = await req.json();
+    const body = await req.json();
+    title = body.title;
 
     if (!title) {
       return NextResponse.json({ success: false, error: 'Topic is required' }, { status: 400 });
@@ -62,7 +65,7 @@ export async function POST(req: Request) {
 
   } catch (error) {
     console.error('Lesson plan error:', error);
-    return getMockData(title);
+    return getMockData(title || 'Unknown Topic');
   }
 }
 

@@ -1,74 +1,53 @@
 import { NextResponse } from 'next/server';
-import { createOpenAIClient, getAIModel, isAIConfigured } from '@/lib/ai-config';
+import { prisma } from '@/lib/prisma';
+import { auth } from '@/auth';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    const { topic, numQuestions, examType, subject, action, question, options, correctAnswer } = await req.json();
+    const body = await req.json();
+    const { topic, numQuestions, examType, subject, action, question, options, correctAnswer } = body;
 
     console.log('AI CBT Request:', { action, topic, numQuestions, examType, subject });
 
-    const openai = createOpenAIClient();
+    const apiKey = process.env.OPENAI_API_KEY;
 
-    if (!openai || !isAIConfigured()) {
-      console.log('AI not configured, returning mock response');
-      
-      // Return mock questions when AI is not configured
-      if (action === 'explain') {
-        return NextResponse.json({ 
-          success: true, 
-          explanation: `This question tests your understanding of the concept. The correct answer is ${correctAnswer}. Please review the topic for a detailed understanding.` 
-        });
-      }
-
-      // Generate mock questions
-      const mockQuestions = [];
-      for (let i = 1; i <= (numQuestions || 5); i++) {
-        mockQuestions.push({
-          questionNumber: i,
-          text: `Sample ${subject || 'Mathematics'} question ${i} about ${topic || 'general topics'}?`,
-          optionA: 'Option A',
-          optionB: 'Option B',
-          optionC: 'Option C',
-          optionD: 'Option D',
-          correctAnswer: 'B',
-          explanation: `This is a sample explanation for question ${i}. The correct answer is B because it directly relates to the concept being tested.`,
-          topic: topic || 'General',
-          difficulty: i % 3 === 0 ? 'HARD' : i % 3 === 1 ? 'EASY' : 'MEDIUM'
-        });
-      }
-
-      return NextResponse.json({ success: true, data: mockQuestions });
+    if (!apiKey) {
+      console.log('OPENAI_API_KEY not configured');
+      return NextResponse.json({ 
+        success: false, 
+        error: 'OpenAI API key not configured' 
+      }, { status: 500 });
     }
 
     // Action: Generate explanation for a single question
     if (action === 'explain' && question) {
       console.log('Generating explanation for question');
       
-      const prompt = `You are an expert ${subject || 'academic'} tutor. Provide a clear, step-by-step explanation for this multiple-choice question:
-
-Question: ${question}
-Options:
-A. ${options.A}
-B. ${options.B}
-C. ${options.C}
-D. ${options.D}
-Correct Answer: ${correctAnswer}
-
-Provide a detailed explanation that helps the student understand WHY the correct answer is correct. Include:
-1. The concept being tested
-2. Step-by-step solution process
-3. Why other options are incorrect (if relevant)
-
-Keep it concise but educational. Maximum 200 words.`;
-
-      const completion = await openai.chat.completions.create({
-        model: getAIModel(),
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 500,
-        temperature: 0.7,
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: process.env.AI_MODEL || 'gpt-4o-mini',
+          messages: [{ 
+            role: 'user', 
+            content: `Provide a clear, step-by-step explanation for this question:\n\nQuestion: ${question}\nOptions:\nA. ${options.A}\nB. ${options.B}\nC. ${options.C}\nD. ${options.D}\nCorrect Answer: ${correctAnswer}\n\nExplain why the correct answer is correct and why others are wrong. Keep it concise and educational.` 
+          }],
+          max_tokens: 500,
+          temperature: 0.7,
+        }),
       });
 
-      const explanation = completion.choices[0]?.message?.content || '';
+      if (!response.ok) {
+        return NextResponse.json({ success: false, error: 'AI API error' }, { status: 500 });
+      }
+
+      const data = await response.json();
+      const explanation = data.choices?.[0]?.message?.content || '';
       return NextResponse.json({ success: true, explanation });
     }
 
@@ -79,70 +58,52 @@ Keep it concise but educational. Maximum 200 words.`;
 
     console.log('Generating', numQuestions, 'questions for topic:', topic);
 
-    const prompt = `You are an expert in Nigerian education. Generate ${numQuestions} multiple-choice questions for ${examType || 'JAMB'} ${subject || 'Mathematics'} exam on the topic: "${topic}".
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: process.env.AI_MODEL || 'gpt-4o-mini',
+        messages: [{ 
+          role: 'user', 
+          content: `Generate ${numQuestions} multiple-choice questions about "${topic}" for ${subject || 'Mathematics'}.
 
-For each question, provide:
-1. The question text
-2. Four options (A, B, C, D)
-3. The correct answer (A, B, C, or D)
-4. A detailed explanation/solution
-5. The topic category
-6. Difficulty level (EASY, MEDIUM, or HARD)
+Return as JSON array:
+[{"questionNumber":1,"text":"Question?","optionA":"A","optionB":"B","optionC":"C","optionD":"D","correctAnswer":"B","explanation":"Why B is correct","topic":"${topic}","difficulty":"EASY"}]
 
-Return the response as a JSON array with this exact structure:
-[
-  {
-    "questionNumber": 1,
-    "text": "Question text here",
-    "optionA": "Option A text",
-    "optionB": "Option B text",
-    "optionC": "Option C text",
-    "optionD": "Option D text",
-    "correctAnswer": "B",
-    "explanation": "Step-by-step explanation here",
-    "topic": "Topic name",
-    "difficulty": "EASY"
-  }
-]
-
-Make sure:
-- Questions are appropriate for ${examType || 'JAMB'} level
-- Explanations are clear and educational
-- Mix of difficulty levels
-- Questions test understanding, not just memorization
-- Return ONLY the JSON array, no other text`;
-
-    const completion = await openai.chat.completions.create({
-      model: getAIModel(),
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 4000,
-      temperature: 0.8,
+Return ONLY the JSON array, no other text.` 
+        }],
+        max_tokens: 4000,
+        temperature: 0.8,
+      }),
     });
 
-    const responseText = completion.choices[0]?.message?.content || '';
-    console.log('AI response received, length:', responseText.length);
+    if (!response.ok) {
+      console.error('OpenAI API error:', response.status);
+      return NextResponse.json({ success: false, error: 'AI API error' }, { status: 500 });
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
     
-    // Parse the JSON response
+    // Parse JSON from response
     try {
-      // Try to extract JSON from the response
-      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const questions = JSON.parse(jsonMatch[0]);
-        console.log('Successfully parsed', questions.length, 'questions');
+        console.log('Generated', questions.length, 'questions');
         return NextResponse.json({ success: true, data: questions });
-      } else {
-        console.error('No JSON array found in response');
-        return NextResponse.json({ success: false, error: 'Failed to parse AI response' }, { status: 500 });
       }
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError);
-      return NextResponse.json({ success: false, error: 'Failed to parse AI response as JSON' }, { status: 500 });
+    } catch (e) {
+      console.error('JSON parse error:', e);
     }
+
+    return NextResponse.json({ success: false, error: 'Failed to parse AI response' }, { status: 500 });
+
   } catch (error: any) {
     console.error('AI CBT Error:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: `AI error: ${error.message}` 
-    }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
