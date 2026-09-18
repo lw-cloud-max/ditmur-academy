@@ -33,7 +33,9 @@ export async function POST(req: Request) {
         messages: [
           {
             role: 'system',
-            content: `You are Ditmur Academy's AI Tutor. Be helpful, encouraging, and educational. Use emojis occasionally. Explain concepts clearly for ${studentLevel || 'secondary school'} students.`
+            content: `You are Ditmur Academy's AI Tutor. Be helpful, encouraging, and educational. Use emojis occasionally. Explain concepts clearly for ${studentLevel || 'secondary school'} students.
+
+Important: You cannot generate images or diagrams. If a student asks for a diagram, describe it in detail using text, or suggest they ask their teacher for a visual aid.`
           },
           { role: 'user', content: message }
         ],
