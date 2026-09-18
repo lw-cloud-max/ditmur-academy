@@ -115,7 +115,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== 'ADMIN') {
+    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'STAFF')) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -125,21 +125,24 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: false, error: 'Questions array required' }, { status: 400 });
     }
 
+    // Get existing question count for auto-numbering
+    const existingCount = await prisma.examQuestionBank.count();
+
     const result = await prisma.examQuestionBank.createMany({
-      data: questions.map((q: any) => ({
+      data: questions.map((q: any, index: number) => ({
         examType: q.examType,
         subject: q.subject,
         year: q.year ? parseInt(q.year) : null,
-        questionNumber: parseInt(q.questionNumber),
+        questionNumber: q.questionNumber ? parseInt(q.questionNumber) : existingCount + index + 1,
         text: q.text,
         imageUrl: q.imageUrl,
         optionA: q.optionA,
         optionB: q.optionB,
         optionC: q.optionC,
         optionD: q.optionD,
-        correctAnswer: q.correctAnswer.toUpperCase(),
-        explanation: q.explanation,
-        topic: q.topic,
+        correctAnswer: (q.correctAnswer || 'A').toUpperCase(),
+        explanation: q.explanation || null,
+        topic: q.topic || null,
         difficulty: q.difficulty || 'MEDIUM'
       })),
       skipDuplicates: true

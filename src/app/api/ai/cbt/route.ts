@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { auth } from '@/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +33,7 @@ export async function POST(req: Request) {
           model: process.env.AI_MODEL || 'gpt-4o-mini',
           messages: [{ 
             role: 'user', 
-            content: `Provide a clear, step-by-step explanation for this question:\n\nQuestion: ${question}\nOptions:\nA. ${options.A}\nB. ${options.B}\nC. ${options.C}\nD. ${options.D}\nCorrect Answer: ${correctAnswer}\n\nExplain why the correct answer is correct and why others are wrong. Keep it concise and educational.` 
+            content: `Provide a clear explanation for this question:\n\nQuestion: ${question}\nA. ${options.A}\nB. ${options.B}\nC. ${options.C}\nD. ${options.D}\nCorrect: ${correctAnswer}\n\nExplain why the answer is correct. Keep it concise.` 
           }],
           max_tokens: 500,
           temperature: 0.7,
@@ -71,9 +69,9 @@ export async function POST(req: Request) {
           content: `Generate ${numQuestions} multiple-choice questions about "${topic}" for ${subject || 'Mathematics'}.
 
 Return as JSON array:
-[{"questionNumber":1,"text":"Question?","optionA":"A","optionB":"B","optionC":"C","optionD":"D","correctAnswer":"B","explanation":"Why B is correct","topic":"${topic}","difficulty":"EASY"}]
+[{"text":"Question?","optionA":"A","optionB":"B","optionC":"C","optionD":"D","correctAnswer":"B","explanation":"Why B is correct","topic":"${topic}","difficulty":"EASY"}]
 
-Return ONLY the JSON array, no other text.` 
+Return ONLY the JSON array.` 
         }],
         max_tokens: 4000,
         temperature: 0.8,
