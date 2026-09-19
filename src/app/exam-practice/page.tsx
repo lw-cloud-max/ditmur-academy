@@ -64,14 +64,17 @@ export default function ExamPracticePage() {
   const [practiceHistory, setPracticeHistory] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
-  // Fetch history on mount
-  useEffect(() => {
-    fetchHistory();
-  }, []);
+  // Available subjects by exam type
+  const subjectsByExam: Record<string, string[]> = {
     'JAMB': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature in English', 'Christian Religious Studies', 'Islamic Studies', 'Commerce', 'Accounting', 'Geography', 'History', 'Agricultural Science', 'Computer Studies'],
     'WAEC': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature in English', 'Christian Religious Studies', 'Islamic Studies', 'Commerce', 'Financial Accounting', 'Geography', 'History', 'Agricultural Science', 'Computer Studies', 'Further Mathematics', 'Technical Drawing'],
     'NECO': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature in English', 'Christian Religious Studies', 'Islamic Studies', 'Commerce', 'Financial Accounting', 'Geography', 'History', 'Agricultural Science', 'Computer Studies', 'Further Mathematics']
   };
+
+  // Fetch history on mount
+  useEffect(() => {
+    fetchHistory();
+  }, []);
 
   // Timer
   useEffect(() => {
