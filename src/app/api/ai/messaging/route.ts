@@ -3,47 +3,70 @@ import { NextResponse } from 'next/server';
 export async function POST(req: Request) {
   try {
     const { prompt } = await req.json();
-    if (!prompt) return NextResponse.json({ success: false, error: 'Prompt is required' }, { status: 400 });
+    
+    if (!prompt) {
+      return NextResponse.json({ success: false, error: 'Prompt is required' }, { status: 400 });
+    }
 
-    /* 
-      ======================================================
-      REAL AI INTEGRATION (CLAUDE / ANTHROPIC)
-      ======================================================
-      To make this real, run: npm install @anthropic-ai/sdk
-      Then uncomment the code below:
+    const apiKey = process.env.OPENAI_API_KEY;
 
-      import Anthropic from '@anthropic-ai/sdk';
-      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-      const response = await anthropic.messages.create({
-        model: "claude-3-5-sonnet-20240620",
-        max_tokens: 1000,
-        system: "You are the Principal of Ditmur Academy. Compose a professional, warm, and highly articulate email or SMS to parents based on the user's rough prompt. Return a JSON object with 'subject' and 'message' keys.",
-        messages: [{ role: "user", content: `Prompt: ${prompt}` }]
+    if (!apiKey) {
+      // Fallback to mock data if no API key
+      return NextResponse.json({ 
+        success: true, 
+        data: { 
+          subject: "Important Update from Ditmur Academy", 
+          message: `Dear Parents and Guardians,\n\nRegarding: ${prompt}\n\nWe would like to inform you about the above matter. Please contact the school office for more details.\n\nWarm regards,\nThe Administration\nDitmur Academy` 
+        } 
       });
+    }
 
-      const aiData = JSON.parse(response.content[0].text);
-      return NextResponse.json({ success: true, data: aiData });
-      ======================================================
-    */
+    // Call OpenAI API directly
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: process.env.AI_MODEL || 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are the Principal of Ditmur Academy. Compose a professional, warm, and articulate email or SMS to parents. Return JSON with "subject" and "message" keys.'
+          },
+          { role: 'user', content: `Write a message about: ${prompt}` }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7,
+      }),
+    });
 
-    await new Promise(resolve => setTimeout(resolve, 2500));
+    if (!response.ok) {
+      throw new Error('AI API error');
+    }
 
-    const aiSubject = "Important Update from Ditmur Academy";
-    const aiMessage = `Dear Parents and Guardians,
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
 
-I hope this message finds you well. 
+    // Try to parse JSON from response
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return NextResponse.json({ success: true, data: parsed });
+      }
+    } catch (e) {
+      // If JSON parsing fails, return as plain message
+    }
 
-Regarding your query: "${prompt}", we would like to formally advise that all necessary arrangements have been put in place by the school administration to ensure the best possible outcome for our students.
+    return NextResponse.json({ 
+      success: true, 
+      data: { subject: "Message from Ditmur Academy", message: content } 
+    });
 
-As always, Ditmur Academy remains committed to cultivating excellence and discipline. Should you have any further questions, please do not hesitate to contact the school office.
-
-Warm regards,
-The Administration
-Ditmur Academy`;
-
-    return NextResponse.json({ success: true, data: { subject: aiSubject, message: aiMessage } });
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to generate AI message." }, { status: 500 });
+    console.error('Messaging AI error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to generate message' }, { status: 500 });
   }
 }
