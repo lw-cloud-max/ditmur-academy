@@ -24,7 +24,6 @@ export async function GET(req: Request) {
         id: true,
         firstName: true,
         lastName: true,
-        otherNames: true,
         dob: true,
         gender: true,
         status: true,

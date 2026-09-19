@@ -30,11 +30,11 @@ export async function POST(req: Request) {
         messages: [
           {
             role: 'system',
-            content: `You are an expert curriculum developer and teacher. Create a comprehensive, detailed lesson plan for Nigerian schools. Return ONLY valid JSON with these exact keys: schemeOfWork, lessonNote, evaluation, assignment. Make the content detailed and practical.`
+            content: `You are an expert curriculum developer. Create a detailed lesson plan for Nigerian schools. Return ONLY valid JSON.`
           },
           {
             role: 'user',
-            content: `Create a detailed lesson plan for the topic: "${title}". Include:\n1. Scheme of Work with objectives\n2. Comprehensive lesson note for students\n3. Evaluation questions\n4. Take-home assignment\n\nReturn as JSON: {"schemeOfWork": "...", "lessonNote": "...", "evaluation": "...", "assignment": "..."}`
+            content: `Create a lesson plan for: "${title}"\n\nReturn JSON with these keys:\n{\n  "schemeOfWork": "Weekly scheme with objectives",\n  "lessonNote": "Detailed lesson note for students",\n  "evaluation": "Evaluation questions",\n  "assignment": "Take-home assignment"\n}`
           }
         ],
         max_tokens: 4000,
@@ -54,19 +54,34 @@ export async function POST(req: Request) {
       return getMockData(title);
     }
 
+    // Try to parse JSON from response
     try {
-      // Try to parse JSON from the response
-      const parsed = JSON.parse(content);
-      return NextResponse.json({ success: true, data: parsed });
-    } catch {
-      // If JSON parsing fails, return mock data
-      return getMockData(title);
+      // Extract JSON from response (might be wrapped in markdown)
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return NextResponse.json({ success: true, data: parsed });
+      }
+    } catch (e) {
+      console.log('JSON parse failed, using mock data');
     }
+
+    return getMockData(title);
 
   } catch (error) {
     console.error('Lesson plan error:', error);
     return getMockData(title || 'Unknown Topic');
   }
+}
+
+function getMockData(title: string) {
+  const data = {
+    schemeOfWork: `WEEKLY SCHEME OF WORK\nTopic: ${title}\n\nOBJECTIVES:\nBy the end of this lesson, students should be able to:\n1. Define and explain ${title}\n2. Identify real-world applications\n3. Solve problems related to the topic\n\nINSTRUCTIONAL MATERIALS:\n- Whiteboard\n- Textbook\n- Handouts\n\nTEACHING METHODOLOGY:\n- Direct Instruction (30%)\n- Interactive Q&A (20%)\n- Guided Practice (30%)\n- Independent Work (20%)`,
+    lessonNote: `LESSON NOTE: ${title.toUpperCase()}\n\n1. INTRODUCTION\n${title} is an important topic in this subject.\n\n2. KEY CONCEPTS\n- Definition\n- Main principles\n- Important formulas\n\n3. EXAMPLES\nExample 1: Basic application\nExample 2: Real-world scenario\n\n4. SUMMARY\n- Key points to remember\n- Common mistakes to avoid\n\nPlease copy these notes.`,
+    evaluation: `EVALUATION:\n1. Define ${title}\n2. Give one example\n3. What are the key principles?`,
+    assignment: `ASSIGNMENT:\n1. Read textbook chapter on ${title}\n2. Answer questions 1-5\n3. Research one application of ${title}`
+  };
+  return NextResponse.json({ success: true, data });
 }
 
 function getMockData(title: string) {
