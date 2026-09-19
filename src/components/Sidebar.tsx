@@ -36,7 +36,6 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'Video Meetings', icon: Video, path: '/video-meetings' },
     { name: 'Broadsheet', icon: FileSpreadsheet, path: '/broadsheet' },
     { name: 'Assessment Format', icon: Settings2, path: '/assessment-format' },
-    { name: 'Internal Exams', icon: FileQuestion, path: '/internal-exams' },
     { name: 'Entrance Exam', icon: MonitorPlay, path: '/entrance-exam' },
     { name: 'CBT Portal', icon: MonitorPlay, path: '/cbt' },
     { name: 'Scheme of Work', icon: Library, path: '/schemes' }, 
