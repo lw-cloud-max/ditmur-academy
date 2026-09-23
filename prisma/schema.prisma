@@ -61,6 +61,7 @@ model Student {
   smsNotifications SMSNotification[]
   portfolio        Portfolio[]
   practiceSessions PracticeSession[]
+  internalExamAttempts InternalExamAttempt[]
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -607,6 +608,7 @@ model InternalQuestionBank {
   topic         String?
   difficulty    String   @default("MEDIUM") // EASY, MEDIUM, HARD
   isActive      Boolean  @default(true)
+  internalExamNewQuestions InternalExamNewQuestion[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
