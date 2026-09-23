@@ -451,7 +451,7 @@ export default function InternalQuestionBankPage() {
                       ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-medium' 
                       : 'bg-slate-50 border-slate-200 text-slate-700'
                   }`}>
-                    <span className="font-bold">{opt}.</span> {q[`option${opt}` as keyof Question]}
+                    <span className="font-bold">{opt}.</span> {String(q[`option${opt}` as keyof Question] || '')}
                     {q.correctAnswer === opt && <CheckCircle2 className="w-4 h-4 text-emerald-500 inline ml-2" />}
                   </div>
                 ))}
