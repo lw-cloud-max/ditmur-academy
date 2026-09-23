@@ -93,6 +93,7 @@ model Staff {
   lessonPlans LessonPlan[] 
   conversations Conversation[]
   videoMeetings VideoMeeting[]
+  internalExamsNew InternalExamNew[]
 
   hireDate    DateTime @default(now())
   createdAt   DateTime @default(now())
@@ -111,6 +112,8 @@ model Class {
   questionBank     QuestionBank[] 
   lessonPlans      LessonPlan[] 
   attendance        Attendance[]
+  internalQuestionBank InternalQuestionBank[]
+  internalExamsNew InternalExamNew[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -124,6 +127,8 @@ model Subject {
   questionBank     QuestionBank[] 
   lessonPlans      LessonPlan[] 
   ministrySchemes  MinistryScheme[] 
+  internalQuestionBank InternalQuestionBank[]
+  internalExamsNew InternalExamNew[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -579,5 +584,100 @@ model PracticeAnswer {
   explanation   String?  // Detailed solution
   topic         String?  // e.g., "Algebra", "Organic Chemistry"
   timeTaken     Int      // In seconds
+  createdAt     DateTime @default(now())
+}
+
+// ------------------------------------------------------
+// INTERNAL EXAM SYSTEM
+// ------------------------------------------------------
+model InternalQuestionBank {
+  id            String   @id @default(cuid())
+  subjectId     String
+  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  classId       String?
+  class         Class?   @relation(fields: [classId], references: [id], onDelete: SetNull)
+  text          String
+  imageUrl      String?
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctAnswer String   // A, B, C, or D
+  explanation   String?
+  topic         String?
+  difficulty    String   @default("MEDIUM") // EASY, MEDIUM, HARD
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model InternalExamNew {
+  id              String   @id @default(cuid())
+  title           String
+  description     String?
+  subjectId       String
+  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  classId         String?
+  class           Class?   @relation(fields: [classId], references: [id], onDelete: SetNull)
+  durationMinutes Int      @default(60)
+  totalMarks      Int      @default(100)
+  passingMarks    Int      @default(40)
+  startTime       DateTime?
+  endTime         DateTime?
+  isActive        Boolean  @default(false)
+  shuffleQuestions Boolean @default(false)
+  showResults     Boolean  @default(false) // Show results after submission
+  createdBy       String   // Staff ID
+  creator         Staff    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  questions       InternalExamNewQuestion[]
+  attempts        InternalExamAttempt[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model InternalExamNewQuestion {
+  id            String   @id @default(cuid())
+  examId        String
+  exam          InternalExamNew @relation(fields: [examId], references: [id], onDelete: Cascade)
+  questionBankId String?
+  questionBank  InternalQuestionBank? @relation(fields: [questionBankId], references: [id], onDelete: SetNull)
+  // Store question data directly (in case bank question is deleted)
+  text          String
+  imageUrl      String?
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctAnswer String
+  explanation   String?
+  marks         Int      @default(1)
+  orderIndex    Int
+  createdAt     DateTime @default(now())
+}
+
+model InternalExamAttempt {
+  id          String   @id @default(cuid())
+  examId      String
+  exam        InternalExamNew @relation(fields: [examId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  startedAt   DateTime @default(now())
+  submittedAt DateTime?
+  score       Float?
+  totalMarks  Int?
+  isPassed    Boolean?
+  answers     InternalExamAnswer[]
+  createdAt   DateTime @default(now())
+  @@unique([examId, studentId])
+}
+
+model InternalExamAnswer {
+  id            String   @id @default(cuid())
+  attemptId     String
+  attempt       InternalExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId    String
+  selectedAnswer String? // A, B, C, D, or null if skipped
+  isCorrect     Boolean
+  marksObtained Float
   createdAt     DateTime @default(now())
 }
