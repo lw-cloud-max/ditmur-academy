@@ -95,9 +95,9 @@ export default function MobileNav() {
         <Menu className="w-6 h-6" />
       </button>
 
-      {/* Mobile Menu - Uses portal-like behavior with high z-index */}
+      {/* Mobile Menu Overlay */}
       {isOpen && (
-        <div className="md:hidden fixed inset-0" style={{ zIndex: 99999 }}>
+        <div className="fixed inset-0 md:hidden" style={{ zIndex: 99999 }}>
           {/* Backdrop */}
           <div 
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
