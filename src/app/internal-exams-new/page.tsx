@@ -139,13 +139,22 @@ export default function InternalExamsPage() {
           </h1>
           <p className="text-slate-500 mt-1">Create and manage exams for students</p>
         </div>
-        <Link
-          href="/internal-question-bank"
-          className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2"
-        >
-          <BookOpen className="w-5 h-5" />
-          Question Bank
-        </Link>
+        <div className="flex gap-3">
+          <Link
+            href="/internal-question-bank"
+            className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2"
+          >
+            <BookOpen className="w-5 h-5" />
+            Question Bank
+          </Link>
+          <Link
+            href="/internal-exams-new/create"
+            className="px-6 py-3 bg-[#0033A0] text-white rounded-xl font-bold hover:bg-[#002277] transition-colors flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Create Exam
+          </Link>
+        </div>
       </div>
 
       {/* Info Card */}

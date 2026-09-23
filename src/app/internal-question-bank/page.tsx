@@ -41,6 +41,14 @@ export default function InternalQuestionBankPage() {
     correctAnswer: 'A', explanation: '', topic: '', difficulty: 'MEDIUM' 
   });
 
+  const [isBulkUploading, setIsBulkUploading] = useState(false);
+  const [bulkCsv, setBulkCsv] = useState('');
+  const [uploadingBulk, setUploadingBulk] = useState(false);
+
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiNumQuestions, setAiNumQuestions] = useState(5);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editQ, setEditQ] = useState<any>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -141,6 +149,101 @@ export default function InternalQuestionBankPage() {
     }
   };
 
+  const handleBulkUpload = async () => {
+    if (!bulkCsv.trim()) return;
+    setUploadingBulk(true);
+    try {
+      const lines = bulkCsv.split('\n');
+      const parsedQuestions = [];
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const parts = line.split('|').map(s => s.trim());
+        if (parts.length >= 6) {
+          const [text, optionA, optionB, optionC, optionD, correctAnswer, explanation, topic, difficulty] = parts;
+          if (text && optionA && optionB && optionC && optionD && correctAnswer) {
+            parsedQuestions.push({ 
+              subjectId: newQ.subjectId || subjects[0]?.id,
+              text, optionA, optionB, optionC, optionD, 
+              correctAnswer: correctAnswer.toUpperCase(), 
+              explanation: explanation || '',
+              topic: topic || '',
+              difficulty: difficulty || 'MEDIUM'
+            });
+          }
+        }
+      }
+      
+      if (parsedQuestions.length === 0) {
+        alert("No valid questions found. Format: Question | A | B | C | D | Answer | Explanation | Topic | Difficulty");
+        setUploadingBulk(false);
+        return;
+      }
+
+      const res = await fetch('/api/internal-question-bank', { 
+        method: 'PUT', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ questions: parsedQuestions }) 
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Imported ${data.count} questions!`);
+        setBulkCsv('');
+        setIsBulkUploading(false);
+        fetchQuestions();
+      } else {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error('Error uploading questions:', error);
+      alert('Failed to upload questions');
+    } finally {
+      setUploadingBulk(false);
+    }
+  };
+
+  const handleAIGenerate = async () => {
+    if (!aiTopic) return alert('Please enter a topic');
+    setIsGeneratingAI(true);
+    try {
+      const res = await fetch('/api/ai/cbt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          topic: aiTopic, 
+          numQuestions: aiNumQuestions,
+          subject: subjects.find(s => s.id === newQ.subjectId)?.name || 'Mathematics'
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success && data.data && data.data.length > 0) {
+        // Save generated questions
+        const saveRes = await fetch('/api/internal-question-bank', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            questions: data.data.map((q: any) => ({
+              subjectId: newQ.subjectId || subjects[0]?.id,
+              ...q
+            }))
+          })
+        });
+        const saveData = await saveRes.json();
+        if (saveData.success) {
+          alert(`Generated and saved ${saveData.count} questions!`);
+          fetchQuestions();
+        }
+      } else {
+        alert(data.error || 'Failed to generate questions');
+      }
+    } catch (error) {
+      console.error('Error generating questions:', error);
+      alert('Failed to generate questions');
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
   const filteredQuestions = questions.filter(q => {
     const matchesSearch = 
       q.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -161,13 +264,22 @@ export default function InternalQuestionBankPage() {
           </h1>
           <p className="text-slate-500 mt-1">Manage questions for internal school exams</p>
         </div>
-        <button
-          onClick={() => setIsAdding(true)}
-          className="px-6 py-3 bg-[#0033A0] text-white rounded-xl font-bold hover:bg-[#002277] transition-colors flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Add Question
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setIsBulkUploading(true)}
+            className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2"
+          >
+            <Upload className="w-5 h-5" />
+            Bulk Upload
+          </button>
+          <button
+            onClick={() => setIsAdding(true)}
+            className="px-6 py-3 bg-[#0033A0] text-white rounded-xl font-bold hover:bg-[#002277] transition-colors flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Add Question
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -225,6 +337,76 @@ export default function InternalQuestionBankPage() {
           </select>
         </div>
       </div>
+
+      {/* AI Generator */}
+      <div className="bg-indigo-50/50 rounded-xl border border-indigo-200 p-6">
+        <h3 className="font-bold text-indigo-900 mb-4 flex items-center gap-2">
+          <Sparkles className="w-5 h-5" />
+          Generate Questions with AI
+        </h3>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <input
+              type="text"
+              value={aiTopic}
+              onChange={(e) => setAiTopic(e.target.value)}
+              placeholder="Topic (e.g., Algebra, Photosynthesis)"
+              className="w-full px-4 py-2.5 bg-white border border-indigo-200 rounded-xl text-sm outline-none focus:border-indigo-500"
+            />
+          </div>
+          <div className="w-32">
+            <input
+              type="number"
+              min="1"
+              max="20"
+              value={aiNumQuestions}
+              onChange={(e) => setAiNumQuestions(parseInt(e.target.value) || 5)}
+              className="w-full px-4 py-2.5 bg-white border border-indigo-200 rounded-xl text-sm outline-none"
+            />
+          </div>
+          <button
+            onClick={handleAIGenerate}
+            disabled={isGeneratingAI || !aiTopic}
+            className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            {isGeneratingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+            Generate
+          </button>
+        </div>
+      </div>
+
+      {/* Bulk Upload */}
+      {isBulkUploading && (
+        <div className="bg-emerald-50/50 rounded-xl border border-emerald-200 p-6">
+          <h3 className="font-bold text-emerald-900 mb-2">Bulk Upload Questions</h3>
+          <p className="text-sm text-emerald-700 mb-4">
+            Format: Question | Option A | Option B | Option C | Option D | Correct Answer | Explanation | Topic | Difficulty
+          </p>
+          <textarea
+            value={bulkCsv}
+            onChange={(e) => setBulkCsv(e.target.value)}
+            rows={8}
+            className="w-full px-4 py-3 bg-white border border-emerald-200 rounded-xl text-sm font-mono outline-none"
+            placeholder="What is 2 + 2? | 3 | 4 | 5 | 6 | B | 2 + 2 = 4 | Arithmetic | EASY"
+          />
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              onClick={() => setIsBulkUploading(false)}
+              className="px-5 py-2 text-slate-600 bg-slate-100 rounded-lg font-bold text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleBulkUpload}
+              disabled={uploadingBulk || !bulkCsv.trim()}
+              className="px-5 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm flex items-center gap-2 disabled:opacity-50"
+            >
+              {uploadingBulk ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              Upload
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Add Question Form */}
       {isAdding && (
