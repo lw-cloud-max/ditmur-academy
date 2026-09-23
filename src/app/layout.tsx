@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
+import MobileMenuPortal from "@/components/MobileMenuPortal";
 import { auth } from "@/auth";
 import { SessionProvider } from "next-auth/react";
 
@@ -100,7 +101,7 @@ export default async function RootLayout({
             </div>
           </div>
           {/* Mobile Menu Portal - Rendered outside overflow container */}
-          <div id="mobile-menu-portal"></div>
+          <MobileMenuPortal />
         </SessionProvider>
         <script
           dangerouslySetInnerHTML={{
