@@ -16,22 +16,19 @@ export async function GET(req: Request) {
     const status = searchParams.get('status');
     const subjectId = searchParams.get('subjectId');
     const classId = searchParams.get('classId');
+    const isActive = searchParams.get('isActive');
 
     const whereClause: any = {};
     if (status) whereClause.status = status;
     if (subjectId) whereClause.subjectId = subjectId;
     if (classId) whereClause.classId = classId;
+    if (isActive) whereClause.isActive = isActive === 'true';
 
-    // If student, only show exams for their class
+    // If student, only show active exams
     if (session.user.role === 'STUDENT') {
-      const student = await prisma.student.findUnique({
-        where: { id: session.user.id },
-        select: { classId: true }
-      });
-      if (student?.classId) {
-        whereClause.classId = student.classId;
-        whereClause.isActive = true;
-      }
+      whereClause.isActive = true;
+      // Don't filter by class - show all active exams
+      // Teachers can assign exams to specific classes or all classes
     }
 
     const exams = await prisma.internalExamNew.findMany({
