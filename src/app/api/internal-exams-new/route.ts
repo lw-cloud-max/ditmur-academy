@@ -60,10 +60,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { title, description, subjectId, classId, durationMinutes, totalMarks, passingMarks, startTime, endTime, shuffleQuestions, showResults, questionIds } = await req.json();
+    const body = await req.json();
+    const { title, description, subjectId, classId, durationMinutes, totalMarks, passingMarks, startTime, endTime, shuffleQuestions, showResults, questionIds } = body;
+
+    console.log('Creating exam:', { title, subjectId, questionIds: questionIds?.length });
 
     if (!title || !subjectId || !questionIds || questionIds.length === 0) {
-      return NextResponse.json({ success: false, error: 'Title, subject, and questions required' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Title, subject, and at least one question required' }, { status: 400 });
     }
 
     // Fetch questions from bank
@@ -72,14 +75,16 @@ export async function POST(req: Request) {
     });
 
     if (questions.length === 0) {
-      return NextResponse.json({ success: false, error: 'No valid questions found' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'No valid questions found in bank' }, { status: 400 });
     }
+
+    console.log('Found', questions.length, 'questions in bank');
 
     // Create exam with questions
     const exam = await prisma.internalExamNew.create({
       data: {
         title,
-        description,
+        description: description || null,
         subjectId,
         classId: classId || null,
         durationMinutes: durationMinutes || 60,
@@ -94,13 +99,13 @@ export async function POST(req: Request) {
           create: questions.map((q, index) => ({
             questionBankId: q.id,
             text: q.text,
-            imageUrl: q.imageUrl,
+            imageUrl: q.imageUrl || null,
             optionA: q.optionA,
             optionB: q.optionB,
             optionC: q.optionC,
             optionD: q.optionD,
             correctAnswer: q.correctAnswer,
-            explanation: q.explanation,
+            explanation: q.explanation || null,
             marks: 1,
             orderIndex: index + 1
           }))
@@ -113,10 +118,15 @@ export async function POST(req: Request) {
       }
     });
 
+    console.log('Exam created successfully:', exam.id);
+
     return NextResponse.json({ success: true, data: exam }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create internal exam error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to create exam' }, { status: 500 });
+    return NextResponse.json({ 
+      success: false, 
+      error: `Failed to create exam: ${error.message}` 
+    }, { status: 500 });
   }
 }
 
