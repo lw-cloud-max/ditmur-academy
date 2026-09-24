@@ -205,46 +205,7 @@ export default function InternalQuestionBankPage() {
     if (!aiTopic) return alert('Please enter a topic');
     setIsGeneratingAI(true);
     try {
-      const apiKey = process.env.OPENAI_API_KEY;
-      
-      if (!apiKey) {
-        // Fallback: Generate sample questions
-        const sampleQuestions = [];
-        for (let i = 1; i <= aiNumQuestions; i++) {
-          sampleQuestions.push({
-            text: `Sample question ${i} about ${aiTopic}?`,
-            optionA: 'Option A',
-            optionB: 'Option B',
-            optionC: 'Option C',
-            optionD: 'Option D',
-            correctAnswer: 'B',
-            explanation: `This is a sample explanation for question ${i} about ${aiTopic}.`,
-            topic: aiTopic,
-            difficulty: i % 3 === 0 ? 'HARD' : i % 3 === 1 ? 'EASY' : 'MEDIUM'
-          });
-        }
-
-        // Save sample questions
-        const saveRes = await fetch('/api/internal-question-bank', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            questions: sampleQuestions.map(q => ({
-              subjectId: newQ.subjectId || subjects[0]?.id,
-              ...q
-            }))
-          })
-        });
-        const saveData = await saveRes.json();
-        if (saveData.success) {
-          alert(`Generated ${saveData.count} sample questions! (Configure OPENAI_API_KEY for AI-powered questions)`);
-          fetchQuestions();
-        }
-        setIsGeneratingAI(false);
-        return;
-      }
-
-      // Use AI API
+      // Call the AI API route (server-side handles the API key)
       const res = await fetch('/api/ai/cbt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -264,21 +225,31 @@ export default function InternalQuestionBankPage() {
           body: JSON.stringify({ 
             questions: data.data.map((q: any) => ({
               subjectId: newQ.subjectId || subjects[0]?.id,
-              ...q
+              text: q.text || q.questionText,
+              optionA: q.optionA,
+              optionB: q.optionB,
+              optionC: q.optionC,
+              optionD: q.optionD,
+              correctAnswer: q.correctAnswer,
+              explanation: q.explanation || '',
+              topic: q.topic || aiTopic,
+              difficulty: q.difficulty || 'MEDIUM'
             }))
           })
         });
         const saveData = await saveRes.json();
         if (saveData.success) {
-          alert(`Generated and saved ${saveData.count} questions!`);
+          alert(`Generated and saved ${saveData.count} AI questions!`);
           fetchQuestions();
+        } else {
+          alert(`Error saving: ${saveData.error}`);
         }
       } else {
-        alert(data.error || 'Failed to generate questions');
+        alert(data.error || 'Failed to generate questions. Make sure OPENAI_API_KEY is set in Vercel.');
       }
     } catch (error) {
       console.error('Error generating questions:', error);
-      alert('Failed to generate questions');
+      alert('Failed to generate questions. Check console for details.');
     } finally {
       setIsGeneratingAI(false);
     }
