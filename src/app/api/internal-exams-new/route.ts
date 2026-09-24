@@ -69,6 +69,43 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Title, subject, and at least one question required' }, { status: 400 });
     }
 
+    // Find or create a staff record for the current user
+    let staffId = session.user.id;
+    
+    // Check if staff exists
+    const existingStaff = await prisma.staff.findUnique({
+      where: { id: staffId }
+    });
+
+    if (!existingStaff) {
+      // If admin user, find any admin staff or create one
+      if (session.user.role === 'ADMIN') {
+        const adminStaff = await prisma.staff.findFirst({
+          where: { role: 'ADMIN' }
+        });
+        
+        if (adminStaff) {
+          staffId = adminStaff.id;
+        } else {
+          // Create a default admin staff
+          const newStaff = await prisma.staff.create({
+            data: {
+              id: 'admin-staff',
+              firstName: 'System',
+              lastName: 'Admin',
+              email: 'admin@ditmur.com',
+              phone: '0000000000',
+              role: 'ADMIN',
+              status: 'ACTIVE'
+            }
+          });
+          staffId = newStaff.id;
+        }
+      } else {
+        return NextResponse.json({ success: false, error: 'Staff record not found. Please contact admin.' }, { status: 400 });
+      }
+    }
+
     // Fetch questions from bank
     const questions = await prisma.internalQuestionBank.findMany({
       where: { id: { in: questionIds } }
@@ -94,7 +131,7 @@ export async function POST(req: Request) {
         endTime: endTime ? new Date(endTime) : null,
         shuffleQuestions: shuffleQuestions || false,
         showResults: showResults || false,
-        createdBy: session.user.id,
+        createdBy: staffId,
         questions: {
           create: questions.map((q, index) => ({
             questionBankId: q.id,
