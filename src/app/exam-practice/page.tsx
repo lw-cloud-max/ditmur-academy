@@ -33,6 +33,13 @@ interface PracticeResult {
   topic?: string;
 }
 
+// Available subjects by exam type (defined outside component)
+const subjectsByExam: Record<string, string[]> = {
+  'JAMB': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature in English', 'Christian Religious Studies', 'Islamic Studies', 'Commerce', 'Accounting', 'Geography', 'History', 'Agricultural Science', 'Computer Studies'],
+  'WAEC': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature in English', 'Christian Religious Studies', 'Islamic Studies', 'Commerce', 'Financial Accounting', 'Geography', 'History', 'Agricultural Science', 'Computer Studies', 'Further Mathematics', 'Technical Drawing'],
+  'NECO': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature in English', 'Christian Religious Studies', 'Islamic Studies', 'Commerce', 'Financial Accounting', 'Geography', 'History', 'Agricultural Science', 'Computer Studies', 'Further Mathematics']
+};
+
 export default function ExamPracticePage() {
   const { data: session } = useSession();
   const studentId = session?.user?.id || '';
@@ -64,15 +71,6 @@ export default function ExamPracticePage() {
   const [practiceHistory, setPracticeHistory] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
-  // Fetch history on mount
-  useEffect(() => {
-    fetchHistory();
-  }, []);
-    'JAMB': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature in English', 'Christian Religious Studies', 'Islamic Studies', 'Commerce', 'Accounting', 'Geography', 'History', 'Agricultural Science', 'Computer Studies'],
-    'WAEC': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature in English', 'Christian Religious Studies', 'Islamic Studies', 'Commerce', 'Financial Accounting', 'Geography', 'History', 'Agricultural Science', 'Computer Studies', 'Further Mathematics', 'Technical Drawing'],
-    'NECO': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature in English', 'Christian Religious Studies', 'Islamic Studies', 'Commerce', 'Financial Accounting', 'Geography', 'History', 'Agricultural Science', 'Computer Studies', 'Further Mathematics']
-  };
-
   // Timer
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -83,6 +81,11 @@ export default function ExamPracticePage() {
     }
     return () => clearInterval(interval);
   }, [isStarted, showResults]);
+
+  // Fetch history on mount
+  useEffect(() => {
+    fetchHistory();
+  }, []);
 
   const fetchHistory = async () => {
     try {
