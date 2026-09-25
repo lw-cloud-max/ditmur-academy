@@ -30,7 +30,7 @@ export async function POST(req: Request) {
         messages: [
           {
             role: 'system',
-            content: `You are an expert curriculum developer. Create a detailed lesson plan for Nigerian schools. Return ONLY valid JSON.`
+            content: 'You are an expert curriculum developer. Create a detailed lesson plan for Nigerian schools. Return ONLY valid JSON.'
           },
           {
             role: 'user',
@@ -56,7 +56,6 @@ export async function POST(req: Request) {
 
     // Try to parse JSON from response
     try {
-      // Extract JSON from response (might be wrapped in markdown)
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
@@ -81,19 +80,5 @@ function getMockData(title: string) {
     evaluation: `EVALUATION:\n1. Define ${title}\n2. Give one example\n3. What are the key principles?`,
     assignment: `ASSIGNMENT:\n1. Read textbook chapter on ${title}\n2. Answer questions 1-5\n3. Research one application of ${title}`
   };
-  return NextResponse.json({ success: true, data });
-}
-
-function getMockData(title: string) {
-  const data = {
-    schemeOfWork: `WEEKLY SCHEME OF WORK\nTopic: ${title}\n\nOBJECTIVES:\nBy the end of this lesson, students should be able to:\n1. Clearly define and explain the core concepts of ${title}.\n2. Identify at least three real-world applications.\n3. Solve basic problems related to the topic.\n4. Participate in group discussions.\n\nINSTRUCTIONAL MATERIALS:\n- Whiteboard and markers\n- Printed handouts\n- Recommended textbook\n\nTEACHING METHODOLOGY:\n- Direct Instruction (30%)\n- Interactive Q&A (20%)\n- Guided Practice (30%)\n- Independent Work (20%)`,
-
-    lessonNote: `COMPREHENSIVE LESSON NOTE: ${title.toUpperCase()}\n\n1. INTRODUCTION\n${title} is a fundamental concept in this subject. Understanding it is crucial for your academic success.\n\n2. CORE CONCEPTS\n- Definition and key terms\n- Main principles and rules\n- Important formulas (if applicable)\n\n3. EXAMPLES\nExample 1: Basic application of ${title}\nExample 2: Real-world scenario\n\n4. STEP-BY-STEP GUIDE\nStep 1: Identify the problem\nStep 2: Apply the relevant rules\nStep 3: Calculate the answer\nStep 4: Verify your solution\n\n5. SUMMARY\n- Key points to remember\n- Common mistakes to avoid\n\nPlease copy these notes into your notebooks.`,
-
-    evaluation: `FORMATIVE EVALUATION:\n\nOral Questions:\n1. Define ${title} in your own words.\n2. Give one real-world example.\n3. What are the key principles?\n\nClass Activity:\nGroup work - Solve problems related to ${title} in teams.`,
-
-    assignment: `TAKE-HOME ASSIGNMENT:\n\n1. Read the textbook chapter on ${title}.\n2. Answer questions 1-5 at the end of the chapter.\n3. Research one real-world application of ${title}.\n\nDue: Next class session`
-  };
-
   return NextResponse.json({ success: true, data });
 }
