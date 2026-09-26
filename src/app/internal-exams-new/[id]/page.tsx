@@ -38,6 +38,7 @@ export default function ExamDetailPage() {
   const [exam, setExam] = useState<Exam | null>(null);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchExam();
@@ -45,13 +46,16 @@ export default function ExamDetailPage() {
 
   const fetchExam = async () => {
     try {
-      const res = await fetch(`/api/internal-exams-new?id=${params.id}`);
+      const res = await fetch(`/api/internal-exams-new?id=${encodeURIComponent(String(params.id))}`);
       const data = await res.json();
-      if (data.success && data.data.length > 0) {
-        setExam(data.data[0]);
+      if (data.success) {
+        setExam(data.data);
+      } else {
+        setError(data.error || 'Could not load exam');
       }
     } catch (error) {
       console.error('Error fetching exam:', error);
+      setError('Could not load exam. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -68,10 +72,13 @@ export default function ExamDetailPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setExam({ ...exam, isActive: !exam.isActive });
+        setExam({ ...exam, isActive: data.data.isActive });
+      } else {
+        setError(data.error || 'Could not update exam status');
       }
     } catch (error) {
       console.error('Error toggling exam:', error);
+      setError('Could not update exam status');
     } finally {
       setToggling(false);
     }
@@ -90,7 +97,7 @@ export default function ExamDetailPage() {
       <div className="text-center p-12">
         <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
         <h2 className="text-xl font-bold text-slate-900 mb-2">Exam Not Found</h2>
-        <p className="text-slate-500 mb-4">The exam you're looking for doesn't exist.</p>
+        <p className="text-slate-500 mb-4">{error || 'The exam you are looking for does not exist.'}</p>
         <Link href="/internal-exams-new" className="text-[#0033A0] font-bold">
           ← Back to Exams
         </Link>
@@ -136,6 +143,10 @@ export default function ExamDetailPage() {
         )}
       </div>
 
+      {error && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-red-700">{error}</div>}
+      {!exam.isActive && <div className="mb-4 rounded-xl bg-amber-50 p-4 text-amber-900">
+        This exam is a draft. Students cannot see it until you activate it.
+      </div>}
       {/* Exam Info Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">

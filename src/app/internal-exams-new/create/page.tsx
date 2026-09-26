@@ -40,7 +40,8 @@ export default function CreateExamPage() {
     startTime: '',
     endTime: '',
     shuffleQuestions: false,
-    showResults: false
+    showResults: false,
+    isActive: true
   });
 
   useEffect(() => {
@@ -101,6 +102,10 @@ export default function CreateExamPage() {
       return;
     }
 
+    if (formData.totalMarks < selectedQuestions.length || formData.passingMarks > formData.totalMarks) {
+      alert('Total marks must cover every question and passing marks cannot exceed total marks');
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch('/api/internal-exams-new', {
@@ -108,14 +113,17 @@ export default function CreateExamPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          // datetime-local is in the teacher's timezone; send an unambiguous UTC instant.
+          startTime: formData.startTime ? new Date(formData.startTime).toISOString() : '',
+          endTime: formData.endTime ? new Date(formData.endTime).toISOString() : '',
           questionIds: selectedQuestions.map(q => q.id)
         })
       });
 
       const data = await res.json();
       if (data.success) {
-        alert('Exam created successfully!');
-        router.push('/internal-exams-new');
+        alert(formData.isActive ? 'Exam published. Students in the selected class can now see it.' : 'Exam saved as draft. Activate it to show students.');
+        router.push(`/internal-exams-new/${data.data.id}`);
       } else {
         alert(`Error: ${data.error}`);
       }
@@ -268,7 +276,15 @@ export default function CreateExamPage() {
             </div>
           </div>
 
-          <div className="flex gap-6 mt-4">
+          <label className="flex items-start gap-3 mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4 cursor-pointer">
+            <input type="checkbox" checked={formData.isActive}
+              onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
+              className="w-5 h-5 mt-0.5" />
+            <span className="text-sm text-blue-900"><strong>Publish to students now</strong><br />
+              Only students in the selected class (or all classes) will see it. Uncheck to save a draft.
+            </span>
+          </label>
+          <div className="flex flex-wrap gap-6 mt-4">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -361,6 +377,7 @@ export default function CreateExamPage() {
                           <p className="text-sm font-medium text-slate-900">{q.text}</p>
                         </div>
                         <button
+                          type="button"
                           onClick={() => removeQuestion(q.id)}
                           className="p-1 text-red-500 hover:bg-red-50 rounded"
                         >
@@ -373,7 +390,7 @@ export default function CreateExamPage() {
                 {selectedQuestions.length > 0 && (
                   <div className="mt-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
                     <p className="text-sm font-bold text-emerald-800">
-                      Total Marks: {selectedQuestions.length} questions × {Math.floor(formData.totalMarks / selectedQuestions.length)} marks each = {formData.totalMarks} marks
+                      Total Marks: {formData.totalMarks} shared across {selectedQuestions.length} questions
                     </p>
                   </div>
                 )}

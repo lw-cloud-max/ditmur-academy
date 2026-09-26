@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from 'react';
 import { Menu, X, LayoutDashboard, UserPlus, Users, UserCircle, GraduationCap, School, CalendarDays, ClipboardCheck, MessageSquare, Award, Database, BookOpen, FolderOpen, Video, FileSpreadsheet, Settings2, FileQuestion, MonitorPlay, Library, Gamepad2, Trophy, Lightbulb, MessageCircle, CreditCard, Settings, HelpCircle, Bot, Lock } from 'lucide-react';
@@ -30,6 +30,7 @@ export default function MobileMenuPortal() {
       return [
         { name: 'My Dashboard', icon: LayoutDashboard, path: '/dashboard' },
         { name: 'AI Tutor', icon: Bot, path: '/ai-tutor' },
+        { name: 'My Exams', icon: BookOpen, path: '/my-exams' },
         { name: 'Exam Practice', icon: BookOpen, path: '/exam-practice', isNew: true },
         { name: 'My Portfolio', icon: FolderOpen, path: '/portfolio' },
         { name: 'Join Meetings', icon: Video, path: '/video-meetings' },
@@ -69,6 +70,7 @@ export default function MobileMenuPortal() {
         { name: 'Behavior System', icon: Award, path: '/behavior' },
         { name: 'Question Bank', icon: Database, path: '/question-bank' },
         { name: 'Exam Practice', icon: BookOpen, path: '/exam-practice' },
+        { name: 'Internal Exams', icon: BookOpen, path: '/internal-exams-new' },
         { name: 'Student Portfolios', icon: FolderOpen, path: '/portfolio' },
         { name: 'Video Meetings', icon: Video, path: '/video-meetings' },
         { name: 'Broadsheet', icon: FileSpreadsheet, path: '/broadsheet' },

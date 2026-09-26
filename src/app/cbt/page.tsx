@@ -73,6 +73,7 @@ export default function CBTStudentPortal() {
 
   return (
     <div className="space-y-6 pb-32 max-w-5xl mx-auto">
+      <Link href="/my-exams" className="block rounded-xl border-2 border-blue-200 bg-blue-50 p-4 text-blue-900 font-bold">New class exams? Open My Exams to see published exams for your class.</Link>
       <div className="bg-[#0A192F] rounded-2xl p-8 text-white relative overflow-hidden shadow-lg">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-3xl opacity-20 -mr-20 -mt-20"></div>
         <div className="relative z-10">

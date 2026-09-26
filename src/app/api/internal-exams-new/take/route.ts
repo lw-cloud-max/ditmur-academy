@@ -4,77 +4,70 @@ import { auth } from '@/auth';
 
 export const dynamic = 'force-dynamic';
 
-// POST: Start an exam attempt
+// POST: Start (or resume) a student's exam, never return correct answers.
 export async function POST(req: Request) {
   try {
     const session = await auth();
     if (!session?.user || session.user.role !== 'STUDENT') {
       return NextResponse.json({ success: false, error: 'Only students can take exams' }, { status: 401 });
     }
-
     const { examId } = await req.json();
-
-    if (!examId) {
+    if (typeof examId !== 'string' || !examId) {
       return NextResponse.json({ success: false, error: 'Exam ID required' }, { status: 400 });
     }
-
-    // Check if exam exists and is active
-    const exam = await prisma.internalExamNew.findUnique({
-      where: { id: examId },
-      include: { questions: true }
-    });
-
-    if (!exam) {
-      return NextResponse.json({ success: false, error: 'Exam not found' }, { status: 404 });
+    const [student, exam] = await Promise.all([
+      prisma.student.findUnique({ where: { id: session.user.id }, select: { classId: true } }),
+      prisma.internalExamNew.findUnique({ where: { id: examId }, include: { questions: { orderBy: { orderIndex: 'asc' } } } })
+    ]);
+    if (!student) return NextResponse.json({ success: false, error: 'Student record not found' }, { status: 404 });
+    if (!exam) return NextResponse.json({ success: false, error: 'Exam not found' }, { status: 404 });
+    if (exam.classId && exam.classId !== student.classId) {
+      return NextResponse.json({ success: false, error: 'This exam is not assigned to your class' }, { status: 403 });
+    }
+    if (!exam.isActive || exam.questions.length === 0) {
+      return NextResponse.json({ success: false, error: 'Exam is not available' }, { status: 403 });
+    }
+    const now = new Date();
+    if ((exam.startTime && exam.startTime > now) || (exam.endTime && exam.endTime < now)) {
+      return NextResponse.json({ success: false, error: 'Exam is outside its scheduled time' }, { status: 403 });
     }
 
-    if (!exam.isActive) {
-      return NextResponse.json({ success: false, error: 'Exam is not active' }, { status: 400 });
-    }
-
-    // Check if student already attempted
-    const existingAttempt = await prisma.internalExamAttempt.findUnique({
+    let attempt = await prisma.internalExamAttempt.findUnique({
       where: { examId_studentId: { examId, studentId: session.user.id } }
     });
-
-    if (existingAttempt) {
-      return NextResponse.json({ success: false, error: 'You have already attempted this exam' }, { status: 400 });
+    if (attempt?.submittedAt) {
+      return NextResponse.json({ success: false, error: 'You have already submitted this exam' }, { status: 409 });
     }
-
-    // Create attempt
-    const attempt = await prisma.internalExamAttempt.create({
-      data: {
-        examId,
-        studentId: session.user.id
+    if (!attempt) {
+      // A double click can race the unique constraint; return the existing attempt.
+      try {
+        attempt = await prisma.internalExamAttempt.create({
+          data: { examId, studentId: session.user.id }
+        });
+      } catch (error) {
+        attempt = await prisma.internalExamAttempt.findUnique({
+          where: { examId_studentId: { examId, studentId: session.user.id } }
+        });
+        if (!attempt) throw error;
+        if (attempt.submittedAt) {
+          return NextResponse.json({ success: false, error: 'You have already submitted this exam' }, { status: 409 });
+        }
       }
-    });
-
-    // Return questions without correct answers
+    }
     const questions = exam.questions.map(q => ({
-      id: q.id,
-      questionNumber: q.orderIndex,
-      text: q.text,
-      imageUrl: q.imageUrl,
-      optionA: q.optionA,
-      optionB: q.optionB,
-      optionC: q.optionC,
-      optionD: q.optionD,
-      marks: q.marks
+      id: q.id, questionNumber: q.orderIndex, text: q.text, imageUrl: q.imageUrl,
+      optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD, marks: q.marks
     }));
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        attemptId: attempt.id,
-        exam: {
-          id: exam.id,
-          title: exam.title,
-          durationMinutes: exam.durationMinutes,
-          totalMarks: exam.totalMarks
-        },
-        questions
-      }
-    });
+    if (exam.shuffleQuestions) {
+      // Stable for this attempt across reloads; the server grades by question ID.
+      const hash = (text: string) => [...text].reduce((n, char) => (n * 31 + char.charCodeAt(0)) | 0, 7);
+      questions.sort((a, b) => hash(attempt.id + a.id) - hash(attempt.id + b.id));
+    }
+    return NextResponse.json({ success: true, data: {
+      attemptId: attempt.id, startedAt: attempt.startedAt,
+      exam: { id: exam.id, title: exam.title, durationMinutes: exam.durationMinutes,
+        totalMarks: exam.totalMarks, showResults: exam.showResults }, questions
+    } });
   } catch (error) {
     console.error('Start exam attempt error:', error);
     return NextResponse.json({ success: false, error: 'Failed to start exam' }, { status: 500 });
@@ -109,56 +102,48 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: false, error: 'Exam already submitted' }, { status: 400 });
     }
 
-    // Calculate score
-    let score = 0;
-    const answersToSave = [];
-
-    for (const answer of answers) {
-      const question = attempt.exam.questions.find(q => q.id === answer.questionId);
-      if (!question) continue;
-
-      const isCorrect = question.correctAnswer === answer.selectedAnswer?.toUpperCase();
-      const marksObtained = isCorrect ? question.marks : 0;
-      score += marksObtained;
-
-      answersToSave.push({
-        attemptId,
-        questionId: answer.questionId,
-        selectedAnswer: answer.selectedAnswer?.toUpperCase() || null,
-        isCorrect,
-        marksObtained
-      });
+    if (!Array.isArray(answers) || answers.some(a =>
+      !a || typeof a.questionId !== 'string' ||
+      (a.selectedAnswer != null && !['A', 'B', 'C', 'D'].includes(a.selectedAnswer)))) {
+      return NextResponse.json({ success: false, error: 'Invalid answers' }, { status: 400 });
     }
-
-    // Save answers
-    await prisma.internalExamAnswer.createMany({
-      data: answersToSave
-    });
-
-    // Update attempt with results
+    const selected = new Map<string, string>();
+    for (const answer of answers) {
+      if (selected.has(answer.questionId)) {
+        return NextResponse.json({ success: false, error: 'Duplicate answer' }, { status: 400 });
+      }
+      selected.set(answer.questionId, answer.selectedAnswer);
+    }
+    if ([...selected.keys()].some(id => !attempt.exam.questions.some(q => q.id === id))) {
+      return NextResponse.json({ success: false, error: 'Unknown question' }, { status: 400 });
+    }
+    const rawScore = attempt.exam.questions.reduce((sum, q) =>
+      sum + (selected.get(q.id) === q.correctAnswer ? q.marks : 0), 0);
+    const rawTotal = attempt.exam.questions.reduce((sum, q) => sum + q.marks, 0);
+    // Older exams stored one mark/question while advertising 100 total marks.
     const totalMarks = attempt.exam.totalMarks;
+    const score = rawTotal ? Math.round(rawScore / rawTotal * totalMarks * 100) / 100 : 0;
     const isPassed = score >= attempt.exam.passingMarks;
-
-    await prisma.internalExamAttempt.update({
-      where: { id: attemptId },
-      data: {
-        submittedAt: new Date(),
-        score,
-        totalMarks,
-        isPassed
-      }
+    // Both the attempt status and answers commit together (or not at all).
+    const saved = await prisma.$transaction(async tx => {
+      const claimed = await tx.internalExamAttempt.updateMany({
+        where: { id: attemptId, submittedAt: null },
+        data: { submittedAt: new Date(), score, totalMarks, isPassed }
+      });
+      if (claimed.count !== 1) return false;
+      await tx.internalExamAnswer.createMany({
+        data: attempt.exam.questions.map(q => ({
+          attemptId, questionId: q.id, selectedAnswer: selected.get(q.id) || null,
+          isCorrect: selected.get(q.id) === q.correctAnswer,
+          marksObtained: selected.get(q.id) === q.correctAnswer ? q.marks : 0
+        }))
+      });
+      return true;
     });
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        score,
-        totalMarks,
-        percentage: Math.round((score / totalMarks) * 100),
-        isPassed,
-        passingMarks: attempt.exam.passingMarks
-      }
-    });
+    if (!saved) return NextResponse.json({ success: false, error: 'Exam already submitted' }, { status: 409 });
+    return NextResponse.json({ success: true, data: attempt.exam.showResults
+      ? { score, totalMarks, isPassed, passingMarks: attempt.exam.passingMarks }
+      : { submitted: true } });
   } catch (error) {
     console.error('Submit exam error:', error);
     return NextResponse.json({ success: false, error: 'Failed to submit exam' }, { status: 500 });
@@ -197,6 +182,10 @@ export async function GET(req: Request) {
 
       if (!isStudent && !isStaff) {
         return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
+      }
+
+      if (!attempt.submittedAt || (isStudent && !attempt.exam.showResults)) {
+        return NextResponse.json({ success: false, error: 'Results are not available yet' }, { status: 403 });
       }
 
       // Build results with explanations
@@ -256,16 +245,24 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: true, data: attempts });
     }
 
-    // Get student's own attempts
+    if (session.user.role !== 'STUDENT') {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
+    // Get student's own attempts. Hide scores until the teacher releases results.
     const attempts = await prisma.internalExamAttempt.findMany({
       where: { studentId: session.user.id },
       include: {
-        exam: { select: { id: true, title: true, subject: { select: { name: true } } } }
+        exam: { select: { id: true, title: true, showResults: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    return NextResponse.json({ success: true, data: attempts });
+    return NextResponse.json({ success: true, data: attempts.map(a => ({
+      id: a.id, examId: a.examId, submittedAt: a.submittedAt,
+      score: a.submittedAt && a.exam.showResults ? a.score : null,
+      totalMarks: a.submittedAt && a.exam.showResults ? a.totalMarks : null,
+      isPassed: a.submittedAt && a.exam.showResults ? a.isPassed : null
+    })) });
   } catch (error) {
     console.error('Get exam results error:', error);
     return NextResponse.json({ success: false, error: 'Failed to get results' }, { status: 500 });

@@ -26,6 +26,7 @@ export default function MyExamsPage() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [myAttempts, setMyAttempts] = useState<any[]>([]);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchExams();
@@ -34,16 +35,17 @@ export default function MyExamsPage() {
 
   const fetchExams = async () => {
     try {
-      // Fetch all active exams (no class filter for students)
+      // The API filters active exams to this student's class.
       const res = await fetch('/api/internal-exams-new');
       const data = await res.json();
       if (data.success) {
-        // Filter only active exams on client side
-        const activeExams = data.data.filter((exam: any) => exam.isActive);
-        setExams(activeExams);
+        setExams(data.data);
+      } else {
+        setError(data.error || 'Failed to load exams');
       }
     } catch (error) {
       console.error('Error fetching exams:', error);
+      setError('Failed to load exams. Please refresh the page.');
     } finally {
       setLoading(false);
     }
@@ -62,7 +64,7 @@ export default function MyExamsPage() {
   };
 
   const hasAttempted = (examId: string) => {
-    return myAttempts.some(a => a.examId === examId);
+    return myAttempts.some(a => a.examId === examId && a.submittedAt);
   };
 
   const getAttemptResult = (examId: string) => {
@@ -102,6 +104,7 @@ export default function MyExamsPage() {
         </div>
       </div>
 
+      {error && <p role="alert" className="bg-red-50 text-red-700 rounded-xl p-4">{error}</p>}
       {/* Exams List */}
       {loading ? (
         <div className="flex justify-center p-12">
@@ -111,13 +114,14 @@ export default function MyExamsPage() {
         <div className="text-center p-12 bg-white rounded-xl border border-slate-200">
           <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="font-medium text-slate-700">No exams available</p>
-          <p className="text-sm text-slate-500 mt-1">Check back later for scheduled exams</p>
+          <p className="text-sm text-slate-500 mt-1">Exams appear here when published for your class. Ask your teacher to check activation and class assignment.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {exams.map(exam => {
             const attempted = hasAttempted(exam.id);
             const attempt = getAttemptResult(exam.id);
+            const inProgress = !!attempt && !attempt.submittedAt;
             const available = isExamAvailable(exam);
 
             return (
@@ -131,7 +135,7 @@ export default function MyExamsPage() {
                         <p className="text-sm text-slate-500 mt-1">Class: {exam.class.name}</p>
                       )}
                     </div>
-                    {attempted && (
+                    {attempted && attempt?.isPassed !== null && (
                       <div className={`px-3 py-1 rounded-full text-sm font-bold ${
                         attempt.isPassed ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                       }`}>
@@ -170,7 +174,7 @@ export default function MyExamsPage() {
                     </div>
                   )}
 
-                  {attempted ? (
+                  {attempted && attempt?.score !== null ? (
                     <div className="bg-slate-50 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium text-slate-700">Your Score</span>
@@ -190,18 +194,20 @@ export default function MyExamsPage() {
                         {attempt.isPassed ? '✓ Passed' : '✗ Did not pass'} (Passing: {exam.passingMarks} marks)
                       </p>
                     </div>
+                  ) : attempted ? (
+                    <div className="rounded-lg bg-blue-50 p-4 text-blue-900 font-medium">Exam submitted. Your teacher will release the results.</div>
                   ) : available ? (
                     <Link
                       href={`/my-exams/${exam.id}/take`}
                       className="w-full py-3 bg-[#0033A0] text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#002277] transition-colors"
                     >
                       <Play className="w-5 h-5" />
-                      Start Exam
+                      {inProgress ? 'Continue Exam' : 'Start Exam'}
                     </Link>
                   ) : (
                     <div className="w-full py-3 bg-slate-100 text-slate-500 rounded-xl font-bold flex items-center justify-center gap-2">
                       <Clock className="w-5 h-5" />
-                      {!exam.isActive ? 'Not Available' : 'Not Started Yet'}
+                      {exam.endTime && new Date(exam.endTime) < new Date() ? 'Exam Ended' : 'Not Started Yet'}
                     </div>
                   )}
                 </div>

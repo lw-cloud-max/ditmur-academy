@@ -7,6 +7,10 @@ export const dynamic = 'force-dynamic';
 // GET: Fetch questions from internal question bank
 export async function GET(req: Request) {
   try {
+    const session = await auth();
+    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'STAFF')) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
     const { searchParams } = new URL(req.url);
     const subjectId = searchParams.get('subjectId');
     const classId = searchParams.get('classId');

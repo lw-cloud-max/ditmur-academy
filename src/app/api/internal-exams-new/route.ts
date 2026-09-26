@@ -4,7 +4,8 @@ import { auth } from '@/auth';
 
 export const dynamic = 'force-dynamic';
 
-// GET: Fetch internal exams
+// Staff see every exam; students see only published exams for their class.
+// The detail response is staff-only and explicitly loads questions/attempts.
 export async function GET(req: Request) {
   try {
     const session = await auth();
@@ -13,24 +14,42 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status');
-    const subjectId = searchParams.get('subjectId');
-    const classId = searchParams.get('classId');
-    const isActive = searchParams.get('isActive');
     const id = searchParams.get('id');
+    const isStaff = session.user.role === 'ADMIN' || session.user.role === 'STAFF';
+    const isStudent = session.user.role === 'STUDENT';
+    if (!isStaff && !isStudent) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (id) {
+      if (!isStaff) return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+      const exam = await prisma.internalExamNew.findUnique({
+        where: { id },
+        include: {
+          subject: { select: { id: true, name: true } },
+          class: { select: { id: true, name: true } },
+          creator: { select: { firstName: true, lastName: true } },
+          questions: { orderBy: { orderIndex: 'asc' } },
+          attempts: { select: { id: true, studentId: true, score: true, submittedAt: true } }
+        }
+      });
+      if (!exam) return NextResponse.json({ success: false, error: 'Exam not found' }, { status: 404 });
+      return NextResponse.json({ success: true, data: exam });
+    }
 
     const whereClause: any = {};
-    if (id) whereClause.id = id;
-    if (status) whereClause.status = status;
-    if (subjectId) whereClause.subjectId = subjectId;
-    if (classId) whereClause.classId = classId;
-    if (isActive) whereClause.isActive = isActive === 'true';
-
-    // If student, only show active exams
-    if (session.user.role === 'STUDENT') {
+    if (isStudent) {
+      const student = await prisma.student.findUnique({
+        where: { id: session.user.id }, select: { classId: true }
+      });
+      if (!student) return NextResponse.json({ success: false, error: 'Student record not found' }, { status: 404 });
       whereClause.isActive = true;
-      // Don't filter by class - show all active exams
-      // Teachers can assign exams to specific classes or all classes
+      whereClause.OR = student.classId ? [{ classId: null }, { classId: student.classId }] : [{ classId: null }];
+    } else {
+      const classId = searchParams.get('classId');
+      if (classId) whereClause.classId = classId;
+      const isActive = searchParams.get('isActive');
+      if (isActive === 'true' || isActive === 'false') whereClause.isActive = isActive === 'true';
     }
 
     const exams = await prisma.internalExamNew.findMany({
@@ -38,12 +57,11 @@ export async function GET(req: Request) {
       include: {
         subject: { select: { id: true, name: true } },
         class: { select: { id: true, name: true } },
-        creator: { select: { id: true, firstName: true, lastName: true } },
+        creator: { select: { firstName: true, lastName: true } },
         _count: { select: { questions: true, attempts: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
-
     return NextResponse.json({ success: true, data: exams });
   } catch (error) {
     console.error('Fetch internal exams error:', error);
@@ -60,12 +78,27 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { title, description, subjectId, classId, durationMinutes, totalMarks, passingMarks, startTime, endTime, shuffleQuestions, showResults, questionIds } = body;
+    const { title, description, subjectId, classId, durationMinutes, totalMarks, passingMarks, startTime, endTime, shuffleQuestions, showResults, isActive, questionIds } = body;
 
     console.log('Creating exam:', { title, subjectId, questionIds: questionIds?.length });
 
-    if (!title || !subjectId || !questionIds || questionIds.length === 0) {
+    if (!title?.trim() || !subjectId || !Array.isArray(questionIds) || questionIds.length === 0) {
       return NextResponse.json({ success: false, error: 'Title, subject, and at least one question required' }, { status: 400 });
+    }
+
+    const duration = Number(durationMinutes);
+    const marks = Number(totalMarks);
+    const pass = Number(passingMarks);
+    if (!Number.isInteger(duration) || duration < 5 || duration > 300 ||
+        !Number.isInteger(marks) || marks < questionIds.length ||
+        !Number.isInteger(pass) || pass < 0 || pass > marks ||
+        (startTime && Number.isNaN(Date.parse(startTime))) ||
+        (endTime && Number.isNaN(Date.parse(endTime))) ||
+        (startTime && endTime && new Date(startTime) >= new Date(endTime))) {
+      return NextResponse.json({ success: false, error: 'Check exam duration, marks, passing marks and schedule' }, { status: 400 });
+    }
+    if (new Set(questionIds).size !== questionIds.length) {
+      return NextResponse.json({ success: false, error: 'Duplicate questions selected' }, { status: 400 });
     }
 
     // Find or create a staff record for the current user
@@ -107,32 +140,38 @@ export async function POST(req: Request) {
 
     // Fetch questions from bank
     const questions = await prisma.internalQuestionBank.findMany({
-      where: { id: { in: questionIds } }
+      where: { id: { in: questionIds }, subjectId, isActive: true }
     });
 
-    if (questions.length === 0) {
-      return NextResponse.json({ success: false, error: 'No valid questions found in bank' }, { status: 400 });
+    if (questions.length !== questionIds.length ||
+        (classId && questions.some(q => q.classId && q.classId !== classId))) {
+      return NextResponse.json({ success: false, error: 'Some questions are not available for this subject or class' }, { status: 400 });
     }
+    // Preserve the teacher's selected order and distribute marks exactly.
+    const questionById = new Map(questions.map(q => [q.id, q]));
 
     console.log('Found', questions.length, 'questions in bank');
 
     // Create exam with questions
     const exam = await prisma.internalExamNew.create({
       data: {
-        title,
+        title: title.trim(),
+        isActive: isActive === true,
         description: description || null,
         subjectId,
         classId: classId || null,
-        durationMinutes: durationMinutes || 60,
-        totalMarks: totalMarks || questions.length,
-        passingMarks: passingMarks || Math.floor(questions.length * 0.4),
+        durationMinutes: duration,
+        totalMarks: marks,
+        passingMarks: pass,
         startTime: startTime ? new Date(startTime) : null,
         endTime: endTime ? new Date(endTime) : null,
         shuffleQuestions: shuffleQuestions || false,
         showResults: showResults || false,
         createdBy: staffId,
         questions: {
-          create: questions.map((q, index) => ({
+          create: questionIds.map((questionId: string, index: number) => {
+            const q = questionById.get(questionId)!;
+            return {
             questionBankId: q.id,
             text: q.text,
             imageUrl: q.imageUrl || null,
@@ -142,9 +181,10 @@ export async function POST(req: Request) {
             optionD: q.optionD,
             correctAnswer: q.correctAnswer,
             explanation: q.explanation || null,
-            marks: 1,
+            marks: Math.floor(marks / questionIds.length) + (index < marks % questionIds.length ? 1 : 0),
             orderIndex: index + 1
-          }))
+          };
+          })
         }
       },
       include: {
