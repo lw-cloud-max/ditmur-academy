@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -39,8 +39,6 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'Assessment Format', icon: Settings2, path: '/assessment-format' },
     { name: 'Entrance Exam', icon: MonitorPlay, path: '/entrance-exam' },
     { name: 'CBT Portal', icon: MonitorPlay, path: '/cbt' },
-    { name: 'Scheme of Work', icon: Library, path: '/schemes' }, 
-    { name: 'Lesson Plan', icon: BookOpen, path: '/lesson-plan' },
     { name: 'Study Hub', icon: Gamepad2, path: '/study-hub', isFun: true },
     { name: 'Hall of Fame', icon: Trophy, path: '/hall-of-fame', isFun: true },
     { name: 'Daily Trivia', icon: Lightbulb, path: '/trivia', isFun: true },
@@ -61,7 +59,6 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'My Portfolio', icon: FolderOpen, path: '/portfolio' },
     { name: 'Join Meetings', icon: Video, path: '/video-meetings' },
     { name: 'My Timetable', icon: CalendarDays, path: '/timetable' },
-    { name: 'Study Notes', icon: FileText, path: '/lesson-plan' },
     { name: 'My Results', icon: GraduationCap, path: '/broadsheet' },
     { name: 'Study Hub', icon: Gamepad2, path: '/study-hub', isFun: true },
     { name: 'Hall of Fame', icon: Trophy, path: '/hall-of-fame', isFun: true },

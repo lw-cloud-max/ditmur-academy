@@ -22,13 +22,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ],
-  "exclude": ["node_modules", "school-app (25)", "school-app-auth-update", "school-website"]
+  "include": ["next-env.d.ts","next.config.ts","src/**/*.ts","src/**/*.tsx","src/**/*.mts","prisma/**/*.ts",".next/types/**/*.ts",".next/dev/types/**/*.ts"],
+  "exclude": ["node_modules school-app (25) school-app-auth-update school-website","school-app (25)","school-app-auth-update","school-website","node_modules",".next/dev/types","ditmur-academy-all-fixes (3)"]
 }

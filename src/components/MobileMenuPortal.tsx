@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from 'react';
 import { Menu, X, LayoutDashboard, UserPlus, Users, UserCircle, GraduationCap, School, CalendarDays, ClipboardCheck, MessageSquare, Award, Database, BookOpen, FolderOpen, Video, FileSpreadsheet, Settings2, FileQuestion, MonitorPlay, Library, Gamepad2, Trophy, Lightbulb, MessageCircle, CreditCard, Settings, HelpCircle, Bot, Lock } from 'lucide-react';
@@ -34,7 +34,6 @@ export default function MobileMenuPortal() {
         { name: 'My Portfolio', icon: FolderOpen, path: '/portfolio' },
         { name: 'Join Meetings', icon: Video, path: '/video-meetings' },
         { name: 'My Timetable', icon: CalendarDays, path: '/timetable' },
-        { name: 'Study Notes', icon: FileSpreadsheet, path: '/lesson-plan' },
         { name: 'Take Exam (CBT)', icon: MonitorPlay, path: '/cbt' },
         { name: 'My Results', icon: GraduationCap, path: '/broadsheet' },
         { name: 'Study Hub', icon: Gamepad2, path: '/study-hub' },
@@ -75,8 +74,6 @@ export default function MobileMenuPortal() {
         { name: 'Broadsheet', icon: FileSpreadsheet, path: '/broadsheet' },
         { name: 'Assessment Format', icon: Settings2, path: '/assessment-format' },
         { name: 'CBT Portal', icon: MonitorPlay, path: '/cbt' },
-        { name: 'Scheme of Work', icon: Library, path: '/schemes' },
-        { name: 'Lesson Plan', icon: BookOpen, path: '/lesson-plan' },
         { name: 'Study Hub', icon: Gamepad2, path: '/study-hub' },
         { name: 'Hall of Fame', icon: Trophy, path: '/hall-of-fame' },
         { name: 'Daily Trivia', icon: Lightbulb, path: '/trivia' },
