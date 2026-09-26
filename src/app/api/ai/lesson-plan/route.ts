@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
     if (!apiKey) {
       console.log('OPENAI_API_KEY not found, using mock data');
-      return getMockData(title);
+      return getLessonPlanFallback(title);
     }
 
     // Call OpenAI API directly
@@ -44,14 +44,14 @@ export async function POST(req: Request) {
 
     if (!response.ok) {
       console.error('OpenAI API error:', response.status);
-      return getMockData(title);
+      return getLessonPlanFallback(title);
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
 
     if (!content) {
-      return getMockData(title);
+      return getLessonPlanFallback(title);
     }
 
     // Try to parse JSON from response
@@ -65,15 +65,15 @@ export async function POST(req: Request) {
       console.log('JSON parse failed, using mock data');
     }
 
-    return getMockData(title);
+    return getLessonPlanFallback(title);
 
   } catch (error) {
     console.error('Lesson plan error:', error);
-    return getMockData(title || 'Unknown Topic');
+    return getLessonPlanFallback(title || 'Unknown Topic');
   }
 }
 
-function getMockData(title: string) {
+function getLessonPlanFallback(title: string) {
   const data = {
     schemeOfWork: `WEEKLY SCHEME OF WORK\nTopic: ${title}\n\nOBJECTIVES:\nBy the end of this lesson, students should be able to:\n1. Define and explain ${title}\n2. Identify real-world applications\n3. Solve problems related to the topic\n\nINSTRUCTIONAL MATERIALS:\n- Whiteboard\n- Textbook\n- Handouts\n\nTEACHING METHODOLOGY:\n- Direct Instruction (30%)\n- Interactive Q&A (20%)\n- Guided Practice (30%)\n- Independent Work (20%)`,
     lessonNote: `LESSON NOTE: ${title.toUpperCase()}\n\n1. INTRODUCTION\n${title} is an important topic in this subject.\n\n2. KEY CONCEPTS\n- Definition\n- Main principles\n- Important formulas\n\n3. EXAMPLES\nExample 1: Basic application\nExample 2: Real-world scenario\n\n4. SUMMARY\n- Key points to remember\n- Common mistakes to avoid\n\nPlease copy these notes.`,
