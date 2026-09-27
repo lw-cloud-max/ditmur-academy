@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -40,6 +40,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'Entrance Exam', icon: MonitorPlay, path: '/entrance-exam' },
     { name: 'CBT Portal', icon: MonitorPlay, path: '/cbt' },
     { name: 'Study Hub', icon: Gamepad2, path: '/study-hub', isFun: true },
+    { name: 'Lesson Notes', icon: BookOpen, path: '/lesson-notes' },
     { name: 'Hall of Fame', icon: Trophy, path: '/hall-of-fame', isFun: true },
     { name: 'Daily Trivia', icon: Lightbulb, path: '/trivia', isFun: true },
     { name: 'Parent Chat', icon: MessageCircle, path: '/chat' },

@@ -77,6 +77,7 @@ export default function MobileMenuPortal() {
         { name: 'Assessment Format', icon: Settings2, path: '/assessment-format' },
         { name: 'CBT Portal', icon: MonitorPlay, path: '/cbt' },
         { name: 'Study Hub', icon: Gamepad2, path: '/study-hub' },
+        { name: 'Lesson Notes', icon: BookOpen, path: '/lesson-notes' },
         { name: 'Hall of Fame', icon: Trophy, path: '/hall-of-fame' },
         { name: 'Daily Trivia', icon: Lightbulb, path: '/trivia' },
         { name: 'Parent Chat', icon: MessageCircle, path: '/chat' },
