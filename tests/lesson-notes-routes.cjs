@@ -84,16 +84,54 @@ test('students cannot download a note file from another class', async () => {
 });
 
 test('AI missing key shows explicit error, never fake lesson content', async () => {
-  const prisma = {
-    subject: { findUnique: async () => ({ name: 'Mathematics' }) },
-    class: { findUnique: async () => ({ name: 'Primary 4', level: 'PRIMARY' }) }
-  };
-  const handler = load(aiPath, deps({ user: { id: 'admin-1', role: 'ADMIN' } }, prisma));
-  const response = await handler.POST(new Request('http://localhost/api/lesson-notes/generate', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ subjectId: 'math', classId: 'class-1', topic: 'Fractions', instructions: '' })
-  }));
-  assert.equal(response.status, 503);
+  const previous = process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  try {
+    const prisma = {
+      subject: { findUnique: async () => ({ name: 'Mathematics' }) },
+      class: { findUnique: async () => ({ name: 'Primary 4', level: 'PRIMARY' }) }
+    };
+    const handler = load(aiPath, deps({ user: { id: 'admin-1', role: 'ADMIN' } }, prisma));
+    const response = await handler.POST(new Request('http://localhost/api/lesson-notes/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subjectId: 'math', classId: 'class-1', topic: 'Fractions', instructions: '' })
+    }));
+    assert.equal(response.status, 503);
+  } finally {
+    if (previous === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previous;
+  }
+});
+
+test('AI generation follows the working Messaging request and accepts fenced JSON', async () => {
+  const previous = process.env.OPENAI_API_KEY;
+  const originalFetch = global.fetch;
+  process.env.OPENAI_API_KEY = 'sk-test-not-a-real-key';
+  try {
+    const prisma = {
+      subject: { findUnique: async () => ({ name: 'Mathematics' }) },
+      class: { findUnique: async () => ({ name: 'Primary 4', level: 'PRIMARY' }) }
+    };
+    global.fetch = async (url, options) => {
+      assert.equal(url, 'https://api.openai.com/v1/chat/completions');
+      const request = JSON.parse(options.body);
+      assert.equal(request.response_format, undefined);
+      assert.equal(request.model, process.env.AI_MODEL || 'gpt-4o-mini');
+      assert.match(request.messages[1].content, /Fractions/);
+      return Response.json({ choices: [{ message: { content: '```json\n{"lessonNote":"Explain fractions","evaluation":"1. Calculate","assignment":"1. Practice"}\n```' }, finish_reason: 'stop' }] });
+    };
+    const handler = load(aiPath, deps({ user: { id: 'admin-1', role: 'ADMIN' } }, prisma));
+    const response = await handler.POST(new Request('http://localhost/api/lesson-notes/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subjectId: 'math', classId: 'class-1', topic: 'Fractions', instructions: 'Use examples' })
+    }));
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).data, { lessonNote: 'Explain fractions', evaluation: '1. Calculate', assignment: '1. Practice' });
+  } finally {
+    global.fetch = originalFetch;
+    if (previous === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previous;
+  }
 });
 
 test('PDF attachment is stored in the existing database field and rejects disguised files', async () => {
