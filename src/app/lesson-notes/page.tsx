@@ -86,8 +86,8 @@ export default function LessonNotesManager() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Generation failed');
-      setForm(previous => ({ ...previous, ...data.data }));
-      setMessage('Draft generated. Review all three fields, then save or publish.');
+      setForm(previous => ({ ...previous, lessonNote: data.data.lessonNote, evaluation: '', assignment: '' }));
+      setMessage(`Generated draft is in the Lesson note field, including evaluation and assignment. ${data.warning || 'Review it before publishing.'}`);
     } catch (e) { setError(e instanceof Error ? e.message : 'Generation failed'); }
     finally { setGenerating(false); }
   };
@@ -153,9 +153,9 @@ export default function LessonNotesManager() {
         <label className="block text-sm font-semibold text-blue-900">AI instructions (optional, all in one prompt)
           <textarea className={`${input} mt-1 min-h-24`} maxLength={2000} value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="e.g. Explain with local examples, use 3 worked examples, and generate 5 evaluation questions plus a short assignment." /></label>
         <button type="button" onClick={generate} disabled={generating || busy} className="w-full sm:w-auto rounded-xl bg-blue-800 text-white px-5 py-3 font-bold flex items-center justify-center gap-2 disabled:opacity-60">
-          {generating ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />} Generate note + evaluation + assignment
+          {generating ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />} Generate complete lesson note
         </button>
-        <p className="text-xs text-blue-800">AI output is editable and is not published automatically. Requires OPENAI_API_KEY.</p>
+        <p className="text-xs text-blue-800">AI writes the lesson, evaluation and assignment into the single Lesson note field. The separate fields below remain available for existing notes or manual additions. Review before publishing. Requires OPENAI_API_KEY.</p>
       </div>
       <label className="block text-sm font-semibold">Lesson note / content
         <textarea className={`${input} mt-1 min-h-64 font-normal whitespace-pre-wrap`} maxLength={30000} value={form.lessonNote} onChange={e => setForm({ ...form, lessonNote: e.target.value })} placeholder="Type the lesson note here, or attach a document below." /></label>

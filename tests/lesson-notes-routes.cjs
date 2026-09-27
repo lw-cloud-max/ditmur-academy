@@ -103,7 +103,7 @@ test('AI missing key shows explicit error, never fake lesson content', async () 
   }
 });
 
-test('AI generation follows the working Messaging request and accepts fenced JSON', async () => {
+test('AI generation displays fenced JSON as one readable lesson note', async () => {
   const previous = process.env.OPENAI_API_KEY;
   const originalFetch = global.fetch;
   process.env.OPENAI_API_KEY = 'sk-test-not-a-real-key';
@@ -126,7 +126,7 @@ test('AI generation follows the working Messaging request and accepts fenced JSO
       body: JSON.stringify({ subjectId: 'math', classId: 'class-1', topic: 'Fractions', instructions: 'Use examples' })
     }));
     assert.equal(response.status, 200);
-    assert.deepEqual((await response.json()).data, { lessonNote: 'Explain fractions', evaluation: '1. Calculate', assignment: '1. Practice' });
+    assert.deepEqual((await response.json()).data, { lessonNote: 'LESSON NOTE\nExplain fractions\n\nEVALUATION\n1. Calculate\n\nASSIGNMENT\n1. Practice', evaluation: '', assignment: '' });
   } finally {
     global.fetch = originalFetch;
     if (previous === undefined) delete process.env.OPENAI_API_KEY;
@@ -145,7 +145,7 @@ test('PDF attachment is stored in the existing database field and rejects disgui
   await assert.rejects(helper.readNoteFile(invalid), /contents do not match/);
 });
 
-test('one click retries an incomplete first response and fills all three fields', async () => {
+test('a nonempty first response is shown for teacher review without a costly retry', async () => {
   const previous = process.env.OPENAI_API_KEY;
   const originalFetch = global.fetch;
   process.env.OPENAI_API_KEY = 'sk-test-not-a-real-key';
@@ -155,13 +155,9 @@ test('one click retries an incomplete first response and fills all three fields'
       subject: { findUnique: async () => ({ name: 'Basic Science' }) },
       class: { findUnique: async () => ({ name: 'Primary 3', level: 'PRIMARY' }) }
     };
-    global.fetch = async (_url, options) => {
+    global.fetch = async () => {
       calls++;
-      const body = JSON.parse(options.body);
-      if (calls === 2) assert.equal(body.temperature, 0.2);
-      return Response.json({ choices: [{ message: { content: calls === 1
-        ? '{"lessonNote":"Incomplete draft"}'
-        : '{"lessonNote":"Plants need light","evaluation":"1. Why?","assignment":"1. Observe a plant"}' }, finish_reason: 'stop' }] });
+      return Response.json({ choices: [{ message: { content: 'LESSON NOTE\nPlants need light\n\nEVALUATION\n1. Why?\n\nASSIGNMENT\n1. Observe a plant' }, finish_reason: 'stop' }] });
     };
     const handler = load(aiPath, deps({ user: { id: 'admin-1', role: 'ADMIN' } }, prisma));
     const response = await handler.POST(new Request('http://localhost/api/lesson-notes/generate', {
@@ -169,8 +165,12 @@ test('one click retries an incomplete first response and fills all three fields'
       body: JSON.stringify({ subjectId: 'science', classId: 'class-1', topic: 'Plants', instructions: '' })
     }));
     assert.equal(response.status, 200);
-    assert.equal(calls, 2);
-    assert.deepEqual((await response.json()).data, { lessonNote: 'Plants need light', evaluation: '1. Why?', assignment: '1. Observe a plant' });
+    assert.equal(calls, 1);
+    const output = await response.json();
+    assert.match(output.data.lessonNote, /EVALUATION/);
+    assert.match(output.data.lessonNote, /ASSIGNMENT/);
+    assert.equal(output.data.evaluation, '');
+    assert.equal(output.data.assignment, '');
   } finally {
     global.fetch = originalFetch;
     if (previous === undefined) delete process.env.OPENAI_API_KEY;
@@ -178,7 +178,7 @@ test('one click retries an incomplete first response and fills all three fields'
   }
 });
 
-test('evaluation and assignment arrays no longer require a retry', async () => {
+test('JSON with evaluation and assignment arrays is readable in the single field', async () => {
   const previous = process.env.OPENAI_API_KEY;
   const originalFetch = global.fetch;
   process.env.OPENAI_API_KEY = 'sk-test-not-a-real-key';
@@ -202,8 +202,10 @@ test('evaluation and assignment arrays no longer require a retry', async () => {
     assert.equal(response.status, 200);
     assert.equal(calls, 1);
     const data = (await response.json()).data;
-    assert.equal(data.evaluation, '1. Name a noun\n2. Name a verb');
-    assert.equal(data.assignment, '1. Write five sentences');
+    assert.match(data.lessonNote, /EVALUATION\n1\. Name a noun/);
+    assert.match(data.lessonNote, /ASSIGNMENT\n1\. Write five sentences/);
+    assert.equal(data.evaluation, '');
+    assert.equal(data.assignment, '');
   } finally {
     global.fetch = originalFetch;
     if (previous === undefined) delete process.env.OPENAI_API_KEY;
