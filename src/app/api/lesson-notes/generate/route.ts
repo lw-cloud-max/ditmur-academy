@@ -7,28 +7,57 @@ export const maxDuration = 60;
 
 type GeneratedNote = { lessonNote: string; evaluation: string; assignment: string };
 
-function extractSections(content: string): GeneratedNote | null {
-  // Some models wrap JSON in ```json ... ``` despite being asked not to.
-  const candidate = content.match(/\{[\s\S]*\}/)?.[0];
-  if (!candidate) return null;
-  try {
-    const parsed = JSON.parse(candidate);
-    const note = parsed.lessonNote ?? parsed.lesson_note ?? parsed.note;
-    const evaluation = parsed.evaluation;
-    const assignment = parsed.assignment;
-    if (![note, evaluation, assignment].every(value => typeof value === 'string' && value.trim())) return null;
-    return {
-      lessonNote: note.trim().slice(0, 30000),
-      evaluation: evaluation.trim().slice(0, 8000),
-      assignment: assignment.trim().slice(0, 8000)
-    };
-  } catch {
-    return null;
-  }
+function asText(value: unknown): string {
+  if (typeof value === 'string') return value.trim();
+  // Some models return a JSON array for evaluation/assignment despite being
+  // asked for a string. Accept it instead of rejecting a useful draft.
+  if (Array.isArray(value)) return value.map((item, index) => {
+    if (typeof item === 'string') return item.trim() ? `${index + 1}. ${item.trim()}` : '';
+    if (item && typeof item === 'object') {
+      const text = (item as { question?: unknown; task?: unknown; text?: unknown });
+      const part = text.question ?? text.task ?? text.text;
+      return typeof part === 'string' && part.trim() ? `${index + 1}. ${part.trim()}` : '';
+    }
+    return '';
+  }).filter(Boolean).join('\n');
+  return '';
 }
 
-// This route alone uses the same direct Chat Completions request as the working
-// Messaging feature. Nothing in Messaging or the shared AI config is changed.
+function extractSections(content: string): GeneratedNote | null {
+  // JSON may be wrapped in Markdown fences. Evaluation/assignment may be
+  // arrays or use common alternate key names.
+  const candidate = content.match(/\{[\s\S]*\}/)?.[0];
+  if (candidate) {
+    try {
+      const parsed = JSON.parse(candidate);
+      const note = asText(parsed.lessonNote ?? parsed.lesson_note ?? parsed.lesson_notes ?? parsed.note);
+      const evaluation = asText(parsed.evaluation ?? parsed.evaluationQuestions ?? parsed.questions);
+      const assignment = asText(parsed.assignment ?? parsed.homework ?? parsed.assignments);
+      if (note && evaluation && assignment) {
+        return { lessonNote: note.slice(0, 30000), evaluation: evaluation.slice(0, 8000), assignment: assignment.slice(0, 8000) };
+      }
+    } catch { /* Try the headed text format before asking OpenAI again. */ }
+  }
+  // If a model disregards JSON but returns three clearly labelled sections,
+  // keep the content rather than unnecessarily failing the first click.
+  const heading = /^\s*(?:#{1,3}\s*)?(?:\*\*)?(LESSON\s+NOTES?|EVALUATION|ASSIGNMENT)(?:\*\*)?\s*:?\s*$/gim;
+  const matches = [...content.matchAll(heading)];
+  if (matches.length < 3) return null;
+  const parts: Record<string, string> = {};
+  for (let i = 0; i < matches.length; i++) {
+    const key = matches[i][1].toUpperCase().startsWith('LESSON') ? 'lessonNote' : matches[i][1].toLowerCase();
+    parts[key] = content.slice(matches[i].index! + matches[i][0].length, matches[i + 1]?.index ?? content.length).trim();
+  }
+  if (!parts.lessonNote || !parts.evaluation || !parts.assignment) return null;
+  return {
+    lessonNote: parts.lessonNote.slice(0, 30000),
+    evaluation: parts.evaluation.slice(0, 8000),
+    assignment: parts.assignment.slice(0, 8000)
+  };
+}
+
+// Only this route is changed; Messaging, manual notes, files and saved notes
+// remain untouched. Retry automatically only for incomplete AI output.
 export async function POST(req: Request) {
   try {
     const session = await auth();
@@ -50,47 +79,48 @@ export async function POST(req: Request) {
     }
 
     const apiKey = process.env.OPENAI_API_KEY?.trim();
-    if (!apiKey) return NextResponse.json({ success: false, error: 'OPENAI_API_KEY is not set in this deployment. The Messaging menu may show a sample message when the key is missing.' }, { status: 503 });
+    if (!apiKey) return NextResponse.json({ success: false, error: 'OPENAI_API_KEY is not set in this deployment. Messaging may show a sample when the key is missing.' }, { status: 503 });
     const model = process.env.AI_MODEL || 'gpt-4o-mini';
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      signal: AbortSignal.timeout(50000),
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: 'You are an experienced Nigerian schoolteacher. Write an accurate age-appropriate lesson note for a creche, primary or secondary class. Return ONLY a JSON object with exactly three nonempty string keys: lessonNote, evaluation, assignment. The lessonNote must include objectives, clear explanation, worked examples and recap. Evaluation must have numbered assessment questions; assignment must have numbered take-home tasks. Do not invent sources. Output should be concise enough to fit in about 2500 tokens. A teacher will review the draft before publication.' },
-          { role: 'user', content: `Subject: ${subject.name}\nClass: ${schoolClass.name} (${schoolClass.level})\nTopic: ${topic.trim()}\nTeacher instructions: ${instructions.trim() || 'Explain the topic clearly using familiar examples.'}\nCreate lessonNote, evaluation and assignment in ONE JSON object.` }
-        ],
-        max_tokens: 3000,
-        temperature: 0.6
-        // Do not force response_format: some AI_MODEL deployments reject JSON mode.
-      })
-    });
-    if (!response.ok) {
-      console.error('Lesson note OpenAI request failed', { status: response.status, model });
-      const error = response.status === 401 || response.status === 403
-        ? 'OpenAI rejected the configured key or project permissions. Check the Vercel production OPENAI_API_KEY.'
-        : response.status === 429
-          ? 'OpenAI rate limit or quota reached. Check your OpenAI billing and retry later.'
-          : response.status === 400
-            ? 'OpenAI rejected the request. Check that AI_MODEL in Vercel supports Chat Completions (try gpt-4o-mini).'
-            : `OpenAI service returned HTTP ${response.status}. Please retry later.`;
-      return NextResponse.json({ success: false, error }, { status: 502 });
+    const signal = AbortSignal.timeout(50000); // Shared deadline, even if a retry is needed.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const shorter = attempt === 1;
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        signal,
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: shorter
+              ? 'You are a Nigerian schoolteacher. Return ONLY valid JSON with three NONEMPTY string keys: lessonNote, evaluation, assignment. Keep the lesson note under 250 words, provide three numbered evaluation questions and two numbered assignment tasks. No Markdown fences.'
+              : 'You are an experienced Nigerian schoolteacher. Return ONLY a JSON object with three nonempty string keys: lessonNote, evaluation, assignment. The lesson note should include objectives, clear explanation, examples and a recap. Evaluation should have numbered assessment questions and assignment numbered take-home tasks. Keep the total response concise. A teacher will review the draft before publishing.' },
+            { role: 'user', content: `Subject: ${subject.name}\nClass: ${schoolClass.name} (${schoolClass.level})\nTopic: ${topic.trim()}\nTeacher instructions: ${instructions.trim() || 'Explain the topic clearly using familiar examples.'}\nReturn lessonNote, evaluation and assignment together.` }
+          ],
+          max_tokens: shorter ? 1700 : 2700,
+          temperature: shorter ? 0.2 : 0.5
+        })
+      });
+      if (!response.ok) {
+        console.error('Lesson note OpenAI request failed', { status: response.status, model, attempt: attempt + 1 });
+        const error = response.status === 401 || response.status === 403
+          ? 'OpenAI rejected the configured key or project permissions. Check the Vercel production OPENAI_API_KEY.'
+          : response.status === 429
+            ? 'OpenAI rate limit or quota reached. Check your OpenAI billing and retry later.'
+            : response.status === 400
+              ? 'OpenAI rejected the request. Check that AI_MODEL in Vercel supports Chat Completions (try gpt-4o-mini).'
+              : `OpenAI service returned HTTP ${response.status}. Please retry later.`;
+        return NextResponse.json({ success: false, error }, { status: 502 });
+      }
+      const payload = await response.json();
+      const choice = payload.choices?.[0];
+      const content = choice?.message?.content;
+      if (typeof content === 'string') {
+        const sections = extractSections(content);
+        if (sections) return NextResponse.json({ success: true, data: sections });
+      }
+      console.warn('Lesson note draft was incomplete', { model, attempt: attempt + 1, finishReason: choice?.finish_reason });
     }
-    const payload = await response.json();
-    const choice = payload.choices?.[0];
-    const content = choice?.message?.content;
-    if (!content) return NextResponse.json({ success: false, error: 'OpenAI returned an empty response. Please retry.' }, { status: 502 });
-    const result = extractSections(content);
-    if (!result) {
-      console.error('Lesson note response not complete', { finishReason: choice?.finish_reason, model });
-      const error = choice?.finish_reason === 'length'
-        ? 'The AI response was cut short. Ask for a shorter note in the instructions and retry.'
-        : 'AI did not return all three sections. Please retry or type them manually.';
-      return NextResponse.json({ success: false, error }, { status: 502 });
-    }
-    return NextResponse.json({ success: true, data: result });
+    return NextResponse.json({ success: false, error: 'AI did not return a complete draft after two attempts. Please try a shorter topic or type the note manually.' }, { status: 502 });
   } catch (error) {
     console.error('Generate lesson note request failed:', error);
     const timedOut = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');

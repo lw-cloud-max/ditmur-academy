@@ -144,3 +144,69 @@ test('PDF attachment is stored in the existing database field and rejects disgui
   const invalid = new File(['<script>alert(1)</script>'], 'fake.pdf', { type: 'application/pdf' });
   await assert.rejects(helper.readNoteFile(invalid), /contents do not match/);
 });
+
+test('one click retries an incomplete first response and fills all three fields', async () => {
+  const previous = process.env.OPENAI_API_KEY;
+  const originalFetch = global.fetch;
+  process.env.OPENAI_API_KEY = 'sk-test-not-a-real-key';
+  let calls = 0;
+  try {
+    const prisma = {
+      subject: { findUnique: async () => ({ name: 'Basic Science' }) },
+      class: { findUnique: async () => ({ name: 'Primary 3', level: 'PRIMARY' }) }
+    };
+    global.fetch = async (_url, options) => {
+      calls++;
+      const body = JSON.parse(options.body);
+      if (calls === 2) assert.equal(body.temperature, 0.2);
+      return Response.json({ choices: [{ message: { content: calls === 1
+        ? '{"lessonNote":"Incomplete draft"}'
+        : '{"lessonNote":"Plants need light","evaluation":"1. Why?","assignment":"1. Observe a plant"}' }, finish_reason: 'stop' }] });
+    };
+    const handler = load(aiPath, deps({ user: { id: 'admin-1', role: 'ADMIN' } }, prisma));
+    const response = await handler.POST(new Request('http://localhost/api/lesson-notes/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subjectId: 'science', classId: 'class-1', topic: 'Plants', instructions: '' })
+    }));
+    assert.equal(response.status, 200);
+    assert.equal(calls, 2);
+    assert.deepEqual((await response.json()).data, { lessonNote: 'Plants need light', evaluation: '1. Why?', assignment: '1. Observe a plant' });
+  } finally {
+    global.fetch = originalFetch;
+    if (previous === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previous;
+  }
+});
+
+test('evaluation and assignment arrays no longer require a retry', async () => {
+  const previous = process.env.OPENAI_API_KEY;
+  const originalFetch = global.fetch;
+  process.env.OPENAI_API_KEY = 'sk-test-not-a-real-key';
+  let calls = 0;
+  try {
+    const prisma = {
+      subject: { findUnique: async () => ({ name: 'English' }) },
+      class: { findUnique: async () => ({ name: 'JSS 1', level: 'SECONDARY' }) }
+    };
+    global.fetch = async () => {
+      calls++;
+      return Response.json({ choices: [{ message: { content: JSON.stringify({
+        lessonNote: 'Parts of speech', evaluation: ['Name a noun', 'Name a verb'], assignment: ['Write five sentences']
+      }) } }] });
+    };
+    const handler = load(aiPath, deps({ user: { id: 'admin-1', role: 'ADMIN' } }, prisma));
+    const response = await handler.POST(new Request('http://localhost/api/lesson-notes/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subjectId: 'english', classId: 'jss1', topic: 'Parts of speech', instructions: '' })
+    }));
+    assert.equal(response.status, 200);
+    assert.equal(calls, 1);
+    const data = (await response.json()).data;
+    assert.equal(data.evaluation, '1. Name a noun\n2. Name a verb');
+    assert.equal(data.assignment, '1. Write five sentences');
+  } finally {
+    global.fetch = originalFetch;
+    if (previous === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previous;
+  }
+});
