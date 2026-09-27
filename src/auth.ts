@@ -39,14 +39,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         
         // Ensure specific hardcoded login for ADMIN to prevent board members logging in with arbitrary emails
         if (roleType === "STAFF") {
-          if (username === "admin@ditmur.com" && password === "admin123") {
+          // SUPER_ADMIN_PASSWORD should be set in Vercel before launch. The
+          // legacy default remains temporarily so an existing admin is not
+          // locked out by this update; do not use it for live school finances.
+          if (username.toLowerCase() === "admin@ditmur.com" && password === (process.env.SUPER_ADMIN_PASSWORD || "admin123")) {
             return { id: "admin-1", name: "System Admin", email: "admin@ditmur.com", role: "ADMIN" };
           }
           return null;
         }
         
         if (roleType === "STUDENT") {
-          return { id: username.toUpperCase(), name: "Test Student", email: username.toUpperCase(), role: "STUDENT" };
+          const student = await prisma.student.findUnique({
+            where: { id: username.toUpperCase().trim() },
+            select: { id: true, firstName: true, lastName: true, password: true, status: true }
+          });
+          if (!student || student.status !== 'ACTIVE' || student.password !== password) return null;
+          return { id: student.id, name: `${student.firstName} ${student.lastName}`, email: null, role: "STUDENT" };
         }
 
         if (roleType === "PARENT") {
@@ -92,9 +100,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   pages: {
     signIn: "/login", 
-    signOut: "/login",
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
+    csrfToken: {
+      name: `next-auth.csrf-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
+  },
+  secret: process.env.AUTH_SECRET,
 });

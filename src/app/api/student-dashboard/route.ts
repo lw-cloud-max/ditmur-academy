@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { auth } from '@/auth';
 
 export async function GET(req: Request) {
   try {
@@ -9,42 +10,21 @@ export async function GET(req: Request) {
     if (!studentId) return NextResponse.json({ success: false, error: 'Student ID required' }, { status: 400 });
 
     const normalizedId = studentId.toUpperCase().trim();
-
-    let student = null;
-    try {
-      student = await prisma.student.findUnique({
-        where: { id: normalizedId },
-        include: {
-          class: true,
-          grades: { include: { subject: true } },
-          cbtResults: { include: { exam: true } },
-          internalResults: { include: { exam: { include: { subject: true } } } }
-        }
-      });
-    } catch (e) {
-      console.error("Prisma error ignored, using mock data:", e);
+    const session = await auth();
+    if (!session?.user || session.user.role !== 'STUDENT' || session.user.id !== normalizedId) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    // IF NOT FOUND OR PRISMA CRASHED, RETURN MOCK DATA FOR UI TESTING
-    if (!student) {
-      console.log("Student not found, returning mock data for UI testing.");
-      student = {
-        id: normalizedId,
-        firstName: "Test",
-        lastName: "Student",
-        dob: new Date(),
-        gender: "Male",
-        imageUrl: "",
-        classId: "cls-mock",
-        class: { id: "cls-mock", name: "JSS 1" },
-        grades: [
-          { total: 85, subject: { name: "Mathematics" } },
-          { total: 92, subject: { name: "English Language" } }
-        ],
-        cbtResults: [],
-        internalResults: []
-      } as any;
-    }
+    const student = await prisma.student.findUnique({
+      where: { id: normalizedId },
+      include: {
+        class: true,
+        grades: { include: { subject: true } },
+        cbtResults: { include: { exam: true } },
+        internalResults: { include: { exam: { include: { subject: true } } } }
+      }
+    });
+    if (!student) return NextResponse.json({ success: false, error: 'Student not found' }, { status: 404 });
 
     let totalScore = 0;
     let totalSubjects = 0;

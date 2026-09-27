@@ -81,7 +81,9 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
   ];
 
   // Select the active menu based on the user's role
-  const activeMenu = userRole === 'STUDENT' ? studentMenu : userRole === 'PARENT' ? parentMenu : staffMenu;
+  const canSeeFinance = (userRole === 'ADMIN' && session?.user?.id === 'admin-1') || userRole === 'ACCOUNTANT';
+  const activeMenu = (userRole === 'STUDENT' ? studentMenu : userRole === 'PARENT' ? parentMenu : staffMenu)
+    .filter(item => item.path !== '/payments' || canSeeFinance || userRole === 'PARENT');
 
   return (
     <aside className={`w-64 bg-gradient-to-b from-[#0A192F] to-[#001744] text-white min-h-screen flex flex-col border-r border-[#0033A0]/50 shadow-xl ${isMobile ? '' : 'hidden md:flex'}`}>

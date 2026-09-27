@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react';
 import { Users, GraduationCap, School, CreditCard, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ canViewFinance = false }: { canViewFinance?: boolean }) {
   const [stats, setStats] = useState({
     totalStudents: 0,
     totalStaff: 0,
     activeClasses: 0,
-    totalRevenue: 0
+    totalRevenue: 0,
+    recentActivity: [] as { text: string; at: string; category: string }[]
   });
   const [loading, setLoading] = useState(true);
 
@@ -34,7 +35,7 @@ export default function AdminDashboard() {
     { title: 'Total Students', value: stats.totalStudents, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
     { title: 'Total Staff', value: stats.totalStaff, icon: GraduationCap, color: 'text-emerald-600', bg: 'bg-emerald-100' },
     { title: 'Active Classes', value: stats.activeClasses, icon: School, color: 'text-purple-600', bg: 'bg-purple-100' },
-    { title: 'Revenue (Term)', value: `₦${stats.totalRevenue.toLocaleString()}`, icon: CreditCard, color: 'text-amber-600', bg: 'bg-amber-100' },
+    ...(canViewFinance ? [{ title: 'Revenue Collected', value: `₦${stats.totalRevenue.toLocaleString()}`, icon: CreditCard, color: 'text-amber-600', bg: 'bg-amber-100' }] : []),
   ];
 
   return (
@@ -71,17 +72,13 @@ export default function AdminDashboard() {
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
           <h2 className="text-lg font-bold text-slate-900 mb-4">Recent Activity</h2>
           <div className="space-y-4">
-            {[
-              { text: 'New student admission processed successfully.', time: 'Just now' },
-              { text: 'Term 2 configuration updated by Admin.', time: '2 hours ago' },
-              { text: 'Math assessment format changed to CBT.', time: '5 hours ago' },
-              { text: 'Entrance Exam scheduled for next Monday.', time: '1 day ago' },
-            ].map((activity, i) => (
+            {!loading && stats.recentActivity.length === 0 && <p className="text-sm text-slate-500">No recent activity recorded yet.</p>}
+            {stats.recentActivity.map((activity, i) => (
               <div key={i} className="flex gap-4 items-start pb-4 border-b border-slate-100 last:border-0 last:pb-0">
                 <div className="w-2 h-2 mt-2 rounded-full bg-[#0033A0] flex-shrink-0" />
                 <div>
                   <p className="text-sm text-slate-700">{activity.text}</p>
-                  <p className="text-xs text-slate-400 mt-1">{activity.time}</p>
+                  <p className="text-xs text-slate-400 mt-1">{new Date(activity.at).toLocaleString()}</p>
                 </div>
               </div>
             ))}
@@ -95,9 +92,9 @@ export default function AdminDashboard() {
             <Link href="/admissions" className="block w-full text-left px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/5 text-sm font-bold transition-all shadow-sm">
               + Process New Admission
             </Link>
-            <Link href="/payments" className="block w-full text-left px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/5 text-sm font-bold transition-all shadow-sm">
+            {canViewFinance && <Link href="/payments" className="block w-full text-left px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/5 text-sm font-bold transition-all shadow-sm">
               + Record Payment
-            </Link>
+            </Link>}
             <Link href="/messaging" className="block w-full text-left px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/5 text-sm font-bold transition-all shadow-sm">
               + Send Broadcast Message
             </Link>

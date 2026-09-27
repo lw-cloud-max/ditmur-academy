@@ -8,10 +8,42 @@ import {
   Wallet, Receipt, CheckCircle2, Clock, Plus, Loader2, X
 } from 'lucide-react';
 
+function PayInvoiceButton({ invoice, email, onPaid }: { invoice: any; email: string; onPaid: () => void }) {
+  const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_KEY;
+  const [reference] = useState(() => `DITMUR-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+  // Hooks must run at component level, never from a click handler.
+  const initializePayment = usePaystackPayment({
+    reference, email: email || 'missing@ditmur.invalid', amount: invoice.amount * 100,
+    publicKey: publicKey || 'pk_test_unconfigured'
+  });
+  return <button type="button" disabled={!publicKey || !email}
+    title={!publicKey ? 'Online payments are not configured' : !email ? 'A registered email is required to pay online' : undefined}
+    onClick={() => initializePayment({
+      onSuccess: async (response: any) => {
+        try {
+          const res = await fetch('/api/payments/verify', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reference: response.reference, invoiceId: invoice.id })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.error || 'Payment verification failed');
+          alert('Payment verified. Invoice marked as paid.');
+          onPaid();
+        } catch (error) { alert(error instanceof Error ? error.message : 'Payment verification failed'); }
+      },
+      onClose: () => {}
+    })}
+    className="text-white bg-emerald-600 hover:bg-emerald-700 text-xs font-bold transition-colors px-4 py-2 rounded-lg shadow-sm disabled:opacity-50">
+      {!publicKey ? 'Online Unavailable' : !email ? 'Email Required' : 'Pay Online'}
+  </button>;
+}
+
 export default function PaymentsPage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const userRole = session?.user?.role;
-  const isReadOnly = userRole !== 'STAFF' && userRole !== 'ADMIN';
+  const canSeeFinance = (userRole === 'ADMIN' && session?.user?.id === 'admin-1') || userRole === 'ACCOUNTANT';
+  const isReadOnly = !canSeeFinance;
+  const canSeeOwnFees = userRole === 'PARENT' || userRole === 'STUDENT';
 
   const [invoices, setInvoices] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
@@ -37,41 +69,25 @@ export default function PaymentsPage() {
     pendingCount: 0
   });
 
-  useEffect(() => { fetchData(); }, [statusFilter]);
+  useEffect(() => {
+    if (sessionStatus === 'authenticated' && (canSeeFinance || canSeeOwnFees)) fetchData();
+  }, [statusFilter, sessionStatus, userRole, session?.user?.id]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const url = statusFilter ? `/api/payments?status=${statusFilter}` : '/api/payments';
-      const [invRes, stuRes] = await Promise.all([
-        fetch(url),
-        fetch('/api/students')
-      ]);
-      
+      const invRes = await fetch(url);
       const invData = await invRes.json();
-      const stuData = await stuRes.json();
-
-      let visibleInvoices = invData.data;
-
       if (invData.success) {
-        if (userRole === 'PARENT' && session?.user?.id) {
-          // Extra safe filter logic: fetch parent data directly if needed
-          const pRes = await fetch('/api/parents');
-          const pData = await pRes.json();
-          let parentId = null;
-          if (pData.success) {
-            const parent = pData.data.find((p: any) => p.email === session.user.id || p.id === session.user.id);
-            if (parent) parentId = parent.id;
-          }
-          
-          visibleInvoices = invData.data.filter((i: any) => i.student?.parentId === parentId || i.student?.parentId === session.user.id);
-        } else if (userRole === 'STUDENT' && session?.user?.id) {
-          visibleInvoices = invData.data.filter((i: any) => i.studentId === session.user.id);
-        }
-        setInvoices(visibleInvoices);
-        calculateStats(visibleInvoices);
+        setInvoices(invData.data);
+        calculateStats(invData.data);
       }
-      if (stuData.success) setStudents(stuData.data);
+      if (canSeeFinance) {
+        const stuRes = await fetch('/api/students');
+        const stuData = await stuRes.json();
+        if (stuData.success) setStudents(stuData.data);
+      }
     } catch (err) {
       console.error("Failed to load payments data");
     } finally { setLoading(false); }
@@ -109,40 +125,9 @@ export default function PaymentsPage() {
     } catch (err) { console.error("Failed to record payment"); }
   };
 
-  const handlePayOnline = (invoice: any) => {
-    const config = {
-      reference: (new Date()).getTime().toString(),
-      email: session?.user?.email || "parent@school.com",
-      amount: invoice.amount * 100, // Paystack expects Kobo (amount * 100)
-      publicKey: process.env.NEXT_PUBLIC_PAYSTACK_KEY || 'pk_test_mock_key',
-    };
 
-    const initializePayment = usePaystackPayment(config);
-
-    initializePayment({
-      onSuccess: async (reference: any) => {
-        try {
-          const res = await fetch('/api/payments/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reference: reference.reference, invoiceId: invoice.id })
-          });
-          const data = await res.json();
-          if (data.success) {
-            alert("Payment successful! Invoice is now marked as PAID.");
-            fetchData();
-          } else {
-            alert("Payment verification failed. Contact admin.");
-          }
-        } catch (err) {
-          console.error("Verification error", err);
-        }
-      },
-      onClose: () => {
-        console.log("Payment window closed.");
-      }
-    });
-  };
+  if (sessionStatus === 'loading') return <div className="p-10 text-slate-600">Loading...</div>;
+  if (!canSeeFinance && !canSeeOwnFees) return <div className="p-10 text-slate-700">School finance is only available to the super admin and accountant.</div>;
 
   return (
     <div className="space-y-6 pb-32 max-w-6xl mx-auto">
@@ -258,9 +243,7 @@ export default function PaymentsPage() {
                     <td className="px-6 py-4 text-right">
                       {tx.status !== 'PAID' ? (
                         isReadOnly ? (
-                          <button onClick={() => handlePayOnline(tx)} className="text-white bg-emerald-600 hover:bg-emerald-700 text-xs font-bold transition-colors px-4 py-2 rounded-lg shadow-sm">
-                            Pay Online
-                          </button>
+                          <PayInvoiceButton invoice={tx} email={session?.user?.email || ''} onPaid={fetchData} />
                         ) : (
                           <button onClick={() => handleRecordPayment(tx.id)} className="text-[#0033A0] hover:text-white text-xs font-bold transition-colors bg-blue-50 hover:bg-[#0033A0] px-4 py-2 rounded-lg border border-blue-100">
                             Mark as Paid

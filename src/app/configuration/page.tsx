@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { School, BookOpen, Plus, Trash2, Loader2, AlertCircle, Calendar, ArrowRight, CheckCircle2, Star, CalendarRange } from 'lucide-react';
+import { School, BookOpen, Plus, Trash2, Loader2, AlertCircle, Calendar, ArrowRight, CheckCircle2, Star, CalendarRange, Pencil, X, Save } from 'lucide-react';
 
 export default function ConfigurationPage() {
   const [activeTab, setActiveTab] = useState('classes');
@@ -18,11 +18,16 @@ export default function ConfigurationPage() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [loadingSubjects, setLoadingSubjects] = useState(true);
+  const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
+  const [editedSubjectName, setEditedSubjectName] = useState('');
+  const [savingSubject, setSavingSubject] = useState(false);
 
   // States for Terms/Sessions
   const [terms, setTerms] = useState<any[]>([]);
   const [loadingTerms, setLoadingTerms] = useState(true);
   const [newTerm, setNewTerm] = useState({ name: 'First Term', session: '2026-2027', isCurrent: false, startDate: '', endDate: '' });
+  const academicYear = new Date().getMonth() >= 7 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+  const sessionOptions = Array.from(new Set([newTerm.session, ...terms.map(t => t.session as string), ...Array.from({ length: 4 }, (_, i) => `${academicYear + i}-${academicYear + i + 1}`)])).sort().reverse();
 
   // States for Calendar Events
   const [events, setEvents] = useState<any[]>([]);
@@ -98,13 +103,30 @@ export default function ConfigurationPage() {
     } catch (err: any) { setError(err.message); }
   };
 
+  const handleEditSubject = async () => {
+    if (!editingSubjectId || !editedSubjectName.trim()) { setError('Enter a subject name'); return; }
+    setSavingSubject(true); setError('');
+    try {
+      const res = await fetch('/api/subjects', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingSubjectId, name: editedSubjectName })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Could not update subject');
+      setEditingSubjectId(null); setEditedSubjectName('');
+      setSuccessMsg('Subject updated. Related grades, notes and exams keep their subject link.');
+      fetchSubjects();
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not update subject'); }
+    finally { setSavingSubject(false); }
+  };
+
   const handleAddTerm = async (e: React.FormEvent) => {
     e.preventDefault(); setError('');
     try {
       const res = await fetch('/api/terms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newTerm) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setNewTerm({ name: 'First Term', session: '2026-2027', isCurrent: false, startDate: '', endDate: '' });
+      setNewTerm({ name: 'First Term', session: newTerm.session, isCurrent: false, startDate: '', endDate: '' });
       fetchTerms();
     } catch (err: any) { setError(err.message); }
   };
@@ -128,7 +150,12 @@ export default function ConfigurationPage() {
 
   const handleDeleteSubject = async (id: string) => {
     if (!confirm('Are you sure you want to delete this subject?')) return;
-    try { await fetch(`/api/subjects?id=${id}`, { method: 'DELETE' }); fetchSubjects(); } catch (err) {}
+    try {
+      const res = await fetch(`/api/subjects?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Could not delete subject');
+      fetchSubjects();
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not delete subject'); }
   };
 
   const handleDeleteTerm = async (id: string) => {
@@ -270,11 +297,23 @@ export default function ConfigurationPage() {
           <div className="md:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-4 bg-slate-50 border-b border-slate-200"><h3 className="font-bold text-slate-800">Existing Subjects</h3></div>
             {loadingSubjects ? (<div className="p-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>) : subjects.length === 0 ? (<div className="p-8 text-center text-slate-500 text-sm">No subjects found. Add one!</div>) : (
-              <ul className="divide-y divide-slate-200 max-h-[600px] overflow-y-auto custom-scrollbar grid grid-cols-2">
+              <ul className="divide-y divide-slate-200 max-h-[600px] overflow-y-auto custom-scrollbar grid grid-cols-1 sm:grid-cols-2">
                 {subjects.map(s => (
                   <li key={s.id} className="flex items-center justify-between p-4 hover:bg-slate-50 border-r border-slate-200 last:border-0">
-                    <p className="font-medium text-slate-900">{s.name}</p>
-                    <button onClick={() => handleDeleteSubject(s.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                    {editingSubjectId === s.id ? (
+                      <div className="w-full flex flex-wrap gap-2 items-center">
+                        <input value={editedSubjectName} onChange={e => setEditedSubjectName(e.target.value)} maxLength={120} aria-label="Edit subject name"
+                          className="min-w-0 flex-1 rounded-lg border border-blue-300 p-2 text-sm" />
+                        <button type="button" disabled={savingSubject} onClick={handleEditSubject} aria-label="Save subject" className="p-2 text-green-700"><Save className="w-4 h-4" /></button>
+                        <button type="button" onClick={() => setEditingSubjectId(null)} aria-label="Cancel editing" className="p-2 text-slate-600"><X className="w-4 h-4" /></button>
+                      </div>
+                    ) : (<>
+                      <p className="font-medium text-slate-900 break-words">{s.name}</p>
+                      <div className="flex shrink-0">
+                        <button type="button" onClick={() => { setEditingSubjectId(s.id); setEditedSubjectName(s.name); setError(''); }} aria-label={`Edit ${s.name}`} className="p-2 text-blue-700 hover:bg-blue-50 rounded-lg"><Pencil className="w-4 h-4" /></button>
+                        <button type="button" onClick={() => handleDeleteSubject(s.id)} aria-label={`Delete ${s.name}`} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </>)}
                   </li>
                 ))}
               </ul>
@@ -294,7 +333,9 @@ export default function ConfigurationPage() {
             <form onSubmit={handleAddTerm} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Academic Session</label>
-                <input type="text" required value={newTerm.session} onChange={(e) => setNewTerm({...newTerm, session: e.target.value})} placeholder="e.g. 2026-2027" className="w-full px-4 py-2 bg-slate-50 border rounded-lg text-sm outline-none" />
+                <select required value={newTerm.session} onChange={(e) => setNewTerm({...newTerm, session: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg text-sm outline-none" aria-label="Academic Session">
+                  {sessionOptions.map(session => <option key={session} value={session}>{session}</option>)}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Term</label>

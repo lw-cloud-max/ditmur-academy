@@ -90,7 +90,8 @@ export default function MobileMenuPortal() {
     }
   };
 
-  const menuItems = getMenuItems();
+  const canSeeFinance = (userRole === 'ADMIN' && session?.user?.id === 'admin-1') || userRole === 'ACCOUNTANT';
+  const menuItems = getMenuItems().filter(item => item.path !== '/payments' || canSeeFinance || userRole === 'PARENT');
 
   if (!isOpen) return null;
 

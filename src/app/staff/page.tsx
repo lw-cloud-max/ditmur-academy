@@ -1,14 +1,21 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Search, Plus, Filter, MoreVertical, GraduationCap, Loader2, Mail, Trash2 } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import { Search, Plus, MoreVertical, GraduationCap, Loader2, Mail, Trash2 } from 'lucide-react';
 
 export default function StaffPage() {
+  const { data: session } = useSession();
+  const isSuperAdmin = session?.user?.role === 'ADMIN' && session?.user?.id === 'admin-1';
   const [staff, setStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -23,9 +30,8 @@ export default function StaffPage() {
     try {
       const res = await fetch('/api/staff');
       const data = await res.json();
-      if (data.success) {
-        setStaff(data.data);
-      }
+      if (res.ok && data.success) setStaff(data.data);
+      else setError(data.error || 'Could not load staff');
     } catch (err) {
       console.error("Failed to fetch staff");
     } finally {
@@ -39,7 +45,7 @@ export default function StaffPage() {
 
   const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    setIsSubmitting(true); setError(''); setMessage('');
     
     try {
       const res = await fetch('/api/staff', {
@@ -49,15 +55,16 @@ export default function StaffPage() {
       });
       
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setIsModalOpen(false);
         setFormData({ firstName: '', lastName: '', email: '', phone: '', role: 'TEACHER' });
+        setMessage(`Added ${data.data.firstName} ${data.data.lastName} (${data.data.id}). Directory records do not create login accounts yet.`);
         fetchStaff();
       } else {
-        alert(data.error);
+        setError(data.error || 'Failed to create staff member');
       }
     } catch (err) {
-      alert("Failed to create staff member");
+      setError('Failed to create staff member. Please check your connection.');
     } finally {
       setIsSubmitting(false);
     }
@@ -71,43 +78,52 @@ export default function StaffPage() {
       const data = await res.json();
       if (data.success) {
         setStaff(staff.filter(s => s.id !== id));
+        setMessage('Staff record deactivated. Historic records were preserved.');
       } else {
-        alert(data.error);
+        setError(data.error || 'Could not remove staff');
       }
     } catch (err) {
-      console.error(err);
+      setError('Could not remove staff');
     }
   };
 
+  const shownStaff = staff.filter(s =>
+    (!roleFilter || s.role === roleFilter) &&
+    (`${s.firstName} ${s.lastName} ${s.id}`.toLowerCase().includes(search.toLowerCase()))
+  );
   return (
     <div className="space-y-6 pb-32">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Staff Directory</h1>
-          <p className="text-slate-500">Manage teachers, administrators, and support staff.</p>
+          <p className="text-slate-500">Manage teachers, administrators, accountants and support staff. Login accounts will be set up separately.</p>
         </div>
-        <button 
+        {isSuperAdmin && <button 
           onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium"
         >
           <Plus className="w-4 h-4" /> Add Staff Member
-        </button>
+        </button>}
       </div>
 
+      {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
+      {message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">{message}</div>}
       <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input 
             type="text" 
-            placeholder="Search staff by name or ID..." 
+            placeholder="Search staff by name or ID..."
+            value={search} onChange={e => setSearch(e.target.value)} 
             className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
           />
         </div>
-        <select className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+        <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
           <option value="">All Roles</option>
           <option value="TEACHER">Teachers</option>
           <option value="ADMIN">Administrators</option>
           <option value="ACCOUNTANT">Accountants</option>
+          <option value="SUPPORT">Support staff</option>
         </select>
       </div>
 
@@ -115,7 +131,7 @@ export default function StaffPage() {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 flex justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
         </div>
-      ) : staff.length === 0 ? (
+      ) : shownStaff.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
           <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
             <GraduationCap className="w-8 h-8" />
@@ -124,9 +140,9 @@ export default function StaffPage() {
           <p className="text-slate-500 text-sm mb-4">Add your first teacher or administrator to the system.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-visible">
-          <div className="overflow-visible">
-            <table className="w-full text-left border-collapse">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-[850px] w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="px-6 py-4 text-sm font-semibold text-slate-600">Staff ID</th>
@@ -138,7 +154,7 @@ export default function StaffPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {staff.map((s) => (
+                {shownStaff.map((s) => (
                   <tr key={s.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 text-sm font-bold text-emerald-600">{s.id}</td>
                     <td className="px-6 py-4 font-bold text-slate-900">{s.firstName} {s.lastName}</td>
@@ -159,20 +175,20 @@ export default function StaffPage() {
                         : 'None'}
                     </td>
                     <td className="px-6 py-4 text-right relative">
-                      <button 
+                      {isSuperAdmin && <button 
                         onClick={() => setActiveDropdown(activeDropdown === s.id ? null : s.id)}
                         className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                       >
                         <MoreVertical className="w-5 h-5" />
-                      </button>
+                      </button>}
 
-                      {activeDropdown === s.id && (
+                      {isSuperAdmin && activeDropdown === s.id && (
                         <>
                           <div className="fixed inset-0 z-40" onClick={() => setActiveDropdown(null)}></div>
                           <div className="absolute right-8 top-12 w-48 bg-white rounded-xl shadow-xl border border-slate-200 z-50 py-2 text-left animate-in fade-in slide-in-from-top-2">
-                            <button className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                            {s.email && <a href={`mailto:${s.email}`} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
                               <Mail className="w-4 h-4 text-slate-400" /> Send Email
-                            </button>
+                            </a>}
                             <div className="h-px bg-slate-100 my-1"></div>
                             <button 
                               onClick={() => { handleDeleteStaff(s.id, `${s.firstName} ${s.lastName}`); setActiveDropdown(null); }}
@@ -193,7 +209,7 @@ export default function StaffPage() {
       )}
 
       {/* CREATE MODAL */}
-      {isModalOpen && (
+      {isSuperAdmin && isModalOpen && (
         <div className="fixed inset-0 bg-[#0A192F]/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="p-6 border-b border-slate-100">
@@ -224,8 +240,10 @@ export default function StaffPage() {
                   <option value="TEACHER">Teacher</option>
                   <option value="ADMIN">Administrator</option>
                   <option value="ACCOUNTANT">Accountant</option>
+                  <option value="SUPPORT">Support staff</option>
                 </select>
               </div>
+              <p className="text-xs text-slate-500">This creates a directory record only. A separate secure staff-login setup is needed before the person can sign in.</p>
               <div className="pt-4 flex gap-3">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-sm transition-colors">Cancel</button>
                 <button type="submit" disabled={isSubmitting} className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-colors flex justify-center items-center gap-2">

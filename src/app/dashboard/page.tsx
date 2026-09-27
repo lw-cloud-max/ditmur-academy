@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import AdminDashboard from "../dashboards/AdminDashboard";
 import StudentDashboard from "../dashboards/StudentDashboard";
 import ParentDashboard from "../dashboards/ParentDashboard";
+import { canViewSchoolFinance } from "@/lib/permissions";
 
 export default async function Dashboard() {
   const session = await auth();
@@ -17,5 +18,5 @@ export default async function Dashboard() {
   }
 
   // Default to Admin/Staff
-  return <AdminDashboard />;
+  return <AdminDashboard canViewFinance={canViewSchoolFinance(session)} />;
 }
