@@ -81,8 +81,14 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
   ];
 
   // Select the active menu based on the user's role
+  const accountantMenu = [
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+    { name: 'Payments & Fees', icon: CreditCard, path: '/payments' },
+    { name: 'Change Password', icon: Lock, path: '/change-password' },
+    { name: 'Help', icon: HelpCircle, path: '/help' }
+  ];
   const canSeeFinance = (userRole === 'ADMIN' && session?.user?.id === 'admin-1') || userRole === 'ACCOUNTANT';
-  const activeMenu = (userRole === 'STUDENT' ? studentMenu : userRole === 'PARENT' ? parentMenu : staffMenu)
+  const activeMenu = (userRole === 'STUDENT' ? studentMenu : userRole === 'PARENT' ? parentMenu : userRole === 'ACCOUNTANT' ? accountantMenu : staffMenu)
     .filter(item => item.path !== '/payments' || canSeeFinance || userRole === 'PARENT');
 
   return (

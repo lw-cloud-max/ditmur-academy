@@ -35,7 +35,9 @@ model Application {
 
 model Student {
   id               String   @id 
-  password         String   @default("student123") // NEW: Student Login Password
+  password String?
+  mustChangePassword Boolean @default(true)
+  sessionVersion Int @default(0)
   firstName        String
   lastName         String
   otherNames       String?  // Middle names, maiden names, etc.
@@ -72,7 +74,9 @@ model Parent {
   conversations     Conversation[]
   smsNotifications  SMSNotification[]
   id                String    @id @default(cuid())
-  password          String    @default("parent123") // NEW: Parent Login Password
+  password String?
+  mustChangePassword Boolean @default(true)
+  sessionVersion Int @default(0)
   fullName          String
   email             String?
   phone             String
@@ -83,6 +87,9 @@ model Parent {
 
 model Staff {
   id          String   @id 
+  passwordHash String?
+  mustChangePassword Boolean @default(true)
+  sessionVersion Int @default(0)
   firstName   String
   lastName    String
   email       String?  @unique

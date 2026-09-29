@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
 import { isSuperAdmin } from '@/lib/permissions';
+import { hashPassword, newTemporaryPassword } from '@/lib/passwords';
 
 export const dynamic = 'force-dynamic';
 const allowedRoles = ['TEACHER', 'ADMIN', 'ACCOUNTANT', 'SUPPORT'];
@@ -28,8 +29,7 @@ export async function GET(req: Request) {
   }
 }
 
-// Staff directory only. Individual staff authentication will be a separate
-// migration: never imply that creating a directory record gives login access.
+// A new staff record also receives a one-time login password (hashed at rest).
 export async function POST(req: Request) {
   try {
     const session = await auth();
@@ -45,18 +45,21 @@ export async function POST(req: Request) {
         !/^[+\d()\s-]{7,25}$/.test(phone) || !allowedRoles.includes(role)) {
       return NextResponse.json({ success: false, error: 'Enter valid names, email, phone and role' }, { status: 400 });
     }
+    if (email === 'admin@ditmur.com') return NextResponse.json({ success: false, error: 'Super admin signs in with the Vercel password, not a staff directory account' }, { status: 409 });
     const existing = await prisma.staff.findUnique({ where: { email }, select: { id: true, status: true } });
     if (existing?.status === 'ACTIVE') return NextResponse.json({ success: false, error: 'A staff record already uses this email' }, { status: 409 });
+    const temporaryPassword = newTemporaryPassword();
+    const passwordHash = await hashPassword(temporaryPassword);
     const staff = existing
       ? await prisma.staff.update({
-          where: { id: existing.id }, data: { firstName, lastName, phone, role, status: 'ACTIVE' },
+          where: { id: existing.id }, data: { firstName, lastName, phone, role, status: 'ACTIVE', passwordHash, mustChangePassword: true, sessionVersion: { increment: 1 } },
           select: { id: true, firstName: true, lastName: true, role: true, email: true, phone: true }
         })
       : await prisma.staff.create({
-          data: { id: `STF-${randomBytes(8).toString('hex').toUpperCase()}`, firstName, lastName, email, phone, role, status: 'ACTIVE' },
+          data: { id: `STF-${randomBytes(8).toString('hex').toUpperCase()}`, firstName, lastName, email, phone, role, status: 'ACTIVE', passwordHash, mustChangePassword: true },
           select: { id: true, firstName: true, lastName: true, role: true, email: true, phone: true }
         });
-    return NextResponse.json({ success: true, data: staff }, { status: 201 });
+    return NextResponse.json({ success: true, data: { ...staff, temporaryPassword } }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (error: unknown) {
     console.error('Create staff error:', error);
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {

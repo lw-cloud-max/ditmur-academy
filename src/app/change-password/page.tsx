@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, Loader2, Shield } from 'lucide-react';
 
 export default function ChangePasswordPage() {
@@ -28,8 +28,8 @@ export default function ChangePasswordPage() {
     }
 
     // Validate password length
-    if (newPassword.length < 6) {
-      setError('New password must be at least 6 characters');
+    if (newPassword.length < 12) {
+      setError('New password must be at least 12 characters');
       return;
     }
 
@@ -55,6 +55,7 @@ export default function ChangePasswordPage() {
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
+        await signOut({ callbackUrl: '/login' });
       } else {
         setError(data.error || 'Failed to change password');
       }
@@ -65,6 +66,12 @@ export default function ChangePasswordPage() {
     }
   };
 
+  if (session?.user?.id === 'admin-1' && session.user.role === 'ADMIN') {
+    return <div className="max-w-lg mx-auto rounded-xl border bg-white p-6 text-slate-700">
+      The super-admin password is set through the SUPER_ADMIN_PASSWORD environment variable in Vercel.
+      Update it there and sign in again. Do not enter it in this form.
+    </div>;
+  }
   return (
     <div className="max-w-lg mx-auto pb-32 animation-fade-in">
       {/* Header */}
@@ -84,7 +91,7 @@ export default function ChangePasswordPage() {
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
             <div>
               <p className="font-bold text-emerald-800">Password Changed Successfully!</p>
-              <p className="text-sm text-emerald-600 mt-1">Your password has been updated. Please use your new password for future logins.</p>
+              <p className="text-sm text-emerald-600 mt-1">Your password has been updated. You will be signed out to use the new password.</p>
             </div>
           </div>
         )}
@@ -131,7 +138,7 @@ export default function ChangePasswordPage() {
                 required
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password (min 6 characters)"
+                placeholder="Enter new password (min 12 characters)"
                 className="w-full pl-11 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0] focus:ring-2 focus:ring-blue-200"
               />
               <button
@@ -172,8 +179,8 @@ export default function ChangePasswordPage() {
             <p className="text-sm font-bold text-blue-800 mb-2">Password Requirements:</p>
             <ul className="text-sm text-blue-700 space-y-1">
               <li className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${newPassword.length >= 6 ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                At least 6 characters
+                <div className={`w-2 h-2 rounded-full ${newPassword.length >= 12 ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                At least 12 characters
               </li>
               <li className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${newPassword !== currentPassword && newPassword.length > 0 ? 'bg-emerald-500' : 'bg-slate-300'}`} />

@@ -12,7 +12,7 @@ export async function GET(req: Request) {
       where: { examId },
       include: {
         student: {
-          include: { class: true }
+          select: { id: true, firstName: true, lastName: true, class: { select: { name: true } } }
         }
       },
       orderBy: { score: 'desc' }

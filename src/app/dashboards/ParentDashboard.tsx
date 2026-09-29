@@ -32,7 +32,7 @@ export default function ParentDashboard({ parentId }: { parentId: string }) {
       <div className="bg-[#0A192F] rounded-3xl p-8 relative overflow-hidden shadow-lg">
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#0033A0] rounded-full blur-3xl opacity-50 -mr-20 -mt-20"></div>
         <div className="relative z-10 text-white">
-          <h1 className="text-3xl font-black tracking-tight">Welcome, Test Parent!</h1>
+          <h1 className="text-3xl font-black tracking-tight">Parent profile unavailable</h1>
           <p className="text-[#FFD700] font-bold tracking-wide mt-1">Parent ID: {parentId}</p>
         </div>
       </div>

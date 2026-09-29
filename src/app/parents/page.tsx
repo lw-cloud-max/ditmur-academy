@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import TemporaryPasswordNotice, { type IssuedCredential } from '@/components/TemporaryPasswordNotice';
 import { 
   Search, Plus, Filter, MoreVertical, Users, Loader2, Trash2,
   Edit, Eye, Mail, Phone, X, Save, UserCircle
@@ -16,6 +18,9 @@ interface Parent {
 }
 
 export default function ParentsPage() {
+  const { data: session } = useSession();
+  const isSuperAdmin = session?.user?.role === 'ADMIN' && session?.user?.id === 'admin-1';
+  const [credential, setCredential] = useState<IssuedCredential | null>(null);
   const [parents, setParents] = useState<Parent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,8 +33,7 @@ export default function ParentsPage() {
   const [editForm, setEditForm] = useState({
     fullName: '',
     email: '',
-    phone: '',
-    password: ''
+    phone: ''
   });
 
   useEffect(() => {
@@ -56,8 +60,7 @@ export default function ParentsPage() {
     setEditForm({
       fullName: parent.fullName,
       email: parent.email || '',
-      phone: parent.phone,
-      password: ''
+      phone: parent.phone
     });
     setActiveDropdown(null);
   };
@@ -73,8 +76,7 @@ export default function ParentsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editingParent.id,
-          ...editForm,
-          password: editForm.password || undefined // Only update if provided
+          ...editForm
         })
       });
 
@@ -108,6 +110,17 @@ export default function ParentsPage() {
     } catch (error) {
       console.error('Error deleting parent:', error);
     }
+  };
+
+  const resetParentPassword = async (id: string) => {
+    setCredential(null); setActiveDropdown(null);
+    if (!confirm('Reset this parent login? The previous password will stop working.')) return;
+    try {
+      const res = await fetch('/api/credentials/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'PARENT', id }) });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Reset failed');
+      setCredential(data.data);
+    } catch (error) { alert(error instanceof Error ? error.message : 'Reset failed'); }
   };
 
   const filteredParents = parents.filter(parent => {
@@ -156,6 +169,7 @@ export default function ParentsPage() {
         </div>
       </div>
 
+      <TemporaryPasswordNotice credential={credential} onClose={() => setCredential(null)} />
       {/* Parents List */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
@@ -228,6 +242,7 @@ export default function ParentsPage() {
                           >
                             <Edit className="w-4 h-4 text-slate-400" /> Edit Details
                           </button>
+                          {isSuperAdmin && <button type="button" onClick={() => resetParentPassword(parent.id)} className="w-full px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 text-left">Reset Login Password</button>}
                           <button
                             onClick={() => handleDeleteParent(parent.id, parent.fullName)}
                             className="w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
@@ -288,17 +303,6 @@ export default function ParentsPage() {
                   required
                   value={editForm.phone}
                   onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">New Password (leave blank to keep current)</label>
-                <input
-                  type="password"
-                  value={editForm.password}
-                  onChange={(e) => setEditForm({...editForm, password: e.target.value})}
-                  placeholder="Enter new password..."
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
                 />
               </div>

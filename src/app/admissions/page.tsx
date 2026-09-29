@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import TemporaryPasswordNotice, { type IssuedCredential } from '@/components/TemporaryPasswordNotice';
 import { User, Users, BookOpen, CheckCircle2, ChevronRight, ChevronLeft, Loader2, AlertCircle } from 'lucide-react';
 
 export default function AdmissionsPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [credentials, setCredentials] = useState<IssuedCredential[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
   const [classes, setClasses] = useState<any[]>([]);
 
@@ -34,7 +36,7 @@ export default function AdmissionsPage() {
     e.preventDefault();
     setLoading(true);
     setErrorMessage('');
-    setSuccessMessage('');
+    setSuccessMessage(''); setCredentials([]);
 
     try {
       const response = await fetch('/api/admissions', {
@@ -49,7 +51,8 @@ export default function AdmissionsPage() {
         throw new Error(data.error || 'Failed to submit form');
       }
 
-      setSuccessMessage(`Admission successful! Student ID generated: ${data.studentId}`);
+      setSuccessMessage(`Admission successful! Student ID generated: ${data.studentId}. Share temporary passwords privately.`);
+      setCredentials(data.credentials || []);
       
       setStep(1);
       setFormData({
@@ -79,6 +82,7 @@ export default function AdmissionsPage() {
         </div>
       )}
 
+      {credentials.map(item => <TemporaryPasswordNotice key={`${item.kind}-${item.id}`} credential={item} onClose={() => setCredentials(list => list.filter(c => c.id !== item.id || c.kind !== item.kind))} />)}
       {errorMessage && (
         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl flex items-center gap-2 font-medium">
           <AlertCircle className="w-5 h-5" /> {errorMessage}

@@ -170,7 +170,7 @@ export default function LoginPage() {
               <div className="flex justify-between items-center mb-2 pl-1 pr-1">
                 <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500">Password</label>
                 {roleType !== 'STUDENT' && (
-                  <a href="#" className="text-[11px] font-black text-[#2f88ff] hover:text-[#002277] transition-colors uppercase tracking-wider">Forgot?</a>
+                  <span className="text-[11px] font-semibold text-slate-500">Forgot? Ask the school admin for a reset.</span>
                 )}
               </div>
               <div className="relative group">
@@ -208,20 +208,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {roleType === 'STAFF' && (
-            <div className="pb-8 text-center">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                Admin: <span className="font-mono bg-slate-100 px-2 py-1 rounded text-slate-600 border border-slate-200 shadow-sm ml-1">admin@ditmur.com</span> / <span className="font-mono bg-slate-100 px-2 py-1 rounded text-slate-600 border border-slate-200 shadow-sm">admin123</span>
-              </p>
-            </div>
-          )}
-          {roleType === 'PARENT' && (
-            <div className="pb-8 text-center">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                Default password: <span className="font-mono bg-slate-100 px-2 py-1 rounded text-slate-600 border border-slate-200 shadow-sm">parent123</span>
-              </p>
-            </div>
-          )}
+          <p className="px-8 pb-8 text-center text-xs text-slate-500">First login with a temporary password? You will be asked to choose your own password before accessing the system.</p>
         </div>
       </div>
     </div>

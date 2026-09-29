@@ -1,6 +1,5 @@
-// The existing hardcoded admin account is the only super-admin identity.
-// Accountant login is reserved for the upcoming individual staff-login work;
-// assigning a Staff.directory role alone does NOT grant an authenticated role.
+// The environment-backed admin account is the only super-admin identity.
+// Accountants authenticate via their own active Staff record and bcrypt hash.
 export type Actor = { user?: { id?: string; role?: string } } | null | undefined;
 
 export function isSuperAdmin(session: Actor): boolean {

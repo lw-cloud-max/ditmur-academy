@@ -12,7 +12,7 @@ export async function GET(req: Request) {
       where: { classId },
       include: {
         subject: true,
-        teacher: true
+        teacher: { select: { id: true, firstName: true, lastName: true, role: true } }
       }
     });
 
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       },
       include: {
         subject: true,
-        teacher: true
+        teacher: { select: { id: true, firstName: true, lastName: true, role: true } }
       }
     });
 

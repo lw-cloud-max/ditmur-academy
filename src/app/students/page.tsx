@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import TemporaryPasswordNotice, { type IssuedCredential } from '@/components/TemporaryPasswordNotice';
 import { 
   Search, Plus, Filter, MoreVertical, GraduationCap, Loader2, Trash2,
   Eye, Edit, BookOpen, Link as LinkIcon, KeyRound, Mail, MessageSquare, X, ArrowRight
@@ -12,6 +13,8 @@ export default function StudentsPage() {
   const { data: session } = useSession();
   const userRole = session?.user?.role;
   const isReadOnly = userRole !== 'STAFF' && userRole !== 'ADMIN';
+  const isSuperAdmin = userRole === 'ADMIN' && session?.user?.id === 'admin-1';
+  const [credential, setCredential] = useState<IssuedCredential | null>(null);
 
   const [students, setStudents] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
@@ -154,13 +157,15 @@ export default function StudentsPage() {
     }
   };
 
-  const handleQuickAction = (actionName: string) => {
-    setActiveDropdown(null);
-    if (actionName === 'Reset Password') {
-      alert(`Password reset successfully! New temporary password is: ditmur2026`);
-    } else if (actionName === 'Resend Activation') {
-      alert(`Activation link has been resent to the parent's email address.`);
-    }
+  const resetStudentPassword = async (id: string) => {
+    setActiveDropdown(null); setCredential(null);
+    if (!confirm('Reset student login? The old password will stop working.')) return;
+    try {
+      const res = await fetch('/api/credentials/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'STUDENT', id }) });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Reset failed');
+      setCredential(data.data);
+    } catch (error) { alert(error instanceof Error ? error.message : 'Reset failed'); }
   };
 
   // Filter students based on search query and class filter
@@ -240,6 +245,7 @@ export default function StudentsPage() {
 
   return (
     <div className="space-y-6 pb-32 relative">
+      <TemporaryPasswordNotice credential={credential} onClose={() => setCredential(null)} />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Students Directory</h1>
@@ -360,12 +366,9 @@ export default function StudentsPage() {
                               
                               <div className="h-px bg-slate-100 my-2"></div>
                               
-                              <button onClick={() => handleQuickAction('Reset Password')} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
-                                <KeyRound className="w-4 h-4 text-slate-400" /> Reset Password
-                              </button>
-                              <button onClick={() => handleQuickAction('Resend Activation')} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
-                                <Mail className="w-4 h-4 text-slate-400" /> Resend Activation Link
-                              </button>
+                              {isSuperAdmin && <button onClick={() => resetStudentPassword(student.id)} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
+                                <KeyRound className="w-4 h-4 text-slate-400" /> Reset Login Password
+                              </button>}
                               <button onClick={() => openModal(student, 'message')} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
                                 <MessageSquare className="w-4 h-4 text-slate-400" /> Message Parent
                               </button>

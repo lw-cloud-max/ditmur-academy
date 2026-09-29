@@ -1,44 +1,31 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
+import { isSuperAdmin } from '@/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 
 // GET: Fetch all parents
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const search = searchParams.get('search');
-
-    const whereClause: any = {};
-    
-    if (search) {
-      whereClause.OR = [
-        { fullName: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search } }
-      ];
+    const session = await auth();
+    if (!session?.user || !['ADMIN', 'STAFF', 'PARENT'].includes(session.user.role)) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
-
+    const search = new URL(req.url).searchParams.get('search');
+    const where = session.user.role === 'PARENT' ? { id: session.user.id } :
+      search ? { OR: [
+        { fullName: { contains: search, mode: 'insensitive' as const } },
+        { email: { contains: search, mode: 'insensitive' as const } },
+        { phone: { contains: search } }
+      ] } : {};
     const parents = await prisma.parent.findMany({
-      where: whereClause,
-      include: {
-        students: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            class: {
-              select: {
-                name: true
-              }
-            }
-          }
-        }
+      where,
+      select: { id: true, fullName: true, email: true, phone: true, createdAt: true,
+        students: { select: { id: true, firstName: true, lastName: true, class: { select: { name: true } } } }
       },
       orderBy: { fullName: 'asc' }
     });
-
     return NextResponse.json({ success: true, data: parents });
   } catch (error) {
     console.error('Fetch parents error:', error);
@@ -50,11 +37,11 @@ export async function GET(req: Request) {
 export async function PATCH(req: Request) {
   try {
     const session = await auth();
-    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'STAFF')) {
+    if (!isSuperAdmin(session)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, fullName, email, phone, password } = await req.json();
+    const { id, fullName, email, phone } = await req.json();
 
     if (!id || !fullName || !phone) {
       return NextResponse.json({ success: false, error: 'ID, name, and phone are required' }, { status: 400 });
@@ -62,7 +49,7 @@ export async function PATCH(req: Request) {
 
     // Check if parent exists
     const existingParent = await prisma.parent.findUnique({
-      where: { id }
+      where: { id }, select: { id: true }
     });
 
     if (!existingParent) {
@@ -76,24 +63,11 @@ export async function PATCH(req: Request) {
       phone
     };
 
-    // Only update password if provided
-    if (password && password.trim() !== '') {
-      updateData.password = password;
-    }
-
     const parent = await prisma.parent.update({
       where: { id },
       data: updateData,
-      include: {
-        students: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            class: { select: { name: true } }
-          }
-        }
-      }
+      select: { id: true, fullName: true, email: true, phone: true,
+        students: { select: { id: true, firstName: true, lastName: true, class: { select: { name: true } } } } }
     });
 
     return NextResponse.json({ success: true, data: parent });
@@ -107,7 +81,7 @@ export async function PATCH(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== 'ADMIN') {
+    if (!isSuperAdmin(session)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 

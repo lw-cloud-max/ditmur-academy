@@ -10,13 +10,17 @@ export async function GET(req: Request) {
     const parentId = searchParams.get('parentId');
     const classId = searchParams.get('classId');
 
+    const session = await auth();
+    if (!session?.user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    const role = session.user.role;
     const whereClause: any = { status: 'ACTIVE' };
-    if (parentId) {
-      whereClause.parentId = parentId;
+    if (role === 'PARENT') whereClause.parentId = session.user.id;
+    else if (role === 'STUDENT') whereClause.id = session.user.id;
+    else if (!['ADMIN', 'STAFF', 'ACCOUNTANT'].includes(role)) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
-    if (classId) {
-      whereClause.classId = classId;
-    }
+    if (parentId && !whereClause.parentId) whereClause.parentId = parentId;
+    if (classId) whereClause.classId = classId;
 
     const students = await prisma.student.findMany({
       where: whereClause,
@@ -24,6 +28,7 @@ export async function GET(req: Request) {
         id: true,
         firstName: true,
         lastName: true,
+        otherNames: true,
         dob: true,
         gender: true,
         status: true,

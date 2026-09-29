@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import TemporaryPasswordNotice, { type IssuedCredential } from '@/components/TemporaryPasswordNotice';
 import { Search, Plus, MoreVertical, GraduationCap, Loader2, Mail, Trash2 } from 'lucide-react';
 
 export default function StaffPage() {
@@ -14,6 +15,7 @@ export default function StaffPage() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [issuedCredential, setIssuedCredential] = useState<IssuedCredential | null>(null);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
 
@@ -58,7 +60,8 @@ export default function StaffPage() {
       if (res.ok && data.success) {
         setIsModalOpen(false);
         setFormData({ firstName: '', lastName: '', email: '', phone: '', role: 'TEACHER' });
-        setMessage(`Added ${data.data.firstName} ${data.data.lastName} (${data.data.id}). Directory records do not create login accounts yet.`);
+        setMessage(`Added ${data.data.firstName} ${data.data.lastName} (${data.data.id}). Give them the temporary password privately.`);
+        setIssuedCredential({ kind: 'STAFF', id: data.data.id, temporaryPassword: data.data.temporaryPassword });
         fetchStaff();
       } else {
         setError(data.error || 'Failed to create staff member');
@@ -68,6 +71,18 @@ export default function StaffPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleResetLogin = async (id: string) => {
+    setError(''); setIssuedCredential(null);
+    try {
+      const res = await fetch('/api/credentials/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'STAFF', id }) });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Could not reset login');
+      setIssuedCredential(data.data);
+      setMessage('Login reset. The previous password is no longer usable.');
+    } catch (error) { setError(error instanceof Error ? error.message : 'Could not reset login'); }
+    setActiveDropdown(null);
   };
 
   const handleDeleteStaff = async (id: string, name: string) => {
@@ -96,7 +111,7 @@ export default function StaffPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Staff Directory</h1>
-          <p className="text-slate-500">Manage teachers, administrators, accountants and support staff. Login accounts will be set up separately.</p>
+          <p className="text-slate-500">Manage teachers, administrators, accountants and support staff. New logins receive a temporary password.</p>
         </div>
         {isSuperAdmin && <button 
           onClick={() => setIsModalOpen(true)}
@@ -108,6 +123,7 @@ export default function StaffPage() {
 
       {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
       {message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">{message}</div>}
+      <TemporaryPasswordNotice credential={issuedCredential} onClose={() => setIssuedCredential(null)} />
       <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -189,6 +205,7 @@ export default function StaffPage() {
                             {s.email && <a href={`mailto:${s.email}`} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
                               <Mail className="w-4 h-4 text-slate-400" /> Send Email
                             </a>}
+                            <button type="button" onClick={() => handleResetLogin(s.id)} className="w-full px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 text-left">Reset Login Password</button>
                             <div className="h-px bg-slate-100 my-1"></div>
                             <button 
                               onClick={() => { handleDeleteStaff(s.id, `${s.firstName} ${s.lastName}`); setActiveDropdown(null); }}
@@ -243,7 +260,7 @@ export default function StaffPage() {
                   <option value="SUPPORT">Support staff</option>
                 </select>
               </div>
-              <p className="text-xs text-slate-500">This creates a directory record only. A separate secure staff-login setup is needed before the person can sign in.</p>
+              <p className="text-xs text-slate-500">A one-time temporary password is shown after saving. The staff member must change it at first login.</p>
               <div className="pt-4 flex gap-3">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-sm transition-colors">Cancel</button>
                 <button type="submit" disabled={isSubmitting} className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-colors flex justify-center items-center gap-2">

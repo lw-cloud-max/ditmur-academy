@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
+import { isSuperAdmin } from "@/lib/permissions";
+import { hashPassword, newTemporaryPassword } from "@/lib/passwords";
 
 export async function POST(req: Request) {
   try {
+    if (!isSuperAdmin(await auth())) return NextResponse.json({ success: false, error: 'Super admin required' }, { status: 403 });
     const body = await req.json();
     const { 
       firstName, lastName, otherNames, dob, gender, 
@@ -39,19 +43,23 @@ export async function POST(req: Request) {
     const formattedNumber = nextNumber.toString().padStart(3, '0');
     const newStudentId = `DIT/STU/${formattedNumber}`;
 
-    // 2. Start a Database Transaction
+    // Unique temporary logins are returned ONLY to the super admin once.
+    const studentTemp = newTemporaryPassword();
+    const parentTemp = newTemporaryPassword();
+    const [studentHash, parentHash] = await Promise.all([hashPassword(studentTemp), hashPassword(parentTemp)]);
     const result = await prisma.$transaction(async (tx) => {
       
       let parent = await tx.parent.findFirst({
-        where: { email: email }
+        where: { email: { equals: email.trim(), mode: 'insensitive' } }
       });
 
+      const parentWasNew = !parent;
       if (!parent) {
         parent = await tx.parent.create({
           data: {
             fullName: parentName,
             email: email,
-            phone: phone,
+            phone: phone, password: parentHash, mustChangePassword: true
           }
         });
       }
@@ -59,7 +67,7 @@ export async function POST(req: Request) {
       // Create the new student and assign them to the selected class!
       const student = await tx.student.create({
         data: {
-          id: newStudentId,
+          id: newStudentId, password: studentHash, mustChangePassword: true,
           firstName,
           lastName,
           otherNames: otherNames || null,
@@ -71,16 +79,18 @@ export async function POST(req: Request) {
         }
       });
 
-      return student;
+      return { studentId: student.id, parentId: parent.id, parentWasNew };
     });
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "Admission successful!", 
-      studentId: result.id 
-    }, { status: 201 });
+    return NextResponse.json({
+      success: true, message: 'Admission successful!', studentId: result.studentId,
+      credentials: [
+        { kind: 'STUDENT', id: result.studentId, temporaryPassword: studentTemp },
+        ...(result.parentWasNew ? [{ kind: 'PARENT', id: result.parentId, temporaryPassword: parentTemp }] : [])
+      ]
+    }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Admission Error:", error);
     return NextResponse.json({ 
       success: false, 

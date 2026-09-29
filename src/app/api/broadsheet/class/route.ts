@@ -13,9 +13,11 @@ export async function GET(req: Request) {
     const subjects = await prisma.subject.findMany({ orderBy: { name: 'asc' } });
     const students = await prisma.student.findMany({
       where: { classId },
-      include: {
+      select: {
+        id: true, firstName: true, lastName: true, otherNames: true, dob: true,
+        gender: true, imageUrl: true, classId: true, parentId: true, status: true,
         grades: { where: { term }, include: { subject: true } },
-        skillRatings: { where: { term } } // ADDED SKILLS HERE
+        skillRatings: { where: { term } }
       },
       orderBy: { firstName: 'asc' }
     });

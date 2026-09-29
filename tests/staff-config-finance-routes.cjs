@@ -13,6 +13,7 @@ function load(path, session, prisma) {
     '@/auth': { auth: async () => session },
     '@/lib/prisma': { prisma },
     '@/lib/permissions': null,
+    '@/lib/passwords': null,
     crypto: require('node:crypto')
   };
   // TS modules cannot be required directly: expose the helper's actual source
@@ -23,6 +24,12 @@ function load(path, session, prisma) {
   const pm = { exports: {} };
   new Function('require', 'module', 'exports', perm)(require, pm, pm.exports);
   deps['@/lib/permissions'] = pm.exports;
+  const passJs = ts.transpileModule(fs.readFileSync('src/lib/passwords.ts','utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 }
+  }).outputText;
+  const pass = { exports: {} };
+  new Function('require', 'module', 'exports', passJs)(key => key === 'crypto' ? require('node:crypto') : require(key), pass, pass.exports);
+  deps['@/lib/passwords'] = pass.exports;
   new Function('require', 'module', 'exports', js)(key => {
     if (!(key in deps)) throw Error('Unexpected dependency: ' + key);
     return deps[key];
@@ -31,6 +38,14 @@ function load(path, session, prisma) {
 }
 const req = (path, method = 'GET', body) => new Request('https://ditmur.test' + path,
   { method, ...(body && { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) });
+function loadPasswordModule() {
+  const source = ts.transpileModule(fs.readFileSync('src/lib/passwords.ts', 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 }
+  }).outputText;
+  const mod = { exports: {} };
+  new Function('require', 'module', 'exports', source)(key => key === 'crypto' ? require('node:crypto') : require(key), mod, mod.exports);
+  return mod.exports;
+}
 const admin = { user: { id: 'admin-1', role: 'ADMIN' } };
 const teacher = { user: { id: 'teacher-1', role: 'STAFF' } };
 
@@ -142,7 +157,7 @@ test('academic session dropdown values can create the current term', async () =>
 
 test('student login uses the actual name and checks the stored password', async () => {
   let options;
-  const prisma = { student: { findUnique: async () => ({ id: 'DIT/STU/001', firstName: 'Ada', lastName: 'Okafor', password: 'student123', status: 'ACTIVE' }) } };
+  const prisma = { student: { findUnique: async () => ({ id: 'DIT/STU/001', firstName: 'Ada', lastName: 'Okafor', password: 'individual-student-password', status: 'ACTIVE', sessionVersion: 0, mustChangePassword: true }), update: async () => ({}) } };
   const js = ts.transpileModule(fs.readFileSync('src/auth.ts', 'utf8'), { compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true
   } }).outputText;
@@ -150,12 +165,13 @@ test('student login uses the actual name and checks the stored password', async 
   const deps = {
     'next-auth': config => { options = config; return { handlers: {}, signIn: () => {}, signOut: () => {}, auth: () => {} }; },
     'next-auth/providers/credentials': config => config,
-    '@/lib/prisma': { prisma }
+    '@/lib/prisma': { prisma },
+    '@/lib/passwords': loadPasswordModule()
   };
   new Function('require', 'module', 'exports', js)(key => deps[key], mod, mod.exports);
   const authorize = options.providers[0].authorize;
   assert.equal(await authorize({ username: 'dit/stu/001', password: 'wrong', roleType: 'STUDENT' }), null);
-  const user = await authorize({ username: 'dit/stu/001', password: 'student123', roleType: 'STUDENT' });
+  const user = await authorize({ username: 'dit/stu/001', password: 'individual-student-password', roleType: 'STUDENT' });
   assert.equal(user.name, 'Ada Okafor');
   assert.equal(user.id, 'DIT/STU/001');
 });
