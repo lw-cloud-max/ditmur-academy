@@ -3,8 +3,11 @@
 import { useState, useEffect } from 'react';
 import { Search, Filter, MoreVertical, Eye, UserPlus, School, Loader2, Users } from 'lucide-react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 
 export default function ClassesPage() {
+  const { data: session } = useSession();
+  const isSuperAdmin = session?.user?.role === 'ADMIN' && session?.user?.id === 'admin-1';
   const [classes, setClasses] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +97,7 @@ export default function ClassesPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Classes</h1>
-          <p className="text-slate-500">Manage school classes and assign Form Teachers.</p>
+          <p className="text-slate-500">Browse school classes and their form teachers.</p>
         </div>
       </div>
 
@@ -172,9 +175,9 @@ export default function ClassesPage() {
                                 <Eye className="w-4 h-4 text-slate-400" /> View Class
                               </Link>
                               <div className="h-px bg-slate-100 my-1"></div>
-                              <button onClick={() => openAssignModal(c.id)} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
+                              {isSuperAdmin && <button onClick={() => openAssignModal(c.id)} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
                                 <UserPlus className="w-4 h-4 text-slate-400" /> Assign Teacher
-                              </button>
+                              </button>}
                             </div>
                           </>
                         )}
@@ -189,7 +192,7 @@ export default function ClassesPage() {
       </div>
 
       {/* ASSIGN TEACHER MODAL */}
-      {isAssignModalOpen && (
+      {isSuperAdmin && isAssignModalOpen && (
         <div className="fixed inset-0 bg-[#0A192F]/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="p-6 border-b border-slate-100">

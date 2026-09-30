@@ -4,8 +4,11 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Search, Plus, Upload, Loader2, Users, BookOpen, Calendar as CalendarIcon, Activity, GraduationCap, Clock, ArrowLeft, Save, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 
 export default function ClassDetailsPage() {
+  const { data: session } = useSession();
+  const isSuperAdmin = session?.user?.role === 'ADMIN' && session?.user?.id === 'admin-1';
   const params = useParams();
   const classId = params.id as string;
 
@@ -218,9 +221,9 @@ export default function ClassDetailsPage() {
               <h2 className="font-bold text-slate-900">Academic Curriculum</h2>
               <p className="text-sm text-slate-500">Subjects offered by this class.</p>
             </div>
-            <Link href="/configuration" className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+            {isSuperAdmin && <Link href="/configuration" className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
               Manage Curriculum
-            </Link>
+            </Link>}
           </div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             {subjects.length === 0 ? (

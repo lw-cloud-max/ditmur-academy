@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
+import { isSuperAdmin } from "@/lib/permissions";
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +39,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    if (!isSuperAdmin(await auth())) return NextResponse.json({ success: false, error: 'Super admin required' }, { status: 403 });
     const body = await req.json();
     const { name, level } = body;
 
@@ -52,6 +55,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
+    if (!isSuperAdmin(await auth())) return NextResponse.json({ success: false, error: 'Super admin required' }, { status: 403 });
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 

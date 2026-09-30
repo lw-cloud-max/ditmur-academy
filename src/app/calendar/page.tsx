@@ -7,7 +7,7 @@ import { useSession } from 'next-auth/react';
 export default function CalendarPage() {
   const { data: session } = useSession();
   const userRole = session?.user?.role;
-  const isReadOnly = userRole !== 'STAFF' && userRole !== 'ADMIN';
+  const isReadOnly = !(userRole === 'ADMIN' && session?.user?.id === 'admin-1');
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [events, setEvents] = useState<any[]>([]);

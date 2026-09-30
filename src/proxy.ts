@@ -39,6 +39,10 @@ export async function proxy(request: NextRequest) {
     if (path.startsWith('/api/')) return NextResponse.json({ success: false, error: 'Change your temporary password before continuing' }, { status: 403 });
     return NextResponse.redirect(new URL('/change-password', request.url));
   }
+  // School-wide settings are not part of the teacher or accountant role.
+  if (!superAdmin && (path === '/configuration' || path.startsWith('/configuration/') || path === '/assessment-format')) {
+    return NextResponse.redirect(new URL('/access-denied', request.url));
+  }
   if (role === 'ACCOUNTANT') {
     const allowedPage = ['/dashboard', '/payments', '/change-password', '/help', '/access-denied'].some(route => path === route);
     const allowedApi = path === '/api/dashboard' || path === '/api/payments' || path.startsWith('/api/payments/') ||
