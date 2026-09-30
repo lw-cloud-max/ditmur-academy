@@ -22,7 +22,10 @@ export async function proxy(request: NextRequest) {
     const staff = await prisma.staff.findUnique({ where: { id }, select: { status: true, role: true, sessionVersion: true } });
     const roleMatches = (role === 'ACCOUNTANT' && staff?.role === 'ACCOUNTANT') ||
       (role === 'ADMIN' && staff?.role === 'ADMIN') ||
-      (role === 'STAFF' && ['TEACHER', 'SUPPORT'].includes(staff?.role || ''));
+      (role === 'STAFF' && (
+        (staff?.role === 'ACCOUNTANT_TEACHER' && session.user.staffRole === 'ACCOUNTANT_TEACHER') ||
+        (['TEACHER', 'SUPPORT'].includes(staff?.role || '') && (!session.user.staffRole || session.user.staffRole === staff?.role))
+      ));
     if (path !== '/access-denied' && (!staff || staff.status !== 'ACTIVE' || !roleMatches || staff.sessionVersion !== session.user.sessionVersion)) return deny();
   }
   if (role === 'STUDENT' || role === 'PARENT') {

@@ -90,7 +90,7 @@ export default function MobileMenuPortal() {
     }
   };
 
-  const canSeeFinance = (userRole === 'ADMIN' && session?.user?.id === 'admin-1') || userRole === 'ACCOUNTANT';
+  const canSeeFinance = (userRole === 'ADMIN' && session?.user?.id === 'admin-1') || userRole === 'ACCOUNTANT' || (userRole === 'STAFF' && session?.user?.staffRole === 'ACCOUNTANT_TEACHER');
   const menuItems = getMenuItems().filter(item => item.path !== '/payments' || canSeeFinance || userRole === 'PARENT');
 
   if (!isOpen) return null;

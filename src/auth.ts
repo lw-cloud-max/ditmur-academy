@@ -5,9 +5,9 @@ import { checkPassword, hashPassword, isKnownDemoPassword } from '@/lib/password
 
 declare module 'next-auth' {
   interface Session {
-    user: { id: string; role: string; mustChangePassword?: boolean; sessionVersion?: number } & DefaultSession['user'];
+    user: { id: string; role: string; mustChangePassword?: boolean; sessionVersion?: number; staffRole?: string } & DefaultSession['user'];
   }
-  interface User { role?: string; mustChangePassword?: boolean; sessionVersion?: number; }
+  interface User { role?: string; mustChangePassword?: boolean; sessionVersion?: number; staffRole?: string; }
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -39,7 +39,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (checked.upgrade) await prisma.staff.update({ where: { id: staff.id }, data: { passwordHash: await hashPassword(password), mustChangePassword: true } });
         const role = staff.role === 'ACCOUNTANT' ? 'ACCOUNTANT' : staff.role === 'ADMIN' ? 'ADMIN' : 'STAFF';
         return { id: staff.id, name: `${staff.firstName} ${staff.lastName}`, email: staff.email,
-          role, mustChangePassword: checked.upgrade || staff.mustChangePassword, sessionVersion: staff.sessionVersion };
+          role, staffRole: staff.role, mustChangePassword: checked.upgrade || staff.mustChangePassword, sessionVersion: staff.sessionVersion };
       }
       if (credentials.roleType === 'STUDENT') {
         const student = await prisma.student.findUnique({ where: { id: username.toUpperCase() },
@@ -71,6 +71,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
         token.mustChangePassword = user.mustChangePassword;
         token.sessionVersion = user.sessionVersion;
+        token.staffRole = user.staffRole;
       }
       return token;
     },
@@ -80,6 +81,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = String(token.id || '');
         session.user.mustChangePassword = token.mustChangePassword !== false;
         session.user.sessionVersion = typeof token.sessionVersion === 'number' ? token.sessionVersion : -1;
+        session.user.staffRole = typeof token.staffRole === 'string' ? token.staffRole : undefined;
       }
       return session;
     }

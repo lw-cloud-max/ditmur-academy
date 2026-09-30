@@ -73,7 +73,7 @@ export default function TimetablePage() {
           }
         }
         if (sData.success) setSubjects(sData.data);
-        if (tData.success) setTeachers(tData.data.filter((t: any) => t.role === 'TEACHER'));
+        if (tData.success) setTeachers(tData.data.filter((t: any) => t.role === 'TEACHER' || t.role === 'ACCOUNTANT_TEACHER'));
       } catch (err) {
         console.error("Failed to load core data");
       }

@@ -41,7 +41,7 @@ function PayInvoiceButton({ invoice, email, onPaid }: { invoice: any; email: str
 export default function PaymentsPage() {
   const { data: session, status: sessionStatus } = useSession();
   const userRole = session?.user?.role;
-  const canSeeFinance = (userRole === 'ADMIN' && session?.user?.id === 'admin-1') || userRole === 'ACCOUNTANT';
+  const canSeeFinance = (userRole === 'ADMIN' && session?.user?.id === 'admin-1') || userRole === 'ACCOUNTANT' || (userRole === 'STAFF' && session?.user?.staffRole === 'ACCOUNTANT_TEACHER');
   const isReadOnly = !canSeeFinance;
   const canSeeOwnFees = userRole === 'PARENT' || userRole === 'STUDENT';
 

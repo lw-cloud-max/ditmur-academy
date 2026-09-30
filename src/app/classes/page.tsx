@@ -34,7 +34,7 @@ export default function ClassesPage() {
       if (classData.success) setClasses(classData.data);
       if (staffData.success) {
         // Filter to only show teachers in the dropdown
-        setStaff(staffData.data.filter((s: any) => s.role === 'TEACHER'));
+        setStaff(staffData.data.filter((s: any) => s.role === 'TEACHER' || s.role === 'ACCOUNTANT_TEACHER'));
       }
     } catch (err) {
       console.error("Failed to fetch data");

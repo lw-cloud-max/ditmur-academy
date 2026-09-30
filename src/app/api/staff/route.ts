@@ -6,7 +6,7 @@ import { isSuperAdmin } from '@/lib/permissions';
 import { hashPassword, newTemporaryPassword } from '@/lib/passwords';
 
 export const dynamic = 'force-dynamic';
-const allowedRoles = ['TEACHER', 'ADMIN', 'ACCOUNTANT', 'SUPPORT'];
+const allowedRoles = ['TEACHER', 'ADMIN', 'ACCOUNTANT', 'ACCOUNTANT_TEACHER', 'SUPPORT'];
 
 export async function GET(req: Request) {
   try {
@@ -14,7 +14,7 @@ export async function GET(req: Request) {
     if (!session?.user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     const role = new URL(req.url).searchParams.get('role');
     const staff = await prisma.staff.findMany({
-      where: { status: 'ACTIVE', ...(role && allowedRoles.includes(role) ? { role } : {}) },
+      where: { status: 'ACTIVE', ...(role && allowedRoles.includes(role) ? { role: role === 'TEACHER' ? { in: ['TEACHER', 'ACCOUNTANT_TEACHER'] } : role } : {}) },
       select: {
         id: true, firstName: true, lastName: true, role: true,
         // Staff contact details should not be sent to students/parents.
@@ -81,5 +81,34 @@ export async function DELETE(req: Request) {
   } catch (error) {
     console.error('Deactivate staff error:', error);
     return NextResponse.json({ success: false, error: 'Could not remove staff' }, { status: 500 });
+  }
+}
+
+// Grant or remove teaching access for ONE accountant, without changing any
+// other accountants. Incrementing sessionVersion revokes the old JWT.
+export async function PATCH(req: Request) {
+  try {
+    if (!isSuperAdmin(await auth())) {
+      return NextResponse.json({ success: false, error: 'Only the super admin can change staff roles' }, { status: 403 });
+    }
+    const { id, teachingEnabled } = await req.json();
+    if (typeof id !== 'string' || !id || typeof teachingEnabled !== 'boolean') {
+      return NextResponse.json({ success: false, error: 'Valid staff ID and teaching setting required' }, { status: 400 });
+    }
+    const staff = await prisma.staff.findUnique({ where: { id }, select: { id: true, role: true, status: true } });
+    if (!staff || staff.status !== 'ACTIVE') return NextResponse.json({ success: false, error: 'Active staff member not found' }, { status: 404 });
+    if (staff.role !== 'ACCOUNTANT' && staff.role !== 'ACCOUNTANT_TEACHER') {
+      return NextResponse.json({ success: false, error: 'Teaching access here is only for accountant accounts' }, { status: 400 });
+    }
+    const role = teachingEnabled ? 'ACCOUNTANT_TEACHER' : 'ACCOUNTANT';
+    if (role === staff.role) return NextResponse.json({ success: true, data: { id, role } });
+    const updated = await prisma.staff.update({
+      where: { id }, data: { role, sessionVersion: { increment: 1 } },
+      select: { id: true, role: true }
+    });
+    return NextResponse.json({ success: true, data: updated });
+  } catch (error) {
+    console.error('Change accountant teaching access error:', error);
+    return NextResponse.json({ success: false, error: 'Could not change accountant teaching access' }, { status: 500 });
   }
 }

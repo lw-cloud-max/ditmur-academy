@@ -36,7 +36,7 @@ export default async function Header() {
         <div className="flex items-center gap-3 border-l border-slate-200 pl-4 ml-2">
           <div className="hidden md:block text-right">
             <p className="text-sm font-bold text-slate-700">{userName}</p>
-            <p className="text-xs font-bold text-[#0033A0] uppercase tracking-wider">{userRole}</p>
+            <p className="text-xs font-bold text-[#0033A0] uppercase tracking-wider">{session?.user?.staffRole === 'ACCOUNTANT_TEACHER' ? 'ACCOUNTANT & TEACHER' : userRole}</p>
           </div>
           <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 text-[#0033A0] shadow-inner border border-blue-300 flex items-center justify-center rounded-full font-black text-sm">
             {getInitials(userName)}

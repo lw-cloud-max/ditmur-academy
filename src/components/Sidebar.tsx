@@ -87,7 +87,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'Change Password', icon: Lock, path: '/change-password' },
     { name: 'Help', icon: HelpCircle, path: '/help' }
   ];
-  const canSeeFinance = (userRole === 'ADMIN' && session?.user?.id === 'admin-1') || userRole === 'ACCOUNTANT';
+  const canSeeFinance = (userRole === 'ADMIN' && session?.user?.id === 'admin-1') || userRole === 'ACCOUNTANT' || (userRole === 'STAFF' && session?.user?.staffRole === 'ACCOUNTANT_TEACHER');
   const activeMenu = (userRole === 'STUDENT' ? studentMenu : userRole === 'PARENT' ? parentMenu : userRole === 'ACCOUNTANT' ? accountantMenu : staffMenu)
     .filter(item => item.path !== '/payments' || canSeeFinance || userRole === 'PARENT');
 

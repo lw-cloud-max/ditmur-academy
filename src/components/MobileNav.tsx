@@ -82,7 +82,7 @@ export default function MobileNav() {
     }
   };
 
-  const canSeeFinance = (userRole === 'ADMIN' && session?.user?.id === 'admin-1') || userRole === 'ACCOUNTANT';
+  const canSeeFinance = (userRole === 'ADMIN' && session?.user?.id === 'admin-1') || userRole === 'ACCOUNTANT' || (userRole === 'STAFF' && session?.user?.staffRole === 'ACCOUNTANT_TEACHER');
   const menuItems = getMenuItems().filter(item => item.path !== '/payments' || canSeeFinance || userRole === 'PARENT');
 
   return (

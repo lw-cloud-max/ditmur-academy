@@ -85,6 +85,21 @@ export default function StaffPage() {
     setActiveDropdown(null);
   };
 
+  const handleToggleTeaching = async (id: string, enabled: boolean) => {
+    setActiveDropdown(null); setError('');
+    if (!confirm(`${enabled ? 'Grant' : 'Remove'} teacher access for this accountant? Their current session will be signed out.`)) return;
+    try {
+      const res = await fetch('/api/staff', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, teachingEnabled: enabled })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Could not update role');
+      setStaff(previous => previous.map(person => person.id === id ? { ...person, role: data.data.role } : person));
+      setMessage('Role changed. Ask the accountant to sign out and sign in again. Their password is unchanged.');
+    } catch (error) { setError(error instanceof Error ? error.message : 'Could not update role'); }
+  };
+
   const handleDeleteStaff = async (id: string, name: string) => {
     if (!confirm(`Are you sure you want to remove ${name} from the staff directory?`)) return;
     
@@ -138,7 +153,8 @@ export default function StaffPage() {
           <option value="">All Roles</option>
           <option value="TEACHER">Teachers</option>
           <option value="ADMIN">Administrators</option>
-          <option value="ACCOUNTANT">Accountants</option>
+          <option value="ACCOUNTANT">Accountants (finance only)</option>
+          <option value="ACCOUNTANT_TEACHER">Accountant + Teacher</option>
           <option value="SUPPORT">Support staff</option>
         </select>
       </div>
@@ -178,7 +194,7 @@ export default function StaffPage() {
                       <span className={`inline-flex px-2 py-1 rounded text-xs font-bold ${
                         s.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-700'
                       }`}>
-                        {s.role}
+                        {s.role === 'ACCOUNTANT_TEACHER' ? 'Accountant + Teacher' : s.role}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -206,6 +222,12 @@ export default function StaffPage() {
                               <Mail className="w-4 h-4 text-slate-400" /> Send Email
                             </a>}
                             <button type="button" onClick={() => handleResetLogin(s.id)} className="w-full px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 text-left">Reset Login Password</button>
+                            {(s.role === 'ACCOUNTANT' || s.role === 'ACCOUNTANT_TEACHER') && (
+                              <button type="button" onClick={() => handleToggleTeaching(s.id, s.role === 'ACCOUNTANT')}
+                                className="w-full px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 text-left">
+                                {s.role === 'ACCOUNTANT' ? 'Grant Teacher Access' : 'Remove Teacher Access'}
+                              </button>
+                            )}
                             <div className="h-px bg-slate-100 my-1"></div>
                             <button 
                               onClick={() => { handleDeleteStaff(s.id, `${s.firstName} ${s.lastName}`); setActiveDropdown(null); }}
@@ -256,7 +278,8 @@ export default function StaffPage() {
                 <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none">
                   <option value="TEACHER">Teacher</option>
                   <option value="ADMIN">Administrator</option>
-                  <option value="ACCOUNTANT">Accountant</option>
+                  <option value="ACCOUNTANT">Accountant (finance only)</option>
+                  <option value="ACCOUNTANT_TEACHER">Accountant + Teacher</option>
                   <option value="SUPPORT">Support staff</option>
                 </select>
               </div>
