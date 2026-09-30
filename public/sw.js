@@ -1,50 +1,20 @@
-// Service Worker for Ditmur Academy PWA
-const CACHE_NAME = 'ditmur-academy-v1';
-const urlsToCache = [
-  '/',
-  '/login',
-  '/apply',
-  '/manifest.json'
-];
-
-// Install event
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-  );
+// Ditmur Academy service worker, v2.
+// Do not cache login pages, protected pages, or authentication responses.
+// Those pages depend on the current session and must always reach the server.
+self.addEventListener('install', () => {
+  self.skipWaiting();
 });
 
-// Fetch event
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      }
-    )
-  );
-});
-
-// Activate event
 self.addEventListener('activate', (event) => {
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
+  event.waitUntil((async () => {
+    const names = await caches.keys();
+    await Promise.all(names
+      .filter((name) => name.startsWith('ditmur-academy-'))
+      .map((name) => caches.delete(name)));
+    await self.clients.claim();
+  })());
 });
+
+// Deliberately no fetch handler: the browser handles navigation and API
+// requests normally, including sign-out and the login page. Offline support
+// can be added later with a network-first, auth-safe strategy.

@@ -1,6 +1,6 @@
 "use client";
 
-import { LockKeyhole, AlertCircle, User, Users, GraduationCap, Monitor, BarChart3, Cloud, ShieldCheck, ArrowRight, School, Sparkles } from 'lucide-react';
+import { LockKeyhole, AlertCircle, User, Users, GraduationCap, Monitor, BarChart3, Cloud, ShieldCheck, ArrowRight, School, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [roleType, setRoleType] = useState('STAFF');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -178,12 +179,24 @@ export default function LoginPage() {
                   <LockKeyhole className="h-5 w-5 text-slate-400 group-focus-within:text-[#2f88ff] transition-colors" />
                 </div>
                 <input
+                  id="login-password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   required
                   placeholder="••••••••"
-                  className="block w-full pl-12 pr-4 py-4 bg-slate-50 border-none rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#2f88ff]/10 focus:border-[#2f88ff] focus:bg-white transition-all text-sm font-bold shadow-inner tracking-widest"
+                  className="block w-full pl-12 pr-14 py-4 bg-slate-50 border-none rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#2f88ff]/10 focus:border-[#2f88ff] focus:bg-white transition-all text-sm font-bold shadow-inner tracking-widest"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(value => !value)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
+                  aria-controls="login-password"
+                  className="absolute inset-y-0 right-1 flex w-12 items-center justify-center text-slate-500 hover:text-[#0033A0] focus-visible:outline-2 focus-visible:outline-[#0033A0] rounded-lg"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
 
