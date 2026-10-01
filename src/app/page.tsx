@@ -1,20 +1,101 @@
 "use client";
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { 
   ArrowRight, BookOpen, GraduationCap, Users, ShieldCheck, Sparkles, Trophy,
   Calendar, MapPin, Phone, Mail, ChevronRight, Star, Award, Globe, Library,
   Baby, Palette, Music, Dumbbell, Heart, Clock, CheckCircle2, Pencil, Calculator,
-  Microscope, Globe2, BookOpenCheck, Smile
+  Microscope, Globe2, BookOpenCheck, Smile, ChevronLeft, Pause, Play
 } from 'lucide-react';
 
+const HERO_SLIDES = [
+  {
+    title: 'Learning together',
+    detail: 'A look inside our classrooms',
+    href: '/programs/primary',
+    mobile: '/images/landing/classroom-mobile.webp',
+    desktop: '/images/landing/classroom-desktop.webp',
+    alt: 'Ditmur Academy pupils learning together in a classroom'
+  },
+  {
+    title: 'Discovering through science',
+    detail: 'Explore our Secondary School',
+    href: '/programs/secondary',
+    mobile: '/images/secondary/chess-activity.webp',
+    desktop: '/images/secondary/laboratory.webp',
+    alt: 'Ditmur Academy learners exploring school activities'
+  },
+  {
+    title: 'A warm start for little learners',
+    detail: 'Explore our Crèche & Nursery',
+    href: '/programs/creche',
+    mobile: '/images/creche/room-play-shelf.webp',
+    desktop: '/images/creche/rest-space-wide.webp',
+    alt: 'Colourful crèche learning and rest space at Ditmur Academy'
+  }
+] as const;
+
+const TICKER_TEXT = 'DITMUR ACADEMY  •  CULTIVATING EXCELLENCE AND DISCIPLINE  •  CRÈCHE  •  PRIMARY  •  SECONDARY  •  EXPLORE OUR PROGRAMMES  •  APPLY ONLINE  •  ';
+
 export default function LandingPage() {
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [carouselPaused, setCarouselPaused] = useState(false);
+  const [tickerPaused, setTickerPaused] = useState(false);
+  const [carouselHovered, setCarouselHovered] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReducedMotion(preference.matches);
+    update();
+    preference.addEventListener('change', update);
+    return () => preference.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    if (carouselPaused || carouselHovered || reducedMotion) return;
+    const timer = window.setInterval(() => setActiveSlide(index => (index + 1) % HERO_SLIDES.length), 7000);
+    return () => window.clearInterval(timer);
+  }, [carouselPaused, carouselHovered, reducedMotion]);
+
+  useEffect(() => {
+    // Have the next slide ready before its automatic transition.
+    const next = HERO_SLIDES[(activeSlide + 1) % HERO_SLIDES.length];
+    const nextPhoto = new window.Image();
+    nextPhoto.src = window.matchMedia('(min-width: 1024px)').matches ? next.desktop : next.mobile;
+  }, [activeSlide]);
+
+  const changeSlide = (index: number) => setActiveSlide((index + HERO_SLIDES.length) % HERO_SLIDES.length);
+  const slide = HERO_SLIDES[activeSlide];
   return (
     <div className="min-h-screen bg-white font-sans selection:bg-[#0033A0] selection:text-white">
-      
+      <style>{`
+        @keyframes ditmurTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        @keyframes ditmurFade { from { opacity: 0; } to { opacity: 1; } }
+        .ditmur-ticker-track { animation: ditmurTicker 32s linear infinite; }
+        .ditmur-ticker:hover .ditmur-ticker-track { animation-play-state: paused !important; }
+        .ditmur-slide { animation: ditmurFade .45s ease-out both; }
+        @media (prefers-reduced-motion: reduce) {
+          .ditmur-ticker { overflow-x: auto; }
+          .ditmur-ticker-track, .ditmur-slide { animation: none !important; transform: none !important; }
+        }
+      `}</style>
+      <div role="region" aria-label={TICKER_TEXT} className="ditmur-ticker relative z-[60] h-9 overflow-hidden bg-[#0A192F] text-[#FFD700] flex items-center">
+        <div aria-hidden="true" className="ditmur-ticker-track flex w-max whitespace-nowrap text-[11px] sm:text-xs font-bold uppercase tracking-widest" style={{ animationPlayState: tickerPaused ? 'paused' : 'running' }}>
+          <span className="shrink-0 px-4">{TICKER_TEXT}</span>
+          <span className="shrink-0 px-4">{TICKER_TEXT}</span>
+        </div>
+        <button type="button" onClick={() => setTickerPaused(value => !value)}
+          aria-label={tickerPaused ? 'Resume moving school information' : 'Pause moving school information'}
+          aria-pressed={tickerPaused}
+          className="absolute right-0 inset-y-0 px-3 bg-[#0A192F] text-[#FFD700] hover:bg-[#112240] focus-visible:outline-2 focus-visible:outline-[#FFD700]"
+        >{tickerPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}</button>
+      </div>
+
       {/* Top Bar */}
-      <div className="bg-[#0A192F] text-white py-2 px-6 lg:px-12 text-sm hidden md:block">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
+      <div className="bg-[#0A192F] text-white h-9 px-6 lg:px-12 text-sm hidden md:flex items-center">
+        <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
           <div className="flex items-center gap-6">
             <a href="mailto:ditmuracademy@gmail.com" className="flex items-center gap-2 hover:text-[#FFD700] transition-colors">
               <Mail className="w-3.5 h-3.5" />
@@ -34,13 +115,13 @@ export default function LandingPage() {
       </div>
 
       {/* Navigation */}
-      <nav className="absolute top-0 md:top-10 w-full z-50 px-6 py-6 lg:px-12 flex justify-between items-center bg-transparent">
+      <nav className="absolute top-9 md:top-[72px] w-full z-50 px-4 sm:px-6 py-5 lg:px-12 flex justify-between items-center bg-transparent">
         <div className="flex items-center gap-3">
-          <div className="w-14 h-14 flex items-center justify-center shadow-md">
+          <div className="w-11 h-11 sm:w-14 sm:h-14 flex items-center justify-center shadow-md">
             <img src="/logo.jpg" alt="Ditmur Academy" className="w-full h-full object-contain mix-blend-multiply" />
           </div>
           <div>
-            <span className="font-serif font-black text-[#0A192F] text-xl tracking-widest uppercase drop-shadow-md">Ditmur</span>
+            <span className="font-serif font-black text-[#0A192F] text-base sm:text-xl tracking-widest uppercase drop-shadow-md">Ditmur</span>
             <span className="block font-serif font-bold text-[#0033A0] text-xs tracking-[0.3em] uppercase -mt-1">Academy</span>
           </div>
         </div>
@@ -52,10 +133,10 @@ export default function LandingPage() {
           <Link href="#contact" className="text-slate-700 hover:text-[#0033A0] font-medium transition-colors">Contact</Link>
         </div>
         <div className="flex gap-4">
-          <Link href="/login" className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-[#0A192F] border border-slate-200 backdrop-blur-md rounded-full font-bold text-sm transition-all shadow-sm">
+          <Link href="/login" className="hidden sm:inline-flex px-6 py-2.5 bg-white/10 hover:bg-white/20 text-[#0A192F] border border-slate-200 backdrop-blur-md rounded-full font-bold text-sm transition-all shadow-sm">
             Portal Login
           </Link>
-          <Link href="/apply" className="px-6 py-2.5 bg-[#0033A0] hover:bg-[#002277] text-white rounded-full font-black text-sm transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5">
+          <Link href="/apply" className="px-4 sm:px-6 py-2.5 bg-[#0033A0] hover:bg-[#002277] text-white rounded-full font-black text-sm transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5">
             Apply Now
           </Link>
         </div>
@@ -67,7 +148,7 @@ export default function LandingPage() {
         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[#FFD700] rounded-full blur-[150px] opacity-5 -ml-64 -mb-64"></div>
         
         <div className="max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div>
+          <div className="lg:col-start-1 lg:row-start-1">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#0033A0]/10 border border-[#0033A0]/20 text-[#0033A0] text-xs font-bold uppercase tracking-wider mb-6">
               <Sparkles className="w-4 h-4 text-[#FFD700]" /> Admission for 2026/2027 is open
             </div>
@@ -86,43 +167,70 @@ export default function LandingPage() {
               </Link>
             </div>
             
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-6 mt-12 pt-8 border-t border-slate-200">
-              <div>
-                <h3 className="text-3xl font-black text-[#0033A0]">1,000+</h3>
-                <p className="text-sm text-slate-500 font-medium">Happy Students</p>
-              </div>
-              <div>
-                <h3 className="text-3xl font-black text-[#0033A0]">100%</h3>
-                <p className="text-sm text-slate-500 font-medium">WAEC Pass Rate</p>
-              </div>
-              <div>
-                <h3 className="text-3xl font-black text-[#0033A0]">30+</h3>
-                <p className="text-sm text-slate-500 font-medium">Expert Teachers</p>
-              </div>
-            </div>
           </div>
-          
-          {/* One real school photo, art-directed for phones and desktop. The logo stays in the navigation. */}
-          <div className="relative mt-4 lg:mt-0">
+
+          <div className="relative mt-4 lg:mt-0 lg:col-start-2 lg:row-start-1 lg:row-span-2"
+            onMouseEnter={() => setCarouselHovered(true)} onMouseLeave={() => setCarouselHovered(false)}>
             <div aria-hidden="true" className="absolute -inset-3 bg-gradient-to-br from-[#0033A0]/15 to-[#FFD700]/20 rounded-[36px] rotate-2"></div>
             <figure className="relative overflow-hidden rounded-[28px] border-4 border-white bg-[#0A192F] shadow-2xl">
-              <div className="relative h-[430px] sm:h-[520px] lg:h-[390px] xl:h-[440px]">
-                <picture>
-                  <source media="(min-width: 1024px)" srcSet="/images/landing/classroom-desktop.webp" type="image/webp" />
-                  <img
-                    src="/images/landing/classroom-mobile.webp"
-                    alt="Ditmur Academy pupils learning together in a classroom"
-                    fetchPriority="high"
-                    className="absolute inset-0 w-full h-full object-cover object-center"
-                  />
+              <div className="relative h-[430px] sm:h-[520px] lg:h-[500px]" role="group" aria-roledescription="carousel" aria-label="Life at Ditmur Academy" aria-live="off">
+                <picture key={activeSlide} className="ditmur-slide absolute inset-0 block">
+                  <source media="(min-width: 1024px)" srcSet={slide.desktop} type="image/webp" />
+                  <img src={slide.mobile} alt={slide.alt} loading={activeSlide === 0 ? 'eager' : 'lazy'}
+                    className="absolute inset-0 w-full h-full object-cover object-center" />
                 </picture>
-                <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0A192F]/80 to-transparent"></div>
-                <figcaption className="absolute bottom-5 left-5 right-5 text-white text-sm sm:text-base font-semibold drop-shadow-md">
-                  Learning together at Ditmur Academy
-                </figcaption>
+                <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#0A192F]/90 to-transparent"></div>
+                <div className="absolute bottom-5 left-5 right-5 text-white drop-shadow-md">
+                  <p className="text-xl sm:text-2xl font-black">{slide.title}</p>
+                  <Link href={slide.href} className="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-white/95 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-white">
+                    {slide.detail} <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+                <div className="absolute right-3 top-3 flex gap-2">
+                  <button type="button" onClick={() => changeSlide(activeSlide - 1)} aria-label="Previous school photo"
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0A192F]/75 text-white backdrop-blur-sm hover:bg-[#0033A0] focus-visible:outline-2 focus-visible:outline-white">
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button type="button" onClick={() => changeSlide(activeSlide + 1)} aria-label="Next school photo"
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0A192F]/75 text-white backdrop-blur-sm hover:bg-[#0033A0] focus-visible:outline-2 focus-visible:outline-white">
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              <figcaption className="sr-only">{slide.title}. {slide.detail}.</figcaption>
+              <div className="flex items-center justify-between gap-3 px-4 py-3 bg-white text-slate-700">
+                <div className="flex gap-2" role="group" aria-label="Choose a school photo">
+                  {HERO_SLIDES.map((item, index) => (
+                    <button key={item.title} type="button" onClick={() => changeSlide(index)}
+                      aria-label={`Show photo: ${item.title}`} aria-current={index === activeSlide ? 'true' : undefined}
+                      className={`h-3 rounded-full transition-all focus-visible:outline-2 focus-visible:outline-[#0033A0] ${index === activeSlide ? 'w-8 bg-[#0033A0]' : 'w-3 bg-slate-300 hover:bg-slate-500'}`} />
+                  ))}
+                </div>
+                <button type="button" disabled={reducedMotion} onClick={() => setCarouselPaused(value => !value)}
+                  aria-label={reducedMotion ? 'Automatic slideshow disabled by motion settings' : carouselPaused ? 'Resume automatic slideshow' : 'Pause automatic slideshow'}
+                  aria-pressed={carouselPaused}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-[#0033A0] hover:bg-blue-50 disabled:text-slate-400 focus-visible:outline-2 focus-visible:outline-[#0033A0]">
+                  {carouselPaused || reducedMotion ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                  <span>{reducedMotion ? 'Motion off' : carouselPaused ? 'Play' : 'Pause'}</span>
+                </button>
               </div>
             </figure>
+          </div>
+
+          {/* Programme strengths, not unverified enrolment or exam statistics */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-6 border-t border-slate-200 lg:col-start-1 lg:row-start-2 w-full">
+            <div className="rounded-xl border border-pink-100 bg-pink-50 p-3 sm:p-4 min-w-0">
+              <p className="text-base sm:text-xl font-black text-pink-700">Care</p>
+              <p className="text-[11px] sm:text-sm text-slate-600 font-medium leading-tight mt-1">Crèche & Nursery</p>
+            </div>
+            <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 sm:p-4 min-w-0">
+              <p className="text-base sm:text-xl font-black text-[#0033A0]">Curiosity</p>
+              <p className="text-[11px] sm:text-sm text-slate-600 font-medium leading-tight mt-1">Primary School</p>
+            </div>
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 sm:p-4 min-w-0">
+              <p className="text-base sm:text-xl font-black text-emerald-700">Confidence</p>
+              <p className="text-[11px] sm:text-sm text-slate-600 font-medium leading-tight mt-1">Secondary School</p>
+            </div>
           </div>
         </div>
       </div>
