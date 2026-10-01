@@ -1,7 +1,8 @@
 "use client";
 
 import Link from 'next/link';
-import { ArrowLeft, GraduationCap, BookOpen, Trophy, Star, CheckCircle2, Image as ImageIcon, Award } from 'lucide-react';
+import { ArrowLeft, GraduationCap, Trophy, Award } from 'lucide-react';
+import Image from 'next/image';
 
 export default function SecondaryPage() {
   return (
@@ -63,22 +64,64 @@ export default function SecondaryPage() {
             </Link>
           </div>
 
-          {/* Image Gallery Placeholder */}
-          <div className="space-y-4">
-            <div className="bg-emerald-50 rounded-2xl border-2 border-dashed border-emerald-200 p-12 text-center">
-              <ImageIcon className="w-16 h-16 text-emerald-300 mx-auto mb-4" />
-              <p className="text-emerald-600 font-bold">Secondary School Photo Gallery</p>
-              <p className="text-sm text-emerald-500 mt-2">Photos will be added here</p>
+          {/* Selected school-provided secondary school photos */}
+          <section aria-labelledby="secondary-gallery-title" className="space-y-4">
+            <div>
+              <h2 id="secondary-gallery-title" className="text-xl font-bold text-slate-900">Life in our secondary school</h2>
+              <p className="text-sm text-slate-600 mt-1">Classroom learning, practical work and time together.</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-emerald-50 rounded-xl border-2 border-dashed border-emerald-200 h-40 flex items-center justify-center">
-                <ImageIcon className="w-8 h-8 text-emerald-300" />
+            <figure className="overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50 shadow-sm">
+              <div className="relative aspect-[7/5]">
+                <Image
+                  src="/images/secondary/laboratory.webp"
+                  alt="Secondary students in laboratory coats taking part in a science practical"
+                  fill
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-contain"
+                />
               </div>
-              <div className="bg-emerald-50 rounded-xl border-2 border-dashed border-emerald-200 h-40 flex items-center justify-center">
-                <ImageIcon className="w-8 h-8 text-emerald-300" />
-              </div>
+              <figcaption className="px-4 py-3 text-sm text-slate-600">Hands-on learning in the science laboratory.</figcaption>
+            </figure>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <figure className="overflow-hidden rounded-xl border border-emerald-100 bg-emerald-50 shadow-sm">
+                <div className="relative aspect-[3/4]">
+                  <Image
+                    src="/images/secondary/chess-activity.webp"
+                    alt="Secondary pupils gathering around classroom chess and strategy games"
+                    fill
+                    sizes="(max-width: 640px) 48vw, (max-width: 1024px) 45vw, 24vw"
+                    className="object-cover object-center"
+                  />
+                </div>
+                <figcaption className="px-3 py-2 text-xs sm:text-sm text-slate-600">Strategy and teamwork</figcaption>
+              </figure>
+              <figure className="overflow-hidden rounded-xl border border-emerald-100 bg-emerald-50 shadow-sm">
+                <div className="relative aspect-[3/4]">
+                  <Image
+                    src="/images/secondary/guided-lesson.webp"
+                    alt="Teacher leading a discussion with secondary school pupils"
+                    fill
+                    sizes="(max-width: 640px) 48vw, (max-width: 1024px) 45vw, 24vw"
+                    className="object-cover object-bottom"
+                  />
+                </div>
+                <figcaption className="px-3 py-2 text-xs sm:text-sm text-slate-600">Engaged in class</figcaption>
+              </figure>
             </div>
-          </div>
+            <figure className="overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50 shadow-sm">
+              <div className="relative aspect-[9/4]">
+                <Image
+                  src="/images/secondary/class-discussion.webp"
+                  alt="Students at desks listening to a teacher during a classroom lesson"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover object-center"
+                />
+              </div>
+              <figcaption className="px-4 py-3 text-sm text-slate-600">An interactive classroom session.</figcaption>
+            </figure>
+          </section>
         </div>
       </div>
     </div>
