@@ -1,7 +1,8 @@
 "use client";
 
 import Link from 'next/link';
-import { ArrowLeft, Baby, Heart, Shield, Star, CheckCircle2, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Baby, Heart, Shield, Star } from 'lucide-react';
+import Image from 'next/image';
 
 export default function CrechePage() {
   return (
@@ -53,7 +54,7 @@ export default function CrechePage() {
                 <Shield className="w-5 h-5 text-pink-500 mt-1 shrink-0" />
                 <div>
                   <h3 className="font-bold text-slate-900">Safe & Secure</h3>
-                  <p className="text-sm text-slate-600">Child-proofed facilities with 24/7 supervision</p>
+                  <p className="text-sm text-slate-600">A welcoming space with attentive care during the school day</p>
                 </div>
               </div>
             </div>
@@ -63,22 +64,52 @@ export default function CrechePage() {
             </Link>
           </div>
 
-          {/* Image Gallery Placeholder */}
-          <div className="space-y-4">
-            <div className="bg-pink-50 rounded-2xl border-2 border-dashed border-pink-200 p-12 text-center">
-              <ImageIcon className="w-16 h-16 text-pink-300 mx-auto mb-4" />
-              <p className="text-pink-600 font-bold">Crèche Photo Gallery</p>
-              <p className="text-sm text-pink-500 mt-2">Photos will be added here</p>
+          {/* Real crèche photos provided by the school */}
+          <section aria-labelledby="creche-gallery-title" className="space-y-4">
+            <div>
+              <h2 id="creche-gallery-title" className="text-xl font-bold text-slate-900">A look inside our crèche</h2>
+              <p className="text-sm text-slate-600 mt-1">A colourful space for play, rest and discovery.</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-pink-50 rounded-xl border-2 border-dashed border-pink-200 h-40 flex items-center justify-center">
-                <ImageIcon className="w-8 h-8 text-pink-300" />
+            <figure className="overflow-hidden rounded-2xl border border-pink-100 bg-pink-50 shadow-sm">
+              <div className="relative aspect-[16/10]">
+                <Image
+                  src="/images/creche/rest-space-wide.webp"
+                  alt="Crèche room with colourful play mats, cushions and rest spaces"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  priority
+                  className="object-cover"
+                />
               </div>
-              <div className="bg-pink-50 rounded-xl border-2 border-dashed border-pink-200 h-40 flex items-center justify-center">
-                <ImageIcon className="w-8 h-8 text-pink-300" />
-              </div>
+              <figcaption className="px-4 py-3 text-sm text-slate-600">Colourful mats and cosy spaces for little learners.</figcaption>
+            </figure>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <figure className="overflow-hidden rounded-xl border border-pink-100 bg-pink-50 shadow-sm">
+                <div className="relative aspect-[3/4]">
+                  <Image
+                    src="/images/creche/room-play-shelf.webp"
+                    alt="Crèche play area with toys on a shelf and floor mats"
+                    fill
+                    sizes="(max-width: 640px) 48vw, (max-width: 1024px) 45vw, 24vw"
+                    className="object-cover object-center"
+                  />
+                </div>
+                <figcaption className="px-3 py-2 text-xs sm:text-sm text-slate-600">Play and discovery</figcaption>
+              </figure>
+              <figure className="overflow-hidden rounded-xl border border-pink-100 bg-pink-50 shadow-sm">
+                <div className="relative aspect-[3/4]">
+                  <Image
+                    src="/images/creche/room-rest-area.webp"
+                    alt="Crèche rest area with cushioned mats and colourful curtains"
+                    fill
+                    sizes="(max-width: 640px) 48vw, (max-width: 1024px) 45vw, 24vw"
+                    className="object-cover object-center"
+                  />
+                </div>
+                <figcaption className="px-3 py-2 text-xs sm:text-sm text-slate-600">Comfortable rest spaces</figcaption>
+              </figure>
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </div>
