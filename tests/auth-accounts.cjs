@@ -34,10 +34,38 @@ function authHandler(prisma) {
 test('known demo passwords cannot log in even when old database values remain', async () => {
   const authorize = authHandler({
     student: { findUnique: async () => ({ id: 'STU1', status: 'ACTIVE', password: 'student123' }) },
-    parent: { findFirst: async () => ({ id: 'PAR1', password: 'parent123' }) }
+    parent: { findMany: async () => [{ id: 'PAR1', password: 'parent123' }] }
   });
   assert.equal(await authorize({ username: 'STU1', password: 'student123', roleType: 'STUDENT' }), null);
   assert.equal(await authorize({ username: 'a@example.com', password: 'parent123', roleType: 'PARENT' }), null);
+});
+
+test('parent login chooses the one matching password when email is duplicated', async () => {
+  const correctHash = await bcrypt.hash('unique-parent-temporary', 4);
+  const otherHash = await bcrypt.hash('other-parent-secret', 4);
+  const parents = [
+    { id: 'PAR-OTHER', fullName: 'Same Name', email: 'shared@example.com', password: otherHash,
+      mustChangePassword: false, sessionVersion: 1 },
+    { id: 'PAR-CORRECT', fullName: 'Same Name', email: 'shared@example.com', password: correctHash,
+      mustChangePassword: true, sessionVersion: 2 }
+  ];
+  const authorize = authHandler({ parent: { findMany: async ({ where }) => {
+    assert.equal(where.email.mode, 'insensitive');
+    return parents;
+  } } });
+  assert.equal(await authorize({ username: 'shared@example.com', password: 'wrong', roleType: 'PARENT' }), null);
+  const user = await authorize({ username: 'shared@example.com', password: 'unique-parent-temporary', roleType: 'PARENT' });
+  assert.equal(user.id, 'PAR-CORRECT');
+  assert.equal(user.mustChangePassword, true);
+  assert.equal(user.sessionVersion, 2);
+});
+
+test('parent login rejects ambiguous matches instead of picking a household', async () => {
+  const sharedHash = await bcrypt.hash('same-parent-password', 4);
+  const authorize = authHandler({ parent: { findMany: async () => [
+    { id: 'A', password: sharedHash }, { id: 'B', password: sharedHash }
+  ] } });
+  assert.equal(await authorize({ username: 'shared@example.com', password: 'same-parent-password', roleType: 'PARENT' }), null);
 });
 
 test('super admin requires configured environment password; no admin123 fallback', async () => {

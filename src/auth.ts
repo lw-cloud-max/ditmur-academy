@@ -52,14 +52,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           role: 'STUDENT', mustChangePassword: checked.upgrade || student.mustChangePassword, sessionVersion: student.sessionVersion };
       }
       if (credentials.roleType === 'PARENT') {
-        const parent = await prisma.parent.findFirst({ where: { email: { equals: username, mode: 'insensitive' } },
+        // A parent email was not historically unique. Finding the first row can
+        // reject a valid reset on a second row, or select the wrong family.
+        const parents = await prisma.parent.findMany({ where: { email: { equals: username, mode: 'insensitive' } },
           select: { id: true, fullName: true, email: true, password: true, mustChangePassword: true, sessionVersion: true } });
-        if (!parent) return null;
-        const checked = await checkPassword(parent.password, password);
-        if (!checked.valid) return null;
-        if (checked.upgrade) await prisma.parent.update({ where: { id: parent.id }, data: { password: await hashPassword(password), mustChangePassword: true } });
+        let match: { parent: (typeof parents)[number]; upgrade: boolean } | null = null;
+        for (const parent of parents) {
+          const checked = await checkPassword(parent.password, password);
+          if (!checked.valid) continue;
+          // If two households have the same email AND password, it would be
+          // unsafe to guess which parent was intended. Admin must reset one.
+          if (match) return null;
+          match = { parent, upgrade: checked.upgrade };
+        }
+        if (!match) return null;
+        const { parent, upgrade } = match;
+        if (upgrade) await prisma.parent.update({ where: { id: parent.id }, data: { password: await hashPassword(password), mustChangePassword: true } });
         return { id: parent.id, name: parent.fullName, email: parent.email,
-          role: 'PARENT', mustChangePassword: checked.upgrade || parent.mustChangePassword, sessionVersion: parent.sessionVersion };
+          role: 'PARENT', mustChangePassword: upgrade || parent.mustChangePassword, sessionVersion: parent.sessionVersion };
       }
       return null;
     }
