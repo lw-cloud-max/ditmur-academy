@@ -103,11 +103,26 @@ export default function LandingPage() {
             </div>
           </div>
           
-          <div className="relative hidden lg:block h-[600px]">
-             <div className="absolute inset-0 bg-gradient-to-tr from-[#0033A0]/10 to-[#FFD700]/10 rounded-[40px] border border-slate-200 backdrop-blur-xl transform rotate-3 scale-95 transition-transform duration-700 hover:rotate-0 hover:scale-100"></div>
-             <div className="absolute inset-0 bg-white rounded-[40px] border border-slate-200 shadow-2xl p-8 flex flex-col justify-between overflow-hidden">
-                <img src="/logo.jpg" alt="Ditmur Academy" className="w-full h-full object-contain opacity-90" />
-             </div>
+          {/* One real school photo, art-directed for phones and desktop. The logo stays in the navigation. */}
+          <div className="relative mt-4 lg:mt-0">
+            <div aria-hidden="true" className="absolute -inset-3 bg-gradient-to-br from-[#0033A0]/15 to-[#FFD700]/20 rounded-[36px] rotate-2"></div>
+            <figure className="relative overflow-hidden rounded-[28px] border-4 border-white bg-[#0A192F] shadow-2xl">
+              <div className="relative h-[430px] sm:h-[520px] lg:h-[390px] xl:h-[440px]">
+                <picture>
+                  <source media="(min-width: 1024px)" srcSet="/images/landing/classroom-desktop.webp" type="image/webp" />
+                  <img
+                    src="/images/landing/classroom-mobile.webp"
+                    alt="Ditmur Academy pupils learning together in a classroom"
+                    fetchPriority="high"
+                    className="absolute inset-0 w-full h-full object-cover object-center"
+                  />
+                </picture>
+                <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0A192F]/80 to-transparent"></div>
+                <figcaption className="absolute bottom-5 left-5 right-5 text-white text-sm sm:text-base font-semibold drop-shadow-md">
+                  Learning together at Ditmur Academy
+                </figcaption>
+              </div>
+            </figure>
           </div>
         </div>
       </div>
