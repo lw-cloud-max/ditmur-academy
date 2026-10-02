@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import { usePaystackPayment } from 'react-paystack';
 import { 
   CreditCard, Search, Filter, ArrowUpRight, ArrowDownRight, 
-  Wallet, Receipt, CheckCircle2, Clock, Plus, Loader2, X
+  Wallet, Receipt, CheckCircle2, Clock, Plus, Loader2, X, Landmark, Copy
 } from 'lucide-react';
 
 function PayInvoiceButton({ invoice, email, onPaid }: { invoice: any; email: string; onPaid: () => void }) {
@@ -44,6 +44,10 @@ export default function PaymentsPage() {
   const canSeeFinance = (userRole === 'ADMIN' && session?.user?.id === 'admin-1') || userRole === 'ACCOUNTANT' || (userRole === 'STAFF' && session?.user?.staffRole === 'ACCOUNTANT_TEACHER');
   const isReadOnly = !canSeeFinance;
   const canSeeOwnFees = userRole === 'PARENT' || userRole === 'STUDENT';
+  const paystackEnabled = process.env.NEXT_PUBLIC_PAYSTACK_ENABLED === 'true';
+  const [bankDetails, setBankDetails] = useState<{ bankName: string; accountName: string; accountNumber: string } | null>(null);
+  const [bankError, setBankError] = useState('');
+  const [copiedAccount, setCopiedAccount] = useState(false);
 
   const [invoices, setInvoices] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
@@ -73,6 +77,19 @@ export default function PaymentsPage() {
     if (sessionStatus === 'authenticated' && (canSeeFinance || canSeeOwnFees)) fetchData();
   }, [statusFilter, sessionStatus, userRole, session?.user?.id]);
 
+  useEffect(() => {
+    if (sessionStatus !== 'authenticated' || userRole !== 'PARENT') return;
+    let active = true;
+    fetch('/api/payment-instructions', { cache: 'no-store' })
+      .then(async res => {
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || 'Could not load transfer details');
+        if (active) setBankDetails(data.data);
+      })
+      .catch(error => { if (active) setBankError(error instanceof Error ? error.message : 'Could not load transfer details'); });
+    return () => { active = false; };
+  }, [sessionStatus, userRole]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -91,6 +108,16 @@ export default function PaymentsPage() {
     } catch (err) {
       console.error("Failed to load payments data");
     } finally { setLoading(false); }
+  };
+
+  const copyAccountNumber = async () => {
+    if (!bankDetails) return;
+    try {
+      await navigator.clipboard.writeText(bankDetails.accountNumber);
+      setCopiedAccount(true);
+    } catch {
+      setBankError('Copy was unavailable. You can select and copy the account number manually.');
+    }
   };
 
   const calculateStats = (data: any[]) => {
@@ -134,7 +161,7 @@ export default function PaymentsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Payments & Fees</h1>
-          <p className="text-slate-500">{isReadOnly ? "View and pay outstanding school fees for your children securely online." : "Track tuition payments, issue invoices, and manage school revenue."}</p>
+          <p className="text-slate-500">{isReadOnly ? userRole === 'PARENT' ? 'View your children’s invoices and pay by school bank transfer.' : 'View your fee information.' : 'Track tuition payments, issue invoices, and manage school revenue.'}</p>
         </div>
         {!isReadOnly && (
           <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-[#0033A0] text-white px-4 py-2 rounded-lg hover:bg-[#002277] transition-colors font-medium text-sm">
@@ -142,6 +169,33 @@ export default function PaymentsPage() {
           </button>
         )}
       </div>
+
+      {userRole === 'PARENT' && (
+        <section aria-labelledby="bank-transfer-title" className="rounded-2xl border border-blue-200 bg-blue-50 p-4 sm:p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <Landmark className="w-6 h-6 text-[#0033A0]" />
+            <h2 id="bank-transfer-title" className="text-lg font-bold text-slate-900">Pay by bank transfer</h2>
+          </div>
+          {bankDetails ? <>
+            <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+              <div className="rounded-xl bg-white p-3 border border-blue-100"><dt className="text-xs text-slate-500 font-bold uppercase">Bank</dt><dd className="font-bold text-slate-900 break-words mt-1">{bankDetails.bankName}</dd></div>
+              <div className="rounded-xl bg-white p-3 border border-blue-100"><dt className="text-xs text-slate-500 font-bold uppercase">Account name</dt><dd className="font-bold text-slate-900 break-words mt-1">{bankDetails.accountName}</dd></div>
+              <div className="rounded-xl bg-white p-3 border border-blue-100">
+                <dt className="text-xs text-slate-500 font-bold uppercase">Account number</dt>
+                <dd className="flex flex-wrap items-center justify-between gap-2 mt-1">
+                  <span className="font-black text-xl tracking-wide text-[#0033A0] select-all">{bankDetails.accountNumber}</span>
+                  <button type="button" onClick={copyAccountNumber} aria-label="Copy school account number"
+                    className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-2 text-sm font-bold text-[#0033A0] hover:bg-blue-100">
+                    <Copy className="w-4 h-4" /> {copiedAccount ? 'Copied' : 'Copy'}
+                  </button>
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-4 text-sm text-slate-700">Use the <strong>invoice ID</strong> shown below as your transfer reference. Verify the account name with the school before paying. A transfer does not mark your invoice paid automatically; the school finance team confirms it against the bank record.</p>
+          </> : <p role="status" className="mt-2 text-sm text-slate-700">{bankError || 'Loading school transfer details...'}</p>}
+          {bankDetails && bankError && <p role="alert" className="mt-2 text-sm text-red-700">{bankError}</p>}
+        </section>
+      )}
 
       {/* Financial Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -243,7 +297,9 @@ export default function PaymentsPage() {
                     <td className="px-6 py-4 text-right">
                       {tx.status !== 'PAID' ? (
                         isReadOnly ? (
-                          <PayInvoiceButton invoice={tx} email={session?.user?.email || ''} onPaid={fetchData} />
+                          userRole === 'PARENT' && paystackEnabled
+                            ? <PayInvoiceButton invoice={tx} email={session?.user?.email || ''} onPaid={fetchData} />
+                            : <span className="text-xs text-slate-500 font-medium">{userRole === 'PARENT' ? bankDetails ? 'Use bank transfer details above' : 'Contact school office' : 'Ask your parent/guardian to pay'}</span>
                         ) : (
                           <button onClick={() => handleRecordPayment(tx.id)} className="text-[#0033A0] hover:text-white text-xs font-bold transition-colors bg-blue-50 hover:bg-[#0033A0] px-4 py-2 rounded-lg border border-blue-100">
                             Mark as Paid
