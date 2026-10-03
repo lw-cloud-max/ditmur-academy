@@ -1,406 +1,162 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { MessageSquare, Send, Loader2, CheckCircle2, XCircle, Clock, Search, Filter, Trash2, AlertCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { AlertCircle, Clock, Loader2, MessageSquare, Send, ShieldCheck } from 'lucide-react';
+import { SMS_TEMPLATES } from '@/lib/sms-templates';
 
-interface SMSNotification {
-  id: string;
-  type: string;
-  message: string;
-  status: string;
-  sentAt: string | null;
-  createdAt: string;
-  student?: { firstName: string; lastName: string };
-  parent?: { fullName: string; phone: string };
-}
+type Config = { mode: 'disabled' | 'sandbox' | 'live'; enabled: boolean; reason: string; senderId?: string };
+type Notice = { id: string; type: string; message: string; status: string; createdAt: string;
+  parent?: { fullName: string; phone: string }; student?: { firstName: string; lastName: string } };
+type Student = { id: string; firstName: string; lastName: string; parent?: { phone?: string } };
+const TYPES = [
+  ['CUSTOM', 'Custom Message'], ['ATTENDANCE_PRESENT', 'Attendance: Present'],
+  ['ATTENDANCE_ABSENT', 'Attendance: Absent'], ['ATTENDANCE_LATE', 'Attendance: Late'],
+  ['RESULT', 'Approved Report Notice'], ['FEE_REMINDER', 'Fee Invoice Reminder'],
+  ['ANNOUNCEMENT', 'School Announcement']
+] as const;
 
 export default function SMSNotificationsPage() {
-  const [notifications, setNotifications] = useState<SMSNotification[]>([]);
+  const { data: session, status: sessionStatus } = useSession();
+  const superAdmin = session?.user?.role === 'ADMIN' && session?.user?.id === 'admin-1';
+  const [config, setConfig] = useState<Config | null>(null);
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [terms, setTerms] = useState<string[]>(['Term 1 - 2024']);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState('ALL');
-
-  // Send SMS form state
-  const [showSendForm, setShowSendForm] = useState(false);
-  const [students, setStudents] = useState<any[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState('');
-  const [smsType, setSmsType] = useState('ATTENDANCE_PRESENT');
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [studentId, setStudentId] = useState('');
+  const [type, setType] = useState('CUSTOM');
   const [customMessage, setCustomMessage] = useState('');
+  const [term, setTerm] = useState('Term 1 - 2024');
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const refreshHistory = async () => {
+    const res = await fetch('/api/sms', { cache: 'no-store' });
+    const json = await res.json();
+    if (res.ok && json.success) setNotices(json.data);
+  };
 
   useEffect(() => {
-    fetchNotifications();
-    fetchStudents();
-  }, []);
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch('/api/sms');
-      const data = await res.json();
-      if (data.success) {
-        setNotifications(data.data);
+    if (sessionStatus !== 'authenticated' || !superAdmin) return;
+    Promise.all([
+      fetch('/api/sms?config=1', { cache: 'no-store' }).then(res => res.json()),
+      fetch('/api/sms', { cache: 'no-store' }).then(res => res.json()),
+      fetch('/api/students').then(res => res.json()),
+      fetch('/api/terms').then(res => res.json())
+    ]).then(([settings, history, enrolled, schoolTerms]) => {
+      if (settings.success) setConfig(settings.data);
+      else setError(settings.error || 'Could not check SMS configuration');
+      if (history.success) setNotices(history.data);
+      if (enrolled.success) setStudents(enrolled.data);
+      if (schoolTerms.success) {
+        const options = schoolTerms.data.map((item: { name: string; session: string }) => `${item.name} ${item.session}`);
+        setTerms(Array.from(new Set(['Term 1 - 2024', ...options])));
       }
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    }).catch(() => setError('Could not load SMS settings. Check your connection.'))
+      .finally(() => setLoading(false));
+  }, [sessionStatus, superAdmin]);
 
-  const fetchStudents = async () => {
+  const selected = students.find(student => student.id === studentId);
+  const studentName = selected ? `${selected.firstName} ${selected.lastName}` : 'this student';
+  const today = new Date().toLocaleDateString('en-NG', { timeZone: 'Africa/Lagos' });
+  const preview = type === 'CUSTOM' ? customMessage.trim()
+    : type === 'ANNOUNCEMENT' ? SMS_TEMPLATES.announcement(customMessage.trim())
+    : type === 'ATTENDANCE_PRESENT' ? SMS_TEMPLATES.attendancePresent(studentName, today)
+    : type === 'ATTENDANCE_ABSENT' ? SMS_TEMPLATES.attendanceAbsent(studentName, today, false)
+    : type === 'ATTENDANCE_LATE' ? SMS_TEMPLATES.attendanceLate(studentName, today)
+    : type === 'RESULT' ? SMS_TEMPLATES.resultPublished(term)
+    : SMS_TEMPLATES.feeReminder();
+  const maskedPhone = selected?.parent?.phone ? `***${selected.parent.phone.slice(-4)}` : 'No parent phone';
+
+  const send = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!config?.enabled || !studentId || !consentChecked || sending || !preview || preview.length > 320) return;
+    if (!window.confirm(`Send ONE ${config.mode === 'live' ? 'billable LIVE' : 'sandbox'} SMS to the parent of ${studentName} (${maskedPhone})?\n\n${preview}\n\nProvider acceptance is NOT proof the phone received it.`)) return;
+    setSending(true); setError(''); setMessage('');
     try {
-      const res = await fetch('/api/students');
-      const data = await res.json();
-      if (data.success) {
-        setStudents(data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching students:', error);
-    }
+      const res = await fetch('/api/sms', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, studentId, customMessage, term, confirmed: true }) });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'SMS was not accepted. Check history before retrying.');
+      setMessage(json.message || 'Accepted by provider. Delivery has not yet been confirmed.');
+      setConsentChecked(false); setCustomMessage(''); setStudentId('');
+      await refreshHistory();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'SMS outcome unknown. Check provider logs before retrying.'); }
+    finally { setSending(false); }
   };
 
-  const handleSendSMS = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedStudent || sending) return;
+  if (sessionStatus === 'loading') return <div className="p-12 flex justify-center"><Loader2 className="animate-spin text-blue-700" /></div>;
+  if (!superAdmin) return <div className="max-w-3xl mx-auto p-6 bg-white border rounded-xl text-slate-700">Only the super admin can manage school SMS.</div>;
+  const filtered = notices.filter(row => `${row.student?.firstName || ''} ${row.student?.lastName || ''} ${row.parent?.fullName || ''} ${row.message}`.toLowerCase().includes(search.toLowerCase()));
 
-    setSending(true);
-    try {
-      const res = await fetch('/api/sms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: smsType,
-          studentId: selectedStudent,
-          customMessage: customMessage || undefined
-        })
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setShowSendForm(false);
-        setSelectedStudent('');
-        setCustomMessage('');
-        fetchNotifications();
-        alert('SMS sent successfully! (In sandbox mode, messages appear in the Africa\'s Talking simulator, not on real phones)');
-      } else {
-        alert(`Failed to send SMS: ${data.error}`);
-      }
-    } catch (error) {
-      console.error('Error sending SMS:', error);
-      alert('Failed to send SMS');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handleDeleteNotification = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this notification?')) return;
-
-    try {
-      console.log('Deleting notification:', id);
-      const res = await fetch(`/api/sms?id=${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      console.log('Delete response:', data);
-      
-      if (data.success) {
-        fetchNotifications();
-        alert('Notification deleted successfully!');
-      } else {
-        alert(`Failed to delete: ${data.error}`);
-      }
-    } catch (error) {
-      console.error('Error deleting notification:', error);
-      alert('Failed to delete notification. Check console for details.');
-    }
-  };
-
-  const handleClearAllNotifications = async () => {
-    if (!confirm('Are you sure you want to delete ALL SMS notifications? This cannot be undone.')) return;
-
-    try {
-      console.log('Clearing all notifications');
-      const res = await fetch('/api/sms?deleteAll=true', { method: 'DELETE' });
-      const data = await res.json();
-      console.log('Clear all response:', data);
-      
-      if (data.success) {
-        fetchNotifications();
-        alert('All notifications cleared!');
-      } else {
-        alert(`Failed to clear: ${data.error}`);
-      }
-    } catch (error) {
-      console.error('Error clearing notifications:', error);
-      alert('Failed to clear notifications. Check console for details.');
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'SENT':
-      case 'DELIVERED':
-        return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
-      case 'FAILED':
-        return <XCircle className="w-4 h-4 text-red-500" />;
-      default:
-        return <Clock className="w-4 h-4 text-amber-500" />;
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      'ATTENDANCE_PRESENT': 'Attendance (Present)',
-      'ATTENDANCE_ABSENT': 'Attendance (Absent)',
-      'ATTENDANCE_LATE': 'Attendance (Late)',
-      'RESULT': 'Result Published',
-      'FEE_REMINDER': 'Fee Reminder',
-      'ANNOUNCEMENT': 'Announcement',
-      'CUSTOM': 'Custom Message'
-    };
-    return labels[type] || type;
-  };
-
-  const filteredNotifications = notifications.filter(n => {
-    const matchesSearch = 
-      n.student?.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      n.student?.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      n.parent?.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      n.message.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesFilter = filterType === 'ALL' || n.type === filterType;
-    
-    return matchesSearch && matchesFilter;
-  });
-
-  return (
-    <div className="space-y-6 pb-32 max-w-6xl mx-auto animation-fade-in">
-      {/* Sandbox Notice */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-        <div>
-          <p className="text-sm font-bold text-amber-800">Sandbox Mode Active</p>
-          <p className="text-xs text-amber-700 mt-1">
-            You're using Africa's Talking sandbox. Messages are sent to the <a href="https://simulator.africastalking.com:1517/" target="_blank" rel="noopener noreferrer" className="underline font-medium">SMS Simulator</a>, not to real phones. 
-            Switch to production mode when ready to send real SMS.
-          </p>
-        </div>
+  return <div className="max-w-5xl mx-auto pb-32 space-y-6">
+    <header><h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><MessageSquare className="text-blue-700" /> SMS Notifications</h1>
+      <p className="text-slate-600 mt-1 text-sm">One parent at a time. No automatic or bulk SMS is enabled.</p></header>
+    {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</p>}
+    {message && <p role="status" className="rounded-xl border border-green-200 bg-green-50 p-4 text-green-800">{message}</p>}
+    <section aria-label="SMS mode" className={`rounded-xl border p-4 flex items-start gap-3 ${config?.mode === 'live' && config.enabled ? 'bg-amber-50 border-amber-300' : 'bg-blue-50 border-blue-200'}`}>
+      <ShieldCheck className="w-5 h-5 text-blue-700 shrink-0" />
+      <div><h2 className="font-bold">{loading ? 'Checking SMS mode...' : config?.enabled ? config.mode === 'sandbox' ? 'Sandbox simulator active' : 'Live SMS enabled - charges may apply' : 'SMS sending disabled (safe for launch)'}</h2>
+        <p className="text-sm mt-1">{config?.reason || 'SMS settings have not been loaded. No messages can be sent.'}</p>
+        {config?.mode === 'live' && config.senderId && <p className="text-sm mt-1">Approved sender ID configured: {config.senderId}</p>}
+        <p className="text-xs mt-2">"Accepted" means the provider received the request. Handset delivery requires a separate delivery report.</p>
       </div>
+    </section>
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <MessageSquare className="w-7 h-7 text-[#0033A0]" />
-            SMS Notifications
-          </h1>
-          <p className="text-slate-500 mt-1">Send automated SMS alerts to parents via Africa's Talking</p>
-        </div>
-        <div className="flex gap-3">
-          {notifications.length > 0 && (
-            <button
-              onClick={handleClearAllNotifications}
-              className="px-4 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors flex items-center gap-2 border border-red-200"
-            >
-              <Trash2 className="w-5 h-5" />
-              Clear All
-            </button>
-          )}
-          <button
-            onClick={() => setShowSendForm(true)}
-            className="px-6 py-3 bg-[#0033A0] text-white rounded-xl font-bold hover:bg-[#002277] transition-colors flex items-center gap-2"
-          >
-            <Send className="w-5 h-5" />
-            Send SMS
-          </button>
-        </div>
+    {config?.enabled && <form onSubmit={send} className="rounded-2xl border bg-white p-4 sm:p-6 space-y-4">
+      <h2 className="font-bold text-lg">Compose a single-parent SMS</h2>
+      <label className="block text-sm font-semibold">Student (message goes to linked parent)
+        <select required value={studentId} onChange={event => setStudentId(event.target.value)} className="block mt-1 w-full rounded-lg border p-3 bg-white">
+          <option value="">Select student</option>{students.map(student => <option key={student.id} value={student.id}>{student.firstName} {student.lastName} ({student.id})</option>)}
+        </select>
+      </label>
+      {selected && <p className="text-sm text-slate-600">Parent phone: {maskedPhone}</p>}
+      <label className="block text-sm font-semibold">Message type
+        <select value={type} onChange={event => setType(event.target.value)} className="block mt-1 w-full rounded-lg border p-3 bg-white">
+          {TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+      </label>
+      {type === 'RESULT' && <label className="block text-sm font-semibold">Approved class and term
+        <select value={term} onChange={event => setTerm(event.target.value)} className="block mt-1 w-full rounded-lg border p-3 bg-white">
+          {terms.map(item => <option key={item} value={item}>{item}</option>)}
+        </select>
+      </label>}
+      {(type === 'CUSTOM' || type === 'ANNOUNCEMENT') && <label className="block text-sm font-semibold">Message
+        <textarea required maxLength={260} value={customMessage} onChange={event => setCustomMessage(event.target.value)} rows={3}
+          className="block mt-1 w-full rounded-lg border p-3" placeholder="Write a short, school-approved message" />
+      </label>}
+      <div className="rounded-xl border bg-slate-50 p-4"><p className="text-xs font-bold uppercase text-slate-500">Message preview</p>
+        <p className="whitespace-pre-wrap text-sm mt-2 text-slate-800">{preview || 'Write a message above.'}</p>
+        <p className="text-xs text-slate-500 mt-2">{preview.length}/320 characters. Longer messages may incur more than one SMS charge.</p>
       </div>
+      <label className="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" checked={consentChecked} onChange={event => setConsentChecked(event.target.checked)} className="mt-1" />
+        I have reviewed this exact message and have school authorisation and recipient consent to send to this one parent.
+      </label>
+      <button type="submit" disabled={!studentId || !consentChecked || !preview || preview.length > 320 || sending}
+        className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-blue-800 px-6 py-3 font-bold text-white disabled:opacity-50">
+        {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} {config.mode === 'live' ? 'Review and send LIVE SMS' : 'Review and send to simulator'}
+      </button>
+    </form>}
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by student, parent, or message..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-400" />
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-            >
-              <option value="ALL">All Types</option>
-              <option value="ATTENDANCE_PRESENT">Attendance (Present)</option>
-              <option value="ATTENDANCE_ABSENT">Attendance (Absent)</option>
-              <option value="ATTENDANCE_LATE">Attendance (Late)</option>
-              <option value="RESULT">Result Published</option>
-              <option value="FEE_REMINDER">Fee Reminder</option>
-              <option value="ANNOUNCEMENT">Announcement</option>
-            </select>
-          </div>
-        </div>
+    <section className="rounded-2xl border bg-white overflow-hidden">
+      <div className="p-4 border-b flex flex-wrap items-center justify-between gap-3"><h2 className="font-bold">SMS attempts</h2>
+        <label className="text-sm">Search history <input value={search} onChange={event => setSearch(event.target.value)} className="ml-2 rounded-lg border p-2" /></label>
       </div>
-
-      {/* Notifications List */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center p-12">
-            <Loader2 className="w-8 h-8 animate-spin text-[#0033A0]" />
+      {loading ? <div className="p-10 flex justify-center"><Loader2 className="animate-spin text-blue-700" /></div> : filtered.length === 0 ? <p className="p-6 text-slate-500 text-sm">No SMS attempts recorded yet.</p> :
+        <ul className="divide-y">{filtered.map(row => <li key={row.id} className="p-4 flex flex-col sm:flex-row justify-between gap-3">
+          <div><span className={`text-xs font-bold px-2 py-1 rounded ${row.status === 'DELIVERED' ? 'bg-green-100 text-green-700' : row.status === 'FAILED' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'}`}>
+              {row.status === 'ACCEPTED' || row.status === 'SENT' ? 'ACCEPTED (delivery unconfirmed)' : row.status}
+            </span>
+            <span className="ml-2 text-xs text-slate-500">{row.type}</span>
+            <p className="mt-2 text-sm text-slate-800 whitespace-pre-wrap">{row.message}</p>
+            <p className="mt-1 text-xs text-slate-500">{row.student?.firstName} {row.student?.lastName} / {row.parent?.fullName} ({row.parent?.phone ? `***${row.parent.phone.slice(-4)}` : 'no phone'})</p>
           </div>
-        ) : filteredNotifications.length === 0 ? (
-          <div className="text-center p-12 text-slate-500">
-            <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="font-medium">No SMS notifications found</p>
-            <p className="text-sm mt-1">Send your first SMS to see it here</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {filteredNotifications.map(notification => (
-              <div key={notification.id} className="p-4 hover:bg-slate-50 transition-colors">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      {getStatusIcon(notification.status)}
-                      <span className="text-xs font-bold text-slate-500 uppercase">
-                        {getTypeLabel(notification.type)}
-                      </span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        notification.status === 'SENT' || notification.status === 'DELIVERED'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : notification.status === 'FAILED'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        {notification.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-700 mb-1">{notification.message}</p>
-                    <div className="flex items-center gap-4 text-xs text-slate-500">
-                      {notification.student && (
-                        <span>Student: {notification.student.firstName} {notification.student.lastName}</span>
-                      )}
-                      {notification.parent && (
-                        <span>Parent: {notification.parent.fullName} ({notification.parent.phone})</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-xs text-slate-400">
-                      {new Date(notification.createdAt).toLocaleString()}
-                    </div>
-                    <button
-                      onClick={() => handleDeleteNotification(notification.id)}
-                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete notification"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Send SMS Modal */}
-      {showSendForm && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animation-fade-in">
-            <div className="p-6 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-900">Send SMS Notification</h3>
-              <p className="text-xs text-slate-500 mt-1">Send an SMS alert to a student's parent via Africa's Talking</p>
-            </div>
-            
-            <form onSubmit={handleSendSMS} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Select Student *</label>
-                <select
-                  required
-                  value={selectedStudent}
-                  onChange={(e) => setSelectedStudent(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-                >
-                  <option value="">Choose a student...</option>
-                  {students.map(student => (
-                    <option key={student.id} value={student.id}>
-                      {student.firstName} {student.lastName} ({student.id})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">SMS Type *</label>
-                <select
-                  value={smsType}
-                  onChange={(e) => setSmsType(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-                >
-                  <option value="ATTENDANCE_PRESENT">Attendance - Present</option>
-                  <option value="ATTENDANCE_ABSENT">Attendance - Absent</option>
-                  <option value="ATTENDANCE_LATE">Attendance - Late</option>
-                  <option value="RESULT">Result Published</option>
-                  <option value="FEE_REMINDER">Fee Reminder</option>
-                  <option value="ANNOUNCEMENT">Announcement</option>
-                  <option value="CUSTOM">Custom Message</option>
-                </select>
-              </div>
-
-              {(smsType === 'CUSTOM' || smsType === 'ANNOUNCEMENT' || smsType === 'FEE_REMINDER') && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    {smsType === 'FEE_REMINDER' ? 'Amount (₦)' : 'Message'} *
-                  </label>
-                  <textarea
-                    required
-                    value={customMessage}
-                    onChange={(e) => setCustomMessage(e.target.value)}
-                    rows={3}
-                    placeholder={smsType === 'FEE_REMINDER' ? 'Enter amount...' : 'Enter your message...'}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0] resize-none"
-                  />
-                </div>
-              )}
-
-              <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                <p className="text-xs text-blue-800">
-                  <strong>Note:</strong> In sandbox mode, SMS will be sent to the <a href="https://simulator.africastalking.com:1517/" target="_blank" rel="noopener noreferrer" className="underline font-medium">Africa's Talking Simulator</a>, not to real phones.
-                </p>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSendForm(false)}
-                  className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!selectedStudent || sending}
-                  className="flex-1 px-4 py-3 bg-[#0033A0] text-white rounded-xl font-bold hover:bg-[#002277] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {sending ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <>
-                      <Send className="w-5 h-5" />
-                      Send SMS
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+          <span className="inline-flex items-center gap-1 text-xs text-slate-500 shrink-0"><Clock className="w-3 h-3" />{new Date(row.createdAt).toLocaleString()}</span>
+        </li>)}</ul>}
+    </section>
+  </div>;
 }

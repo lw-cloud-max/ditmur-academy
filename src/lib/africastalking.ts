@@ -1,148 +1,78 @@
-// Africa's Talking SMS API Integration
-// Documentation: https://africastalking.com/docs/sms
+// Africa's Talking legacy SMS API. Mode is DISABLED unless explicitly set.
+// Live sending requires a separate, deliberate opt-in and approved sender ID.
+export type SMSMode = 'disabled' | 'sandbox' | 'live';
+export type SMSConfig = { mode: SMSMode; enabled: boolean; reason: string; senderId?: string };
 
-const AFRICASTALKING_API_KEY = process.env.AFRICASTALKING_API_KEY;
-const AFRICASTALKING_USERNAME = process.env.AFRICASTALKING_USERNAME || 'sandbox';
-
-// Africa's Talking API endpoints
-const AFRICASTALKING_API_URL = 'https://api.africastalking.com/version1/messaging';
-const AFRICASTALKING_SANDBOX_URL = 'https://sandbox.africastalking.com/version1/messaging';
-
-interface AfricasTalkingSMSOptions {
-  to: string | string[]; // Phone number(s) in international format (e.g., +2348012345678)
-  message: string;
-  from?: string; // Sender ID (optional)
+export function getSMSConfig(): SMSConfig {
+  const selected = process.env.AFRICASTALKING_MODE;
+  const mode: SMSMode = selected === 'sandbox' || selected === 'live' ? selected : 'disabled';
+  if (mode === 'disabled') return { mode, enabled: false, reason: 'SMS sending is disabled while live Sender ID approval is pending.' };
+  const key = process.env.AFRICASTALKING_API_KEY?.trim();
+  const username = process.env.AFRICASTALKING_USERNAME?.trim();
+  if (mode === 'sandbox') {
+    return key && username === 'sandbox'
+      ? { mode, enabled: true, reason: 'Sandbox only: SMS goes to the simulator, not real phones.' }
+      : { mode, enabled: false, reason: 'Sandbox needs a sandbox API key and username sandbox.' };
+  }
+  const senderId = process.env.AFRICASTALKING_SENDER_ID?.trim();
+  if (process.env.AFRICASTALKING_LIVE_ENABLED !== 'true') return { mode, enabled: false, reason: 'Live SMS requires explicit approval and AFRICASTALKING_LIVE_ENABLED=true.' };
+  if (!key || !username || username === 'sandbox') return { mode, enabled: false, reason: 'A live application username and live API key are required.' };
+  if (!senderId || !/^[A-Za-z0-9]{3,11}$/.test(senderId)) return { mode, enabled: false, reason: 'A registered Nigeria sender ID (3-11 letters/numbers) is required.' };
+  return { mode, enabled: true, reason: 'Live SMS enabled: sending may incur charges. Provider acceptance is NOT phone delivery.', senderId };
 }
 
-export async function sendSMS({ to, message, from }: AfricasTalkingSMSOptions): Promise<{
-  success: boolean;
-  messageId?: string;
-  recipients?: any[];
-  error?: string;
-}> {
-  if (!AFRICASTALKING_API_KEY) {
-    console.error('AFRICASTALKING_API_KEY is not configured');
-    return { success: false, error: 'SMS service not configured' };
-  }
+export type SMSResult = { success: boolean; status: 'ACCEPTED' | 'FAILED' | 'UNKNOWN'; messageId?: string; error?: string };
 
+export function formatNigeriaPhone(phone: string): string | null {
+  const trimmed = phone.replace(/[\s()-]/g, '');
+  const normalized = trimmed.startsWith('0') ? '+234' + trimmed.slice(1)
+    : trimmed.startsWith('234') ? '+' + trimmed : trimmed;
+  return /^\+234[789]\d{9}$/.test(normalized) ? normalized : null;
+}
+
+export async function sendSMS({ to, message }: { to: string; message: string }): Promise<SMSResult> {
+  const config = getSMSConfig();
+  if (!config.enabled) return { success: false, status: 'FAILED', error: config.reason };
+  const number = formatNigeriaPhone(to);
+  if (!number) return { success: false, status: 'FAILED', error: 'Parent phone must be a valid Nigerian mobile number.' };
+  if (!message.trim() || message.length > 320) return { success: false, status: 'FAILED', error: 'Message must be 1-320 characters.' };
+  const url = config.mode === 'sandbox'
+    ? 'https://api.sandbox.africastalking.com/version1/messaging'
+    : 'https://api.africastalking.com/version1/messaging';
+  const form = new URLSearchParams({
+    username: config.mode === 'sandbox' ? 'sandbox' : process.env.AFRICASTALKING_USERNAME!.trim(),
+    to: number, message
+  });
+  if (config.mode === 'live' && config.senderId) form.set('from', config.senderId);
   try {
-    // Format phone numbers
-    const recipients = Array.isArray(to) ? to : [to];
-    const formattedRecipients = recipients.map(phone => {
-      let formatted = phone.replace(/\s+/g, '');
-      if (formatted.startsWith('0')) {
-        formatted = '+234' + formatted.substring(1);
-      }
-      if (!formatted.startsWith('+')) {
-        formatted = '+' + formatted;
-      }
-      return formatted;
-    });
-
-    // Use sandbox URL for testing, production URL for live
-    const apiUrl = AFRICASTALKING_USERNAME === 'sandbox' 
-      ? AFRICASTALKING_SANDBOX_URL 
-      : AFRICASTALKING_API_URL;
-
-    // Prepare form data
-    const formData = new URLSearchParams();
-    formData.append('username', AFRICASTALKING_USERNAME);
-    formData.append('to', formattedRecipients.join(','));
-    formData.append('message', message);
-    
-    if (from) {
-      formData.append('from', from);
-    }
-
-    console.log('Sending SMS via Africa\'s Talking:', {
-      username: AFRICASTALKING_USERNAME,
-      to: formattedRecipients,
-      messageLength: message.length,
-      apiUrl
-    });
-
-    const response = await fetch(apiUrl, {
+    const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'apiKey': AFRICASTALKING_API_KEY,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-      },
-      body: formData.toString(),
+      headers: { apiKey: process.env.AFRICASTALKING_API_KEY!.trim(), 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+      body: form.toString(), signal: AbortSignal.timeout(15000)
     });
-
-    // Check if response is JSON
-    const contentType = response.headers.get('content-type');
-    let data: any;
-    
-    if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-      // If not JSON, get as text and try to parse
-      const text = await response.text();
-      console.log('Africa\'s Talking response (not JSON):', text);
-      
-      try {
-        data = JSON.parse(text);
-      } catch {
-        // If still can't parse, return error
-        return { 
-          success: false, 
-          error: `API returned non-JSON response: ${text.substring(0, 200)}` 
-        };
-      }
+    if (!response.ok) return { success: false, status: response.status >= 500 ? 'UNKNOWN' : 'FAILED', error: `Africa's Talking returned HTTP ${response.status}. ${response.status >= 500 ? 'Check provider logs before retrying.' : 'No SMS was accepted.'}` };
+    const payload: unknown = await response.json();
+    if (!payload || typeof payload !== 'object' || !('SMSMessageData' in payload)) {
+      return { success: false, status: 'UNKNOWN', error: 'Unexpected provider response. Check provider logs before retrying.' };
     }
-
-    console.log('Africa\'s Talking response:', data);
-
-    if (data.SMSMessageData && data.SMSMessageData.Recipients) {
-      const recipients = data.SMSMessageData.Recipients;
-      const allSuccess = recipients.every((r: any) => r.status === 'Success');
-      
-      if (allSuccess) {
-        return { 
-          success: true, 
-          messageId: recipients[0]?.messageId,
-          recipients: recipients 
-        };
-      } else {
-        const failedRecipients = recipients.filter((r: any) => r.status !== 'Success');
-        return { 
-          success: false, 
-          error: `Failed to send to ${failedRecipients.length} recipient(s): ${failedRecipients.map((r: any) => r.status).join(', ')}`,
-          recipients: recipients 
-        };
-      }
-    } else if (data.SMSMessageData && data.SMSMessageData.Message) {
-      return { success: false, error: data.SMSMessageData.Message };
-    } else {
-      return { success: false, error: 'Unexpected response format from Africa\'s Talking' };
+    const sms = (payload as { SMSMessageData?: { Recipients?: unknown[]; Message?: string } }).SMSMessageData;
+    const recipients = sms?.Recipients;
+    if (!Array.isArray(recipients) || recipients.length !== 1) {
+      return { success: false, status: 'UNKNOWN', error: 'Unexpected recipient count. Check provider logs before retrying.' };
     }
-  } catch (error: any) {
-    console.error('Africa\'s Talking SMS Error:', error);
-    return { success: false, error: error.message };
+    const record = recipients[0] as { status?: unknown; statusCode?: unknown; messageId?: unknown };
+    const accepted = record?.status === 'Success' && [100, 101, 102].includes(Number(record.statusCode)) &&
+      typeof record.messageId === 'string' && record.messageId !== 'None' && !!record.messageId;
+    if (!accepted) {
+      const code = typeof record?.statusCode === 'number' ? ` (${record.statusCode})` : '';
+      return { success: false, status: 'FAILED', error: `SMS not accepted by provider${code}. Check sender ID, balance and recipient.` };
+    }
+    // Accepted by API; only a later delivery report confirms handset receipt.
+    return { success: true, status: 'ACCEPTED', messageId: record.messageId as string };
+  } catch (error) {
+    console.error('Africa Talking SMS request failed:', error instanceof Error ? error.name : 'unknown error');
+    return { success: false, status: 'UNKNOWN', error: 'SMS outcome unknown. Check Africa\'s Talking logs before retrying; it may have been accepted.' };
   }
 }
 
-// Predefined SMS templates
-export const SMS_TEMPLATES = {
-  attendancePresent: (studentName: string, date: string) =>
-    `Dear Parent, ${studentName} was marked PRESENT at Ditmur Academy on ${date}. Thank you.`,
-
-  attendanceAbsent: (studentName: string, date: string, isExcused: boolean, reason?: string) =>
-    isExcused
-      ? `Dear Parent, ${studentName} was absent from Ditmur Academy on ${date}. This absence has been excused${reason ? ` - ${reason}` : ''}.`
-      : `Dear Parent, ${studentName} was marked ABSENT from Ditmur Academy on ${date}. This is an unexcused absence. Please contact the school if this is unexpected.`,
-
-  attendanceLate: (studentName: string, date: string) =>
-    `Dear Parent, ${studentName} arrived LATE to Ditmur Academy on ${date}. Please ensure timely arrival.`,
-
-  resultPublished: (studentName: string, term: string) =>
-    `Dear Parent, ${studentName}'s results for ${term} have been published. Please log in to the parent portal to view.`,
-
-  feeReminder: (studentName: string, amount: string, dueDate: string) =>
-    `Dear Parent, this is a reminder that ${studentName}'s school fees of ₦${amount} is due on ${dueDate}. Please make payment via the parent portal.`,
-
-  announcement: (message: string) =>
-    `Ditmur Academy Announcement: ${message}`,
-};
+export { SMS_TEMPLATES } from './sms-templates';

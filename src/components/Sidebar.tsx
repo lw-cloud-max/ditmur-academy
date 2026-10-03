@@ -90,7 +90,8 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
   const canSeeFinance = (userRole === 'ADMIN' && session?.user?.id === 'admin-1') || userRole === 'ACCOUNTANT' || (userRole === 'STAFF' && session?.user?.staffRole === 'ACCOUNTANT_TEACHER');
   const activeMenu = (userRole === 'STUDENT' ? studentMenu : userRole === 'PARENT' ? parentMenu : userRole === 'ACCOUNTANT' ? accountantMenu : staffMenu)
     .filter(item => item.path !== '/payments' || canSeeFinance || userRole === 'PARENT')
-    .filter(item => !['/configuration', '/assessment-format'].includes(item.path) || (userRole === 'ADMIN' && session?.user?.id === 'admin-1'));
+    .filter(item => !['/configuration', '/assessment-format'].includes(item.path) || (userRole === 'ADMIN' && session?.user?.id === 'admin-1'))
+    .filter(item => item.path !== '/sms-notifications' || (userRole === 'ADMIN' && session?.user?.id === 'admin-1'));
 
   return (
     <aside className={`w-64 bg-gradient-to-b from-[#0A192F] to-[#001744] text-white min-h-screen flex flex-col border-r border-[#0033A0]/50 shadow-xl ${isMobile ? '' : 'hidden md:flex'}`}>
