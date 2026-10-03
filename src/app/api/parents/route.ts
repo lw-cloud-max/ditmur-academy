@@ -22,7 +22,7 @@ export async function GET(req: Request) {
     const parents = await prisma.parent.findMany({
       where,
       select: { id: true, fullName: true, email: true, phone: true, createdAt: true,
-        students: { select: { id: true, firstName: true, lastName: true, class: { select: { name: true } } } }
+students: { select: { id: true, firstName: true, lastName: true, classId: true, class: { select: { name: true } } } }
       },
       orderBy: { fullName: 'asc' }
     });

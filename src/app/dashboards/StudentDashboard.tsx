@@ -32,7 +32,7 @@ export default function StudentDashboard({ studentId }: { studentId: string }) {
 
   if (!data || !data.student) return <div className="p-12 text-center text-slate-500 font-medium">Student profile not found in database for ID: {studentId}</div>;
 
-  const { student, average, upcomingExams } = data;
+  const { student, average, upcomingExams, publishedResultCount } = data;
 
   return (
     <div className="space-y-6 pb-32 max-w-6xl mx-auto animation-fade-in">
@@ -85,7 +85,7 @@ export default function StudentDashboard({ studentId }: { studentId: string }) {
             </div>
             <div>
               <p className="text-sm font-bold text-slate-500 uppercase">Current Average</p>
-              <h3 className="text-3xl font-black text-slate-900">{average}%</h3>
+              <h3 className="text-3xl font-black text-slate-900">{publishedResultCount ? `${average}%` : 'Awaiting approval'}</h3>
             </div>
           </div>
         </div>
@@ -106,7 +106,7 @@ export default function StudentDashboard({ studentId }: { studentId: string }) {
               <BookOpen className="w-8 h-8" />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-500 uppercase">Enrolled Subjects</p>
+              <p className="text-sm font-bold text-slate-500 uppercase">Published Subject Results</p>
               <h3 className="text-3xl font-black text-slate-900">{student.grades.length}</h3>
             </div>
           </div>

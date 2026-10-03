@@ -18,6 +18,12 @@ export default function BroadsheetPage() {
   const { data: session } = useSession();
   const userRole = session?.user?.role;
   const isReadOnly = userRole !== 'STAFF' && userRole !== 'ADMIN';
+  const isSuperAdmin = userRole === 'ADMIN' && session?.user?.id === 'admin-1';
+  const [termOptions, setTermOptions] = useState<string[]>(['Term 1 - 2024']);
+  const [selectedTerm, setSelectedTerm] = useState('Term 1 - 2024');
+  const [reportError, setReportError] = useState('');
+  const [approving, setApproving] = useState(false);
+  const [approvalMessage, setApprovalMessage] = useState('');
 
   const [viewMode, setViewMode] = useState<'class' | 'entry'>('class');
 
@@ -44,6 +50,7 @@ export default function BroadsheetPage() {
     const fetchData = async () => {
       try {
         let defaultClassId = null;
+        let allowedClassIds: Set<string> | null = null;
         if (userRole === 'STUDENT' && session?.user?.id) {
           const stRes = await fetch(`/api/student-dashboard?studentId=${encodeURIComponent(session.user.id)}`);
           const stData = await stRes.json();
@@ -55,26 +62,32 @@ export default function BroadsheetPage() {
           const pData = await pRes.json();
           if (pData.success) {
             const parent = pData.data.find((p: any) => p.id === session.user.id || p.email === session.user.id || p.phone === session.user.id);
-            if (parent && parent.students && parent.students.length > 0) {
-              defaultClassId = parent.students[0].classId;
+            if (parent && parent.students) {
+              allowedClassIds = new Set(parent.students.map((child: any) => child.classId).filter(Boolean));
+              defaultClassId = parent.students.find((child: any) => child.classId)?.classId || null;
             }
           }
         }
 
-        const [classRes, subjectRes] = await Promise.all([
-          fetch('/api/classes'),
-          fetch('/api/subjects')
+        const [classRes, subjectRes, termRes] = await Promise.all([
+          fetch('/api/classes'), fetch('/api/subjects'), fetch('/api/terms')
         ]);
         const classData = await classRes.json();
         const subjectData = await subjectRes.json();
+        const termData = await termRes.json();
+        if (termData.success) {
+          const keys = termData.data.map((item: any) => `${item.name} ${item.session}`);
+          setTermOptions(Array.from(new Set(['Term 1 - 2024', ...keys])));
+          const current = termData.data.find((item: any) => item.isCurrent);
+          if (current) setSelectedTerm(`${current.name} ${current.session}`);
+        }
 
         if (classData.success) {
-          setClasses(classData.data);
-          if (defaultClassId) {
-            setSelectedClass(defaultClassId);
-          } else if (classData.data.length > 0) {
-            setSelectedClass(classData.data[0].id);
-          }
+          const visibleClasses = userRole === 'PARENT' ? classData.data.filter((item: any) => allowedClassIds?.has(item.id))
+            : userRole === 'STUDENT' ? classData.data.filter((item: any) => item.id === defaultClassId) : classData.data;
+          setClasses(visibleClasses);
+          if (defaultClassId) setSelectedClass(defaultClassId);
+          else if (visibleClasses.length > 0) setSelectedClass(visibleClasses[0].id);
         }
         if (subjectData.success) {
           setSubjects(subjectData.data);
@@ -92,11 +105,11 @@ export default function BroadsheetPage() {
     if (viewMode !== 'class' || !selectedClass) return;
     
     const fetchClassBroadsheet = async () => {
-      setClassLoading(true);
+      setClassLoading(true); setReportError(''); setClassData(null); setApprovalMessage('');
       try {
-        const res = await fetch(`/api/broadsheet/class?classId=${selectedClass}`);
+        const res = await fetch(`/api/broadsheet/class?classId=${encodeURIComponent(selectedClass)}&term=${encodeURIComponent(selectedTerm)}`, { cache: 'no-store' });
         const data = await res.json();
-        
+        if (!res.ok || !data.success) { setReportError(data.error || 'Report unavailable'); return; }
         if (data.success) {
           const { students: stus, subjects: subs } = data.data;
 
@@ -167,17 +180,18 @@ export default function BroadsheetPage() {
             overallClassAverage,
             highestAverage,
             lowestAverage: lowestAverage === 100 ? 0 : lowestAverage,
-            subjectStats
+            subjectStats,
+            approved: data.data.approved
           });
         }
       } catch (err) {
-        console.error("Failed to load class broadsheet");
+        setReportError('Could not load the report. Please retry.');
       } finally {
         setClassLoading(false);
       }
     };
     fetchClassBroadsheet();
-  }, [selectedClass, viewMode]);
+  }, [selectedClass, selectedTerm, viewMode]);
 
   // Fetch Data Entry (Single Subject)
   useEffect(() => {
@@ -188,7 +202,7 @@ export default function BroadsheetPage() {
       try {
         const [stuRes, gradeRes] = await Promise.all([
           fetch(`/api/students?classId=${selectedClass}`),
-          fetch(`/api/grades?classId=${selectedClass}&subjectId=${selectedSubject}`)
+          fetch(`/api/grades?classId=${encodeURIComponent(selectedClass)}&subjectId=${encodeURIComponent(selectedSubject)}&term=${encodeURIComponent(selectedTerm)}`)
         ]);
         const stuData = await stuRes.json();
         const gradeData = await gradeRes.json();
@@ -212,7 +226,7 @@ export default function BroadsheetPage() {
       }
     };
     fetchEntryData();
-  }, [selectedClass, selectedSubject, viewMode]);
+  }, [selectedClass, selectedSubject, selectedTerm, viewMode]);
 
   // Calculations for Data Entry
   const calculateGrade = (ca1: number, ca2: number, exam: number) => {
@@ -244,15 +258,33 @@ export default function BroadsheetPage() {
       const res = await fetch('/api/grades', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subjectId: selectedSubject, classId: selectedClass, grades: gradesPayload })
+        body: JSON.stringify({ subjectId: selectedSubject, classId: selectedClass, term: selectedTerm, grades: gradesPayload })
       });
       const data = await res.json();
-      if (data.success) setSaveMessage('Grades saved securely to the database!');
+      if (!res.ok || !data.success) throw new Error(data.error || 'Could not save grades');
+      setSaveMessage('Grades saved as a draft. The super admin must approve this class and term before families can see the results.');
+      setClassData(null);
     } catch (err) {
-      alert("Failed to connect to the server.");
+      setSaveMessage(err instanceof Error ? err.message : 'Failed to connect to the server.');
     } finally {
       setSaving(false);
     }
+  };
+
+  const changeApproval = async () => {
+    if (!isSuperAdmin || !selectedClass || !classData) return;
+    const next = !classData.approved;
+    if (!confirm(next ? `Approve and release ${selectedTerm} results for this class?` : 'Withdraw these results from parents and students?')) return;
+    setApproving(true); setApprovalMessage('');
+    try {
+      const res = await fetch('/api/report-releases', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classId: selectedClass, term: selectedTerm, approved: next }) });
+      const result = await res.json();
+      if (!res.ok || !result.success) throw new Error(result.error || 'Could not update approval');
+      setClassData({ ...classData, approved: result.data.approved });
+      setApprovalMessage(next ? 'Approved: families can now see this class and term.' : 'Release withdrawn: reports are private again.');
+    } catch (error) { setApprovalMessage(error instanceof Error ? error.message : 'Could not update approval'); }
+    finally { setApproving(false); }
   };
 
   return (
@@ -323,18 +355,32 @@ export default function BroadsheetPage() {
 
         <div className="flex-1 w-full">
           <label className="block text-xs font-medium text-slate-500 mb-1">Term and Session</label>
-          <select className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium text-slate-700">
-            <option>First Term 2026-2027</option>
-            <option>Second Term 2026-2027</option>
+          <select value={selectedTerm} onChange={e => setSelectedTerm(e.target.value)} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none font-medium text-slate-700">
+            {termOptions.map(term => <option key={term} value={term}>{term}</option>)}
           </select>
         </div>
       </div>
 
+      {viewMode === 'class' && selectedClass && !classLoading && classData && !isReadOnly && (
+        <div className={`rounded-xl border p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 ${classData.approved ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}`}>
+          <div><p className="font-bold text-slate-900">{classData.approved ? 'Approved for families' : 'Draft: visible to staff only'}</p>
+            <p className="text-sm text-slate-600">{selectedTerm} · {classes.find(c => c.id === selectedClass)?.name}</p>
+            {approvalMessage && <p role="status" className="text-sm font-semibold text-slate-700 mt-1">{approvalMessage}</p>}
+          </div>
+          {isSuperAdmin && <button type="button" disabled={approving} onClick={changeApproval}
+            className={`rounded-lg px-4 py-2.5 text-white font-bold text-sm disabled:opacity-60 ${classData.approved ? 'bg-amber-700' : 'bg-emerald-700'}`}>
+            {approving ? 'Updating...' : classData.approved ? 'Withdraw Approval' : 'Approve Results'}
+          </button>}
+        </div>
+      )}
+
       {/* --- CLASS BROADSHEET VIEW --- */}
       {viewMode === 'class' && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          {classLoading || !classData ? (
+          {classLoading ? (
             <div className="p-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-[#0033A0]" /></div>
+          ) : reportError || !classData ? (
+            <div role="status" className="p-10 text-center text-slate-700">{reportError || 'Select a class and term to view results.'}</div>
           ) : classData.students.length === 0 ? (
             <div className="p-12 text-center text-slate-500">
               <TableProperties className="w-12 h-12 text-slate-300 mx-auto mb-3" />
@@ -482,10 +528,10 @@ export default function BroadsheetPage() {
                 
                 <div className="flex flex-col items-end gap-3">
                   <div className="flex items-center gap-1.5 bg-emerald-500/20 px-3 py-1 rounded-full text-emerald-100 text-xs font-bold">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Approved
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {classData.approved ? 'Approved' : 'Draft - Staff Only'}
                   </div>
                   <Link 
-                    href={`/reportsheet/${encodeURIComponent(selectedStudent.id)}?classId=${selectedClass}`}
+                    href={`/reportsheet/${encodeURIComponent(selectedStudent.id)}?classId=${encodeURIComponent(selectedClass)}&term=${encodeURIComponent(selectedTerm)}`}
                     className="bg-white text-[#0033A0] hover:bg-blue-50 px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm"
                   >
                     View Reportsheet

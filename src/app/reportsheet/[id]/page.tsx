@@ -32,9 +32,11 @@ export default function ReportSheetPage() {
   const searchParams = useSearchParams();
   const studentId = decodeURIComponent(params.id as string);
   const classId = searchParams.get('classId');
+  const term = searchParams.get('term') || 'Term 1 - 2024';
   
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [reportError, setReportError] = useState('');
 
   // AI Comment States
   const [teacherComment, setTeacherComment] = useState("This is an excellent result, keep it up.");
@@ -45,11 +47,12 @@ export default function ReportSheetPage() {
 
   useEffect(() => {
     const fetchReportData = async () => {
-      if (!classId) return;
+      if (!classId) { setReportError('Class is required to open a report.'); setLoading(false); return; }
       try {
-        const res = await fetch(`/api/broadsheet/class?classId=${classId}`);
+        const res = await fetch(`/api/broadsheet/class?classId=${encodeURIComponent(classId)}&term=${encodeURIComponent(term)}`, { cache: 'no-store' });
         const result = await res.json();
         
+        if (!res.ok || !result.success) { setReportError(result.error || 'Report unavailable'); return; }
         if (result.success) {
           const { students, subjects, classInfo } = result.data;
           
@@ -101,10 +104,10 @@ export default function ReportSheetPage() {
 
           setData({ student: targetStudent, classInfo, subjects, subjectStats, totalStudents: students.length });
         }
-      } catch (err) {} finally { setLoading(false); }
+      } catch (err) { setReportError('Could not load report. Please retry.'); } finally { setLoading(false); }
     };
     fetchReportData();
-  }, [studentId, classId]);
+  }, [studentId, classId, term]);
 
   const handleGenerateComment = async () => {
     setIsGeneratingAI(true);
@@ -123,7 +126,7 @@ export default function ReportSheetPage() {
   };
 
   if (loading) return <div className="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center"><Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" /><p className="text-slate-500 font-medium">Generating Official Report Sheet...</p></div>;
-  if (!data || !data.student) return <div className="p-20 text-center text-red-600">Failed to load student data.</div>;
+  if (!data || !data.student) return <div role="status" className="p-10 text-center text-amber-900 bg-amber-50 rounded-xl">{reportError || 'Report not available for this account and term.'}</div>;
 
   const { student, classInfo, subjects, subjectStats, totalStudents } = data;
   const takenSubjects = subjects.filter((sub: any) => student.subjectScores[sub.id]);
@@ -174,7 +177,7 @@ export default function ReportSheetPage() {
               </div>
             </div>
             <h2 className="text-xl font-bold text-slate-900 uppercase mt-4 text-center">Academic Report Sheet</h2>
-            <p className="text-sm font-bold text-slate-600 uppercase text-center">First Term of 2026-2027</p>
+            <p className="text-sm font-bold text-slate-600 uppercase text-center">{term}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 text-sm border border-slate-200 p-4 rounded-lg bg-slate-50">

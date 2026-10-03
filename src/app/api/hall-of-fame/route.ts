@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const students = await prisma.student.findMany({
@@ -13,12 +15,15 @@ export async function GET() {
       }
     });
 
+    const released = await prisma.reportRelease.findMany({ where: { approvedAt: { not: null } }, select: { classId: true, term: true } });
+    const approvedKeys = new Set(released.map(row => `${row.classId}:${row.term}`));
     const studentStats = students.map((stu: any) => {
+      const visibleGrades = stu.grades.filter((grade: any) => stu.classId && approvedKeys.has(`${stu.classId}:${grade.term}`));
       // Calculate academic average
       let totalGradeScore = 0;
       let totalSubjects = 0;
       
-      stu.grades.forEach((g: any) => {
+      visibleGrades.forEach((g: any) => {
         totalGradeScore += (g.total || 0);
         totalSubjects++;
       });
@@ -61,7 +66,7 @@ export async function GET() {
       if (averageCbt >= 85) badges.push({ name: 'Quick Thinker', icon: 'Zap', color: 'text-orange-600 bg-orange-100' });
       
       // Subject-specific badges
-      if (stu.grades.some((g: any) => g.subject?.name?.toLowerCase().includes('math') && g.total >= 90)) {
+      if (visibleGrades.some((g: any) => g.subject?.name?.toLowerCase().includes('math') && g.total >= 90)) {
         badges.push({ name: 'Math Whiz', icon: 'Calculator', color: 'text-[#0033A0] bg-blue-100' });
       }
       

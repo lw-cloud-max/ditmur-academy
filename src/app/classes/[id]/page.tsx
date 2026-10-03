@@ -9,6 +9,7 @@ import { useSession } from 'next-auth/react';
 export default function ClassDetailsPage() {
   const { data: session } = useSession();
   const isSuperAdmin = session?.user?.role === 'ADMIN' && session?.user?.id === 'admin-1';
+  const canEditResults = session?.user?.role === 'ADMIN' || session?.user?.role === 'STAFF';
   const params = useParams();
   const classId = params.id as string;
 
@@ -26,6 +27,8 @@ export default function ClassDetailsPage() {
   const [skillsRecord, setSkillsRecord] = useState<any[]>([]);
   const [savingSkills, setSavingSkills] = useState(false);
   const [skillsSaveMessage, setSkillsSaveMessage] = useState('');
+  const [selectedTerm, setSelectedTerm] = useState('Term 1 - 2024');
+  const [termOptions, setTermOptions] = useState<string[]>(['Term 1 - 2024']);
 
   const PHYSICAL_SKILLS = ['Soccer', 'Basketball', 'Table Tennis', 'Volleyball', 'Athletics', 'Swimming'];
   const AFFECTIVE_SKILLS = ['Punctuality', 'Neatness', 'Etiquette', 'Leadership', 'Team Communication', 'Emotional Stability'];
@@ -33,19 +36,19 @@ export default function ClassDetailsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [classRes, studentsRes, timetableRes, subjectsRes, skillsRes] = await Promise.all([
+        const [classRes, studentsRes, timetableRes, subjectsRes, termRes] = await Promise.all([
           fetch('/api/classes'),
           fetch(`/api/students?classId=${classId}`),
           fetch(`/api/timetable?classId=${classId}`),
           fetch('/api/subjects'),
-          fetch(`/api/skills?classId=${classId}`)
+          fetch('/api/terms')
         ]);
 
         const classData = await classRes.json();
         const studentsData = await studentsRes.json();
         const timetableData = await timetableRes.json();
         const subjectsData = await subjectsRes.json();
-        const skillsData = await skillsRes.json();
+        const termData = await termRes.json();
 
         if (classData.success) {
           const currentClass = classData.data.find((c: any) => c.id === classId);
@@ -54,7 +57,11 @@ export default function ClassDetailsPage() {
         if (studentsData.success) setStudents(studentsData.data);
         if (timetableData.success) setTimetable(timetableData.data);
         if (subjectsData.success) setSubjects(subjectsData.data);
-        if (skillsData.success) setSkillsRecord(skillsData.data);
+        if (termData.success) {
+          setTermOptions(Array.from(new Set(['Term 1 - 2024', ...termData.data.map((item: any) => `${item.name} ${item.session}`)])));
+          const current = termData.data.find((item: any) => item.isCurrent);
+          if (current) setSelectedTerm(`${current.name} ${current.session}`);
+        }
 
       } catch (err) {
         console.error("Failed to load class details");
@@ -66,11 +73,19 @@ export default function ClassDetailsPage() {
     fetchData();
   }, [classId]);
 
+  useEffect(() => {
+    if (!canEditResults || !classId) return;
+    setSkillsRecord([]); setSkillsSaveMessage('');
+    fetch(`/api/skills?classId=${encodeURIComponent(classId)}&term=${encodeURIComponent(selectedTerm)}`)
+      .then(res => res.json()).then(data => { if (data.success) setSkillsRecord(data.data); })
+      .catch(() => setSkillsSaveMessage('Could not load skill ratings.'));
+  }, [classId, selectedTerm, canEditResults]);
+
   const tabs = [
     { id: 'members', label: 'Members', icon: Users },
     { id: 'subjects', label: 'Subjects', icon: BookOpen },
     { id: 'attendance', label: 'Attendance', icon: Clock },
-    { id: 'skills', label: 'Skills', icon: Activity },
+    ...(canEditResults ? [{ id: 'skills', label: 'Skills', icon: Activity }] : []),
     { id: 'results', label: 'Results', icon: GraduationCap },
     { id: 'timetable', label: 'Timetable', icon: CalendarIcon },
   ];
@@ -97,13 +112,14 @@ export default function ClassDetailsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          term: "Term 1 - 2024",
+          classId,
+          term: selectedTerm,
           ratings: skillsRecord
         })
       });
       const data = await res.json();
       if (data.success) {
-        setSkillsSaveMessage("Skill ratings saved securely!");
+        setSkillsSaveMessage('Skill ratings saved as a draft. Reapproval is needed before families can see them.');
         setTimeout(() => setSkillsSaveMessage(''), 4000);
       } else {
         alert(data.error);
@@ -351,11 +367,16 @@ export default function ClassDetailsPage() {
       {/* SKILLS TAB */}
       {activeTab === 'skills' && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden animation-fade-in">
-          <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+          <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row justify-between gap-4 sm:items-center bg-slate-50">
             <div>
               <h2 className="font-bold text-slate-900">Psychomotor & Affective Skills</h2>
               <p className="text-sm text-slate-500">Rate students on a scale of 1-5 for report sheets.</p>
             </div>
+            <label className="text-sm font-semibold text-slate-700">Term
+              <select value={selectedTerm} onChange={e => setSelectedTerm(e.target.value)} className="block mt-1 rounded-lg border p-2 bg-white">
+                {termOptions.map(term => <option key={term} value={term}>{term}</option>)}
+              </select>
+            </label>
             <button 
               onClick={handleSaveSkills}
               disabled={savingSkills}

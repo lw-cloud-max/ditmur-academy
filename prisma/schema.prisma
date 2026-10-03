@@ -122,6 +122,7 @@ model Class {
   attendance        Attendance[]
   internalQuestionBank InternalQuestionBank[]
   internalExamsNew InternalExamNew[]
+  reportReleases ReportRelease[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -689,4 +690,19 @@ model InternalExamAnswer {
   isCorrect     Boolean
   marksObtained Float
   createdAt     DateTime @default(now())
+}
+
+
+// School report grades and skills are hidden until super-admin release.
+model ReportRelease {
+  id         String    @id @default(cuid())
+  classId    String
+  class      Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  term       String
+  approvedAt DateTime?
+  approvedBy String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([classId, term])
 }

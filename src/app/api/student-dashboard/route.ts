@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -26,10 +28,17 @@ export async function GET(req: Request) {
       }
     });
     if (!student) return NextResponse.json({ success: false, error: 'Student not found' }, { status: 404 });
+    // Do not reveal draft grades through dashboard averages or subject counts.
+    const published = student.classId ? await prisma.reportRelease.findMany({
+      where: { classId: student.classId, approvedAt: { not: null } },
+      select: { term: true }
+    }) : [];
+    const approvedTerms = new Set(published.map(release => release.term));
+    const safeStudent = { ...student, grades: student.grades.filter(grade => approvedTerms.has(grade.term)) };
 
     let totalScore = 0;
     let totalSubjects = 0;
-    student.grades.forEach((g: any) => {
+    safeStudent.grades.forEach((g: any) => {
       totalScore += (g.total || 0);
       totalSubjects++;
     });
@@ -51,8 +60,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ 
       success: true, 
       data: {
-        student,
+        student: safeStudent,
         average,
+        publishedResultCount: safeStudent.grades.length,
         upcomingExams
       } 
     });
