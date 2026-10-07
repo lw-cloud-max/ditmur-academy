@@ -2,7 +2,7 @@
 export type ExistingStudent = { id: string; firstName: string; lastName: string; otherNames: string | null; parentId: string | null; class: { name: string } | null };
 export type ExistingParent = { id: string; fullName: string; email: string | null; phone: string; students: { id: string }[] };
 export type RosterEntry = { line: number; name: string; email: string; phone: string; children: string[] };
-export type ChildSuggestion = { name: string; matches: ExistingStudent[] };
+export type ChildSuggestion = { name: string; matches: ExistingStudent[]; possible: ExistingStudent[] };
 export type FamilySuggestion = { row: RosterEntry; children: ChildSuggestion[]; parents: ExistingParent[]; flags: string[]; kind: 'review' | 'consolidation' | 'existing' };
 
 export function parseCsv(text: string): string[][] {
@@ -76,6 +76,20 @@ function namesFor(student: ExistingStudent) {
   const lastFirst = `${student.lastName} ${student.firstName}`;
   return new Set([firstLast, full, lastFirst].map(normalizeName));
 }
+// Suggestions only. Two shared name tokens are required; no partial or
+// one-token guesses. Never use these candidates to select or merge a Parent.
+export function possibleStudentMatches(name: string, students: ExistingStudent[]): ExistingStudent[] {
+  const query = new Set(normalizeName(name).split(' ').filter(Boolean));
+  if (query.size < 2) return [];
+  const ranked = students.map(student => {
+    const tokens = new Set(normalizeName(`${student.firstName} ${student.otherNames || ''} ${student.lastName}`).split(' ').filter(Boolean));
+    const shared = [...query].filter(token => tokens.has(token)).length;
+    return { student, shared, score: shared * 10 - Math.abs(query.size - tokens.size) * 2 };
+  }).filter(item => item.shared >= 2);
+  ranked.sort((a, b) => b.score - a.score || a.student.id.localeCompare(b.student.id));
+  // Never flood the screen with common names or suggest weak matches.
+  return ranked.slice(0, 5).map(item => item.student);
+}
 export function previewRoster(entries: RosterEntry[], students: ExistingStudent[], parents: ExistingParent[]): FamilySuggestion[] {
   const index = new Map<string, ExistingStudent[]>();
   for (const student of students) for (const name of namesFor(student)) {
@@ -102,7 +116,10 @@ export function previewRoster(entries: RosterEntry[], students: ExistingStudent[
     if (!row.children.length) flags.push('No linked students listed');
     if (row.children.some(name => (childUse.get(normalizeName(name)) || 0) > 1)) flags.push('Child appears in more than one roster row');
     if (normalizeEmail(row.email) && (contactUse.get(normalizeEmail(row.email)) || 0) > 1) flags.push('Email repeats in the roster');
-    const children = row.children.map(name => ({ name, matches: index.get(normalizeName(name)) || [] }));
+    const children = row.children.map(name => {
+      const matches = index.get(normalizeName(name)) || [];
+      return { name, matches, possible: matches.length ? [] : possibleStudentMatches(name, students) };
+    });
     if (children.some(child => child.matches.length !== 1)) flags.push('Missing or ambiguous child-name match');
     const ids = new Set(children.filter(child => child.matches.length === 1).map(child => child.matches[0].parentId).filter((id): id is string => !!id));
     const email = normalizeEmail(row.email), phone = normalizePhone(row.phone);

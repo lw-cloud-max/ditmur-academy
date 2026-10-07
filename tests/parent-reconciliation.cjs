@@ -76,3 +76,17 @@ test('non-admin cannot fetch data; all mutations are rejected even for admin', a
   for (const method of ['POST','PUT','PATCH','DELETE']) assert.equal((await route[method]()).status, 405);
   assert.equal(queries, 2);
 });
+test('name variants get possible Student suggestions only, never an automatic Parent link', () => {
+  const rows = [{ line: 2, name: 'Guardian', email: 'new@example.test', phone: '08077777777', children: ['John Michael Doe'] }];
+  const results = audit.previewRoster(rows, [student('S1','John','Doe','P1')], [parent('P1','old@example.test','08055555555','S1')]);
+  assert.equal(results[0].children[0].matches.length, 0);
+  assert.equal(results[0].children[0].possible[0].id, 'S1');
+  assert.equal(results[0].parents.length, 0);
+  assert.equal(results[0].kind, 'review');
+  assert.deepEqual(audit.possibleStudentMatches('John', [student('S1','John','Doe','P1')]), []);
+});
+test('possible match requires two complete matching name tokens', () => {
+  const students = [student('S1','John','Doe','P1'), student('S2','John','Cena','P2')];
+  assert.deepEqual(audit.possibleStudentMatches('John Cena Nursery 2', students).map(s => s.id), ['S2']);
+  assert.deepEqual(audit.possibleStudentMatches('Jane Smith', students), []);
+});
