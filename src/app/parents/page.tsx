@@ -146,6 +146,7 @@ export default function ParentsPage() {
             Parents Directory
           </h1>
           <p className="text-slate-500 mt-1">Manage parent accounts and their linked students</p>
+          {isSuperAdmin && <a href="/parent-reconciliation" className="mt-2 inline-flex min-h-10 items-center rounded-lg bg-blue-50 px-3 text-sm font-bold text-blue-800 hover:bg-blue-100">Preview Excel parent roster (no changes)</a>}
         </div>
       </div>
 
