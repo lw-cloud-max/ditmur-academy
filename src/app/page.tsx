@@ -36,7 +36,7 @@ const HERO_SLIDES = [
   }
 ] as const;
 
-const TICKER_TEXT = 'DITMUR ACADEMY  •  CULTIVATING EXCELLENCE AND DISCIPLINE  •  CRÈCHE  •  PRIMARY  •  SECONDARY  •  EXPLORE OUR PROGRAMMES  •  APPLY ONLINE  •  ';
+const TICKER_TEXT = 'DITMUR ACADEMY  •  CULTIVATING EXCELLENCE AND DISCIPLINE  •  CRÈCHE  •  PRIMARY  •  SECONDARY  •  EXPLORE OUR PROGRAMMES  •  ASK ABOUT ADMISSIONS  •  ';
 
 export default function LandingPage() {
   const [activeSlide, setActiveSlide] = useState(0);
@@ -150,17 +150,17 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="lg:col-start-1 lg:row-start-1">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#0033A0]/10 border border-[#0033A0]/20 text-[#0033A0] text-xs font-bold uppercase tracking-wider mb-6">
-              <Sparkles className="w-4 h-4 text-[#FFD700]" /> Admission for 2026/2027 is open
+              <Sparkles className="w-4 h-4 text-[#FFD700]" /> Explore admission options
             </div>
             <h1 className="text-5xl lg:text-7xl font-black text-[#0A192F] leading-[1.1] mb-6 tracking-tight">
               Cultivating <span className="text-[#0033A0]">Excellence</span> <br/>& Discipline.
             </h1>
             <p className="text-lg text-slate-600 mb-8 max-w-lg leading-relaxed">
-              From crèche to secondary school, Ditmur Academy provides a world-class education that builds strong foundations, nurtures creativity, and prepares your child for a successful future.
+              From crèche to secondary school, Ditmur Academy provides a a caring education that builds strong foundations, nurtures creativity, and prepares your child for a successful future.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link href="/apply" className="px-8 py-4 bg-[#0033A0] hover:bg-[#002277] text-white rounded-xl font-black text-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 hover:-translate-y-1">
-                Start Application <ArrowRight className="w-5 h-5" />
+                Contact Admissions <ArrowRight className="w-5 h-5" />
               </Link>
               <Link href="/login" className="px-8 py-4 bg-white hover:bg-slate-50 text-[#0A192F] border border-slate-200 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-sm">
                 Student & Parent Portal
@@ -338,8 +338,8 @@ export default function LandingPage() {
       <div id="admissions" className="py-20 px-6 lg:px-12 bg-gradient-to-r from-[#0A192F] to-[#002277] relative overflow-hidden">
         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#FFD700] rounded-full blur-[150px] opacity-10 -mr-20 -mt-20"></div>
         <div className="max-w-7xl mx-auto relative z-10 text-center">
-          <h2 className="text-4xl lg:text-5xl font-black text-white mb-6">Apply for Admission</h2>
-          <p className="text-xl text-blue-200 mb-4">2026/2027 applications are now open</p>
+          <h2 className="text-4xl lg:text-5xl font-black text-white mb-6">Ask About Admissions</h2>
+          <p className="text-xl text-blue-200 mb-4">Contact our team for current admission information</p>
           <p className="text-blue-300 max-w-2xl mx-auto mb-10 leading-relaxed">
             Give your child the best start in life. At Ditmur Academy, we don't just teach—we inspire, nurture, and prepare 
             young minds for a bright future. Join our family today!
@@ -365,7 +365,7 @@ export default function LandingPage() {
               We are committed to nurturing well-rounded individuals who excel academically, morally, and socially.
             </p>
             <p className="text-slate-600 mb-8 leading-relaxed">
-              With over 1,000 students and 30+ dedicated teachers, we create a warm, supportive environment where 
+              Across our crèche, primary and secondary programmes, we aim to create a welcoming environment where
               every child can discover their potential and thrive.
             </p>
             <div className="grid grid-cols-2 gap-4 mb-8">
@@ -467,39 +467,6 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* Testimonials */}
-      <div className="py-24 px-6 lg:px-12 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#0033A0]/10 text-[#0033A0] text-xs font-bold uppercase tracking-wider mb-4">
-              Testimonials
-            </div>
-            <h2 className="text-4xl font-black text-[#0A192F] mb-4">What Parents Say</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { name: 'Mrs. Adebayo', role: 'Parent of Primary 3 Student', text: 'My daughter loves going to school every day. The teachers are caring and the environment is safe. She has improved so much academically!' },
-              { name: 'Mr. Okonkwo', role: 'Parent of JSS2 Student', text: 'Ditmur Academy has been a great choice for our family. The communication with parents is excellent and my son is thriving.' },
-              { name: 'Mrs. Fatima', role: 'Parent of Crèche Student', text: 'I was worried about leaving my toddler, but the crèche staff are amazing. My child is happy, safe, and learning every day.' },
-            ].map((testimonial, i) => (
-              <div key={i} className="bg-slate-50 p-8 rounded-2xl border border-slate-100">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(5)].map((_, j) => (
-                    <Star key={j} className="w-5 h-5 text-[#FFD700] fill-[#FFD700]" />
-                  ))}
-                </div>
-                <p className="text-slate-600 mb-6 leading-relaxed italic">"{testimonial.text}"</p>
-                <div>
-                  <p className="font-bold text-slate-900">{testimonial.name}</p>
-                  <p className="text-sm text-slate-500">{testimonial.role}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* CTA Section */}
       <div className="py-20 px-6 bg-[#0A192F] relative overflow-hidden">
         <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-[#0033A0] rounded-full blur-[150px] opacity-30 -ml-20 -mt-20"></div>
@@ -509,7 +476,7 @@ export default function LandingPage() {
           <p className="text-blue-200 mb-10 max-w-xl mx-auto text-lg">Join the Ditmur Academy family today and watch your child flourish in a nurturing, excellence-driven environment.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/apply" className="inline-flex items-center gap-2 px-10 py-5 bg-[#FFD700] hover:bg-[#e6c200] text-slate-900 rounded-xl font-black text-lg transition-all shadow-lg hover:shadow-xl hover:-translate-y-1">
-              Apply for Admission <ArrowRight className="w-5 h-5" />
+              Enquire About Admissions <ArrowRight className="w-5 h-5" />
             </Link>
             <Link href="/login" className="inline-flex items-center gap-2 px-10 py-5 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl font-bold text-lg transition-all">
               Access Portal
