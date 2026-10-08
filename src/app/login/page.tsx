@@ -66,7 +66,7 @@ export default function LoginPage() {
         {/* Hero Text */}
         <div className="relative z-10 max-w-xl my-auto pt-10">
           <h2 className="text-5xl lg:text-6xl font-black leading-[1.1] mb-6 tracking-tight">Cultivating <br/><span className="text-[#FFD700]">Excellence</span> <br/>and Discipline.</h2>
-          <p className="text-blue-100 text-lg leading-relaxed mb-10 max-w-md font-medium opacity-80">Access the next-generation school management system. Stay connected with real-time academic records, live CBT assessments, and automated fee processing.</p>
+          <p className="text-blue-100 text-lg leading-relaxed mb-10 max-w-md font-medium opacity-80">Access the next-generation school management system. Stay connected with real-time academic records, live CBT assessments, and learning tools.</p>
           
           <div className="flex gap-4">
             <div className="flex items-center gap-2 bg-white/10 px-5 py-2.5 rounded-xl backdrop-blur-md border border-white/10 shadow-lg">

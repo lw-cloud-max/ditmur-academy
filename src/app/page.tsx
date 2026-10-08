@@ -137,7 +137,7 @@ export default function LandingPage() {
             Portal Login
           </Link>
           <Link href="/apply" className="px-4 sm:px-6 py-2.5 bg-[#0033A0] hover:bg-[#002277] text-white rounded-full font-black text-sm transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5">
-            Apply Now
+            Admissions Enquiry
           </Link>
         </div>
       </nav>
@@ -156,7 +156,7 @@ export default function LandingPage() {
               Cultivating <span className="text-[#0033A0]">Excellence</span> <br/>& Discipline.
             </h1>
             <p className="text-lg text-slate-600 mb-8 max-w-lg leading-relaxed">
-              From crèche to secondary school, Ditmur Academy provides a a caring education that builds strong foundations, nurtures creativity, and prepares your child for a successful future.
+              From crèche to secondary school, Ditmur Academy provides a caring education that builds strong foundations, nurtures creativity, and prepares your child for a successful future.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link href="/apply" className="px-8 py-4 bg-[#0033A0] hover:bg-[#002277] text-white rounded-xl font-black text-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 hover:-translate-y-1">
@@ -345,7 +345,7 @@ export default function LandingPage() {
             young minds for a bright future. Join our family today!
           </p>
           <Link href="/apply" className="inline-flex items-center gap-2 px-10 py-5 bg-[#FFD700] hover:bg-[#e6c200] text-slate-900 rounded-xl font-black text-lg transition-all shadow-lg hover:shadow-xl hover:-translate-y-1">
-            Apply Now <ArrowRight className="w-5 h-5" />
+            Ask About Admissions <ArrowRight className="w-5 h-5" />
           </Link>
         </div>
       </div>
