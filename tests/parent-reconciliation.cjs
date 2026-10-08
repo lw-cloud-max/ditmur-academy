@@ -90,3 +90,35 @@ test('possible match requires two complete matching name tokens', () => {
   assert.deepEqual(audit.possibleStudentMatches('John Cena Nursery 2', students).map(s => s.id), ['S2']);
   assert.deepEqual(audit.possibleStudentMatches('Jane Smith', students), []);
 });
+test('student CSV uses useralias and fullname, only Student role', () => {
+  const roster = audit.parseStudentRoster('useralias,fullname,email,role,class,category,phone,classarm\nSTU-1,"John Doe",,STUDENT,Primary,,,\nSTF-1,John Doe,,STAFF,,,,\n');
+  assert.deepEqual(roster, [{ id: 'STU-1', fullName: 'John Doe' }]);
+  assert.throws(() => audit.parseStudentRoster('id,name\n1,John Doe'), /useralias and fullname/);
+});
+test('same student roster ID links a different app name as a preview suggestion, without writing', () => {
+  const rows = [{ line: 2, name: 'Guardian', email: 'guardian@example.test', phone: '08012345678', children: ['John Doe'] }];
+  const appStudents = [student('STU-1','John','Cena','P1')];
+  const matched = audit.previewRoster(rows, appStudents, [parent('P1','old@example.test','08098765432','STU-1')],
+    [{ id: 'stu-1', fullName: 'John Doe' }])[0];
+  assert.equal(matched.children[0].matches[0].id, 'STU-1');
+  assert.equal(matched.children[0].source, 'Student CSV ID');
+  assert.equal(matched.parents[0].id, 'P1');
+  assert.equal(matched.kind, 'existing'); // existing = suggestion, NOT approval or apply
+});
+test('conflicting IDs and duplicate aliases never become unique matches', () => {
+  const rows = [{ line: 2, name: 'Guardian', email: '', phone: '', children: ['John Doe'] }];
+  const appStudents = [student('STU-1','John','Doe','P1'), student('STU-2','Jane','Cena','P2')];
+  const conflict = audit.previewRoster(rows, appStudents, [], [{ id: 'STU-2', fullName: 'John Doe' }])[0];
+  assert.equal(conflict.children[0].matches.length, 2);
+  const duplicate = audit.previewRoster([{ ...rows[0], children: ['Jane Cena'] }], appStudents, [],
+    [{ id: 'STU-1', fullName: 'Jane Cena' }, { id: 'STU-1', fullName: 'Jane Cena' }])[0];
+  assert.equal(duplicate.children[0].matches.length, 1); // direct app match only; duplicated alias ignored
+  assert.equal(duplicate.children[0].matches[0].id, 'STU-2');
+});
+test('unrecognized student roster IDs do not create app matches', () => {
+  const rows = [{ line: 2, name: 'Guardian', email: '', phone: '', children: ['John Doe'] }];
+  const result = audit.previewRoster(rows, [student('STU-1','Jane','Cena','P1')], [],
+    [{ id: 'UNKNOWN', fullName: 'John Doe' }])[0];
+  assert.equal(result.children[0].matches.length, 0);
+  assert.equal(result.children[0].possible.length, 0);
+});

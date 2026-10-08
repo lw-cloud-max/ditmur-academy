@@ -2,7 +2,8 @@
 export type ExistingStudent = { id: string; firstName: string; lastName: string; otherNames: string | null; parentId: string | null; class: { name: string } | null };
 export type ExistingParent = { id: string; fullName: string; email: string | null; phone: string; students: { id: string }[] };
 export type RosterEntry = { line: number; name: string; email: string; phone: string; children: string[] };
-export type ChildSuggestion = { name: string; matches: ExistingStudent[]; possible: ExistingStudent[] };
+export type StudentRosterEntry = { id: string; fullName: string };
+export type ChildSuggestion = { name: string; matches: ExistingStudent[]; possible: ExistingStudent[]; source: string };
 export type FamilySuggestion = { row: RosterEntry; children: ChildSuggestion[]; parents: ExistingParent[]; flags: string[]; kind: 'review' | 'consolidation' | 'existing' };
 
 export function parseCsv(text: string): string[][] {
@@ -70,6 +71,23 @@ export function parseRoster(text: string): RosterEntry[] {
     return { line: i + 2, name, email: col(row, 'email'), phone: col(row, 'phone'), children: parseChildren(col(row, 'linkedstudents')) };
   });
 }
+export function parseStudentRoster(text: string): StudentRosterEntry[] {
+  const rows = parseCsv(text);
+  const headings = rows[0].map(normHeader);
+  const idColumn = headings.indexOf('useralias');
+  const nameColumn = headings.indexOf('fullname');
+  const roleColumn = headings.indexOf('role');
+  if (idColumn < 0 || nameColumn < 0)
+    throw Error('Student CSV needs useralias and fullname columns.');
+  return rows.slice(1).filter(row => row.some(cell => cell.trim())).map((row, i) => {
+    if (row.length !== headings.length) throw Error('Student CSV row ' + (i + 2) + ' has a different number of columns.');
+    return { id: (row[idColumn] || '').trim(), fullName: (row[nameColumn] || '').trim(),
+      role: roleColumn < 0 ? '' : (row[roleColumn] || '').trim().toLowerCase() };
+  }).filter(row => !row.role || row.role === 'student')
+    .map(({ id, fullName }) => ({ id, fullName }));
+}
+export const normalizedId = (id: string) => String(id || '').trim().toUpperCase();
+
 function namesFor(student: ExistingStudent) {
   const firstLast = `${student.firstName} ${student.lastName}`;
   const full = `${student.firstName} ${student.otherNames || ''} ${student.lastName}`;
@@ -90,13 +108,33 @@ export function possibleStudentMatches(name: string, students: ExistingStudent[]
   // Never flood the screen with common names or suggest weak matches.
   return ranked.slice(0, 5).map(item => item.student);
 }
-export function previewRoster(entries: RosterEntry[], students: ExistingStudent[], parents: ExistingParent[]): FamilySuggestion[] {
+export function previewRoster(entries: RosterEntry[], students: ExistingStudent[], parents: ExistingParent[], studentRoster: StudentRosterEntry[] = []): FamilySuggestion[] {
   const index = new Map<string, ExistingStudent[]>();
   for (const student of students) for (const name of namesFor(student)) {
     if (!name) continue;
     const list = index.get(name) || [];
     if (!list.some(item => item.id === student.id)) list.push(student);
     index.set(name, list);
+  }
+  // Require a unique roster alias that resolves to exactly one existing app ID.
+  // A name match in this second spreadsheet is still only a suggestion.
+  const appIds = new Map(students.map(student => [normalizedId(student.id), student]));
+  const aliasCounts = new Map<string, number>();
+  for (const entry of studentRoster) {
+    const key = normalizedId(entry.id);
+    if (key) aliasCounts.set(key, (aliasCounts.get(key) || 0) + 1);
+  }
+  const rosterIndex = new Map<string, ExistingStudent[]>();
+  const rosterValid: { name: string; student: ExistingStudent }[] = [];
+  for (const entry of studentRoster) {
+    const key = normalizedId(entry.id), name = normalizeName(entry.fullName);
+    if (!name || !key || aliasCounts.get(key) !== 1) continue;
+    const student = appIds.get(key);
+    if (!student) continue;
+    rosterValid.push({ name, student });
+    const list = rosterIndex.get(name) || [];
+    if (!list.some(item => item.id === student.id)) list.push(student);
+    rosterIndex.set(name, list);
   }
   const parentsById = new Map(parents.map(parent => [parent.id, parent]));
   const childUse = new Map<string, number>();
@@ -117,8 +155,22 @@ export function previewRoster(entries: RosterEntry[], students: ExistingStudent[
     if (row.children.some(name => (childUse.get(normalizeName(name)) || 0) > 1)) flags.push('Child appears in more than one roster row');
     if (normalizeEmail(row.email) && (contactUse.get(normalizeEmail(row.email)) || 0) > 1) flags.push('Email repeats in the roster');
     const children = row.children.map(name => {
-      const matches = index.get(normalizeName(name)) || [];
-      return { name, matches, possible: matches.length ? [] : possibleStudentMatches(name, students) };
+      const key = normalizeName(name);
+      const direct = index.get(key) || [], viaRoster = rosterIndex.get(key) || [];
+      const matches = [...new Map([...direct, ...viaRoster].map(item => [item.id, item])).values()];
+      const query = new Set(key.split(' ').filter(Boolean));
+      const rosterPossibilities = query.size < 2 ? [] : rosterValid.map(entry => {
+        const tokens = new Set(entry.name.split(' ').filter(Boolean));
+        const shared = [...query].filter(token => tokens.has(token)).length;
+        return { student: entry.student, shared, score: shared * 10 - Math.abs(query.size - tokens.size) * 2 };
+      }).filter(item => item.shared >= 2)
+        .sort((a, b) => b.score - a.score || a.student.id.localeCompare(b.student.id))
+        .slice(0, 5).map(item => item.student);
+      const possible = matches.length ? [] : [...new Map([
+        ...rosterPossibilities, ...possibleStudentMatches(name, students)
+      ].map(item => [item.id, item])).values()].slice(0, 5);
+      return { name, matches, possible,
+        source: viaRoster.length ? (direct.length ? 'app and Student CSV' : 'Student CSV ID') : 'app name' };
     });
     if (children.some(child => child.matches.length !== 1)) flags.push('Missing or ambiguous child-name match');
     const ids = new Set(children.filter(child => child.matches.length === 1).map(child => child.matches[0].parentId).filter((id): id is string => !!id));

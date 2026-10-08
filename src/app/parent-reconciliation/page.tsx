@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { AlertTriangle, ArrowLeft, FileSpreadsheet, LockKeyhole, RefreshCw, Search, ShieldCheck, UploadCloud } from 'lucide-react';
-import { parseRoster, previewRoster, type ExistingParent, type ExistingStudent, type RosterEntry } from '@/lib/parent-reconciliation';
+import { parseRoster, parseStudentRoster, previewRoster, normalizedId, type StudentRosterEntry, type ExistingParent, type ExistingStudent, type RosterEntry } from '@/lib/parent-reconciliation';
 
 type Data = { parents: ExistingParent[]; students: ExistingStudent[] };
 export default function ParentReconciliationPage() {
@@ -13,6 +13,8 @@ export default function ParentReconciliationPage() {
   const [data, setData] = useState<Data | null>(null);
   const [entries, setEntries] = useState<RosterEntry[]>([]);
   const [fileName, setFileName] = useState('');
+  const [studentRoster, setStudentRoster] = useState<StudentRosterEntry[]>([]);
+  const [studentFileName, setStudentFileName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<'all'|'review'|'consolidation'|'existing'>('all');
@@ -28,12 +30,13 @@ export default function ParentReconciliationPage() {
       .catch(e => { if (active) setError(e instanceof Error ? e.message : 'Could not load school records.'); });
     return () => { active = false; };
   }, [admin]);
-  const suggestions = useMemo(() => data ? previewRoster(entries, data.students, data.parents) : [], [data, entries]);
+  const suggestions = useMemo(() => data ? previewRoster(entries, data.students, data.parents, studentRoster) : [], [data, entries, studentRoster]);
   const totals = useMemo(() => ({
     review: suggestions.filter(s => s.kind === 'review').length,
     consolidation: suggestions.filter(s => s.kind === 'consolidation').length,
     existing: suggestions.filter(s => s.kind === 'existing').length,
     exactChildren: suggestions.flatMap(s => s.children).filter(c => c.matches.length === 1).length,
+    viaStudentRoster: suggestions.flatMap(s => s.children).filter(c => c.matches.length === 1 && c.source.includes('Student CSV')).length,
     possibleChildren: suggestions.flatMap(s => s.children).filter(c => c.matches.length === 0 && c.possible.length > 0).length,
     missingChildren: suggestions.flatMap(s => s.children).filter(c => c.matches.length === 0 && c.possible.length === 0).length
   }), [suggestions]);
@@ -53,6 +56,26 @@ export default function ParentReconciliationPage() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not read CSV.'); }
     finally { setLoading(false); }
   }
+  async function loadStudentFile(file: File | undefined) {
+    setStudentRoster([]); setStudentFileName(''); setError('');
+    if (!file) return;
+    if (!/\.csv$/i.test(file.name)) { setError('Save the student workbook as CSV UTF-8 before choosing it.'); return; }
+    if (file.size > 2_000_000) { setError('Student CSV exceeds 2 MB.'); return; }
+    setLoading(true);
+    try {
+      const parsed = parseStudentRoster(await file.text());
+      if (!parsed.length) throw Error('No Student rows found in CSV.');
+      setStudentRoster(parsed); setStudentFileName(file.name);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not read Student CSV.'); }
+    finally { setLoading(false); }
+  }
+  const appIdSet = new Set((data?.students || []).map(s => normalizedId(s.id)));
+  const rosterIdCounts = new Map<string, number>();
+  for (const row of studentRoster) {
+    const id = normalizedId(row.id);
+    if (id) rosterIdCounts.set(id, (rosterIdCounts.get(id) || 0) + 1);
+  }
+  const recognizedStudentIds = studentRoster.filter(row => appIdSet.has(normalizedId(row.id)) && rosterIdCounts.get(normalizedId(row.id)) === 1).length;
   if (status === 'loading') return <main className="p-6 text-slate-600">Checking access...</main>;
   if (!admin) return <main className="max-w-xl mx-auto p-6"><LockKeyhole className="mb-3 text-amber-700" /><h1 className="font-bold text-xl">Super admin only</h1><p>Parent roster preview is not available to other accounts.</p></main>;
   return <main className="max-w-6xl mx-auto px-4 py-6 sm:px-6 space-y-5 pb-20">
@@ -75,7 +98,14 @@ export default function ParentReconciliationPage() {
           <input className="sr-only" type="file" accept=".csv,text/csv" onChange={event => { void loadFile(event.target.files?.[0]); event.target.value = ''; }} />
         </label>
         {loading && <p className="text-sm">Reading file locally...</p>}
-        {fileName && <p className="text-xs break-all text-slate-600">Loaded locally: {fileName}</p>}
+        {fileName && <p className="text-xs break-all text-slate-600">Parent CSV loaded locally: {fileName}</p>}
+        <div className="border-t pt-3 space-y-2"><h3 className="font-bold text-sm">Optional: Student roster with IDs</h3>
+          <p className="text-xs text-slate-600">Save a separate copy of your Student workbook as CSV UTF-8. It needs <strong>useralias</strong> (same ID as app) and <strong>fullname</strong>. The role column, if present, selects Student rows only. This second file also stays in this browser tab.</p>
+          <label className="flex items-center justify-center gap-2 cursor-pointer min-h-11 rounded-xl border border-blue-700 bg-white text-blue-900 font-semibold px-4 text-center">Choose Student CSV
+            <input className="sr-only" type="file" accept=".csv,text/csv" onChange={event => { void loadStudentFile(event.target.files?.[0]); event.target.value = ''; }} />
+          </label>
+          {studentFileName && <p className="text-xs break-all text-slate-600">Student CSV loaded locally: {studentFileName}. Recognized unique IDs in app: {recognizedStudentIds} of {studentRoster.length}. Unrecognized or repeated IDs are NOT used for matching.</p>}
+        </div>
       </section>
       <section className="rounded-2xl bg-white border border-slate-200 p-5 space-y-3">
         <h2 className="font-bold text-lg">2. Review, do not merge yet</h2>
@@ -90,13 +120,13 @@ export default function ParentReconciliationPage() {
         {[['Roster families', entries.length], ['Needs review', totals.review], ['Several Parent records', totals.consolidation], ['One Parent candidate', totals.existing]].map(([label, value]) =>
           <div key={label} className="rounded-xl border bg-white p-4"><p className="text-2xl font-black text-blue-900">{value}</p><p className="text-xs text-slate-600 font-medium">{label}</p></div>)}
       </section>
-      <p className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950"><strong>Name diagnostic:</strong> {totals.exactChildren} children with one exact Student match; {totals.possibleChildren} with name-based possibilities requiring manual review; {totals.missingChildren} with no two-token candidate. Ambiguous exact names are not counted in these three numbers. Possible matches are never used to link or merge Parent accounts.</p>
+      <p className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950"><strong>Name diagnostic:</strong> {totals.exactChildren} children with one unique name-to-app-ID suggestion ({totals.viaStudentRoster} using Student CSV); {totals.possibleChildren} with name-based possibilities requiring manual review; {totals.missingChildren} with no two-token candidate. Ambiguous exact names are not counted in these three numbers. Possible matches are never used to link or merge Parent accounts.</p>
       <div className="flex flex-col sm:flex-row gap-2">
         <label className="relative flex-1"><Search className="absolute left-3 top-3 text-slate-400" size={18} /><span className="sr-only">Search preview</span><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search preview" className="w-full pl-10 pr-3 h-11 rounded-xl border border-slate-300 bg-white" /></label>
         <select value={filter} onChange={e => setFilter(e.target.value as typeof filter)} aria-label="Filter preview" className="h-11 rounded-xl border border-slate-300 bg-white px-3">
           <option value="all">All rows</option><option value="review">Needs review</option><option value="consolidation">Several Parent records</option><option value="existing">One Parent candidate</option>
         </select>
-        <button type="button" onClick={() => { setEntries([]); setFileName(''); setSearch(''); }} className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 flex items-center justify-center gap-2"><RefreshCw size={16}/>Clear preview</button>
+        <button type="button" onClick={() => { setEntries([]); setFileName(''); setStudentRoster([]); setStudentFileName(''); setSearch(''); }} className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 flex items-center justify-center gap-2"><RefreshCw size={16}/>Clear preview</button>
       </div>
       <p className="text-xs text-slate-600">Showing {Math.min(50, shown.length)} of {shown.length} filtered rows. Search or filter to find more. No result is automatically approved.</p>
       <div className="space-y-3">{shown.slice(0, 50).map((item, i) => <article key={item.row.line + '-' + i} className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3">
@@ -104,7 +134,7 @@ export default function ParentReconciliationPage() {
         <p className="text-xs text-slate-600 break-all">Roster contact: {item.row.email || '(no email)'} · {item.row.phone || '(no phone)'}</p>
         {item.flags.length > 0 && <ul className="list-disc list-inside text-xs text-amber-900 bg-amber-50 rounded-lg p-3">{item.flags.map(flag => <li key={flag}>{flag}</li>)}</ul>}
         <div className="grid md:grid-cols-2 gap-4 text-sm">
-          <div><h4 className="font-semibold text-slate-800 mb-2">Listed children</h4>{item.children.length ? <ul className="space-y-2">{item.children.map((child, j) => <li key={j} className="rounded-lg bg-slate-50 p-2"><strong>{child.name}</strong><span className="block text-xs text-slate-600">{child.matches.length === 1 ? `Exact unique: ${child.matches[0].id} · ${child.matches[0].class?.name || 'class not set'} · current Parent ${child.matches[0].parentId || 'none'}` : child.matches.length === 0 ? 'No exact unique name match — manual review' : `${child.matches.length} students share this exact name — manual review`}</span>{child.matches.length === 0 && child.possible.length > 0 && <div className="mt-2 border-t border-amber-200 pt-2 text-xs text-amber-950"><strong>Possible Students — verify in school records; NOT confirmed:</strong><ul className="mt-1 space-y-1">{child.possible.map(student => <li key={student.id}>{student.firstName} {student.otherNames || ''} {student.lastName} · {student.id} · {student.class?.name || 'class not set'} · Parent {student.parentId || 'none'}</li>)}</ul></div>}</li>)}</ul> : <p className="text-slate-600">None listed</p>}</div>
+          <div><h4 className="font-semibold text-slate-800 mb-2">Listed children</h4>{item.children.length ? <ul className="space-y-2">{item.children.map((child, j) => <li key={j} className="rounded-lg bg-slate-50 p-2"><strong>{child.name}</strong><span className="block text-xs text-slate-600">{child.matches.length === 1 ? `Unique suggestion (${child.source}): ${child.matches[0].id} · ${child.matches[0].class?.name || 'class not set'} · current Parent ${child.matches[0].parentId || 'none'}` : child.matches.length === 0 ? 'No exact unique name match — manual review' : `${child.matches.length} students share this exact name — manual review`}</span>{child.matches.length === 0 && child.possible.length > 0 && <div className="mt-2 border-t border-amber-200 pt-2 text-xs text-amber-950"><strong>Possible Students — verify in school records; NOT confirmed:</strong><ul className="mt-1 space-y-1">{child.possible.map(student => <li key={student.id}>{student.firstName} {student.otherNames || ''} {student.lastName} · {student.id} · {student.class?.name || 'class not set'} · Parent {student.parentId || 'none'}</li>)}</ul></div>}</li>)}</ul> : <p className="text-slate-600">None listed</p>}</div>
           <div><h4 className="font-semibold text-slate-800 mb-2">Possible existing Parent records</h4>{item.parents.length ? <ul className="space-y-2">{item.parents.map(parent => <li key={parent.id} className="rounded-lg bg-slate-50 p-2 break-words"><strong>{parent.fullName}</strong><span className="block text-xs text-slate-600 break-all">ID {parent.id} · {parent.students.length} linked student(s) · {parent.email || 'no email'} · {parent.phone || 'no phone'}</span></li>)}</ul> : <p className="text-slate-600">None suggested. Do not create a new record without verifying.</p>}</div>
         </div>
       </article>)}</div>
