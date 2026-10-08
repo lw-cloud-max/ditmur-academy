@@ -87,6 +87,11 @@ export function parseStudentRoster(text: string): StudentRosterEntry[] {
     .map(({ id, fullName }) => ({ id, fullName }));
 }
 export const normalizedId = (id: string) => String(id || '').trim().toUpperCase();
+// Preserve repeated name words; order alone must not prevent an ID suggestion.
+export function unorderedNameKey(value: string) {
+  const tokens = normalizeName(value).split(' ').filter(Boolean);
+  return tokens.length >= 2 ? tokens.sort().join(' ') : '';
+}
 
 function namesFor(student: ExistingStudent) {
   const firstLast = `${student.firstName} ${student.lastName}`;
@@ -118,6 +123,16 @@ export function previewRoster(entries: RosterEntry[], students: ExistingStudent[
   }
   // Require a unique roster alias that resolves to exactly one existing app ID.
   // A name match in this second spreadsheet is still only a suggestion.
+  const unorderedApp = new Map<string, ExistingStudent[]>();
+  const addByWords = (map: Map<string, ExistingStudent[]>, name: string, student: ExistingStudent) => {
+    const key = unorderedNameKey(name);
+    if (!key) return;
+    const list = map.get(key) || [];
+    if (!list.some(item => item.id === student.id)) list.push(student);
+    map.set(key, list);
+  };
+  for (const student of students) for (const name of namesFor(student)) addByWords(unorderedApp, name, student);
+  const unorderedRoster = new Map<string, ExistingStudent[]>();
   const appIds = new Map(students.map(student => [normalizedId(student.id), student]));
   const aliasCounts = new Map<string, number>();
   for (const entry of studentRoster) {
@@ -132,6 +147,7 @@ export function previewRoster(entries: RosterEntry[], students: ExistingStudent[
     const student = appIds.get(key);
     if (!student) continue;
     rosterValid.push({ name, student });
+    addByWords(unorderedRoster, entry.fullName, student);
     const list = rosterIndex.get(name) || [];
     if (!list.some(item => item.id === student.id)) list.push(student);
     rosterIndex.set(name, list);
@@ -157,7 +173,10 @@ export function previewRoster(entries: RosterEntry[], students: ExistingStudent[
     const children = row.children.map(name => {
       const key = normalizeName(name);
       const direct = index.get(key) || [], viaRoster = rosterIndex.get(key) || [];
-      const matches = [...new Map([...direct, ...viaRoster].map(item => [item.id, item])).values()];
+      const wordKey = unorderedNameKey(name);
+      const viaOrderApp = wordKey ? (unorderedApp.get(wordKey) || []) : [];
+      const viaOrderRoster = wordKey ? (unorderedRoster.get(wordKey) || []) : [];
+      const matches = [...new Map([...direct, ...viaRoster, ...viaOrderApp, ...viaOrderRoster].map(item => [item.id, item])).values()];
       const query = new Set(key.split(' ').filter(Boolean));
       const rosterPossibilities = query.size < 2 ? [] : rosterValid.map(entry => {
         const tokens = new Set(entry.name.split(' ').filter(Boolean));
@@ -170,7 +189,9 @@ export function previewRoster(entries: RosterEntry[], students: ExistingStudent[
         ...rosterPossibilities, ...possibleStudentMatches(name, students)
       ].map(item => [item.id, item])).values()].slice(0, 5);
       return { name, matches, possible,
-        source: viaRoster.length ? (direct.length ? 'app and Student CSV' : 'Student CSV ID') : 'app name' };
+        source: direct.length ? 'app name' : viaRoster.length ? 'Student CSV ID' :
+          viaOrderRoster.length ? 'same words, any order (Student CSV ID)' :
+          viaOrderApp.length ? 'same words, any order (app name)' : 'no unique match' };
     });
     if (children.some(child => child.matches.length !== 1)) flags.push('Missing or ambiguous child-name match');
     const ids = new Set(children.filter(child => child.matches.length === 1).map(child => child.matches[0].parentId).filter((id): id is string => !!id));

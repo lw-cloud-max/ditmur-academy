@@ -37,6 +37,7 @@ export default function ParentReconciliationPage() {
     existing: suggestions.filter(s => s.kind === 'existing').length,
     exactChildren: suggestions.flatMap(s => s.children).filter(c => c.matches.length === 1).length,
     viaStudentRoster: suggestions.flatMap(s => s.children).filter(c => c.matches.length === 1 && c.source.includes('Student CSV')).length,
+    reorderedNames: suggestions.flatMap(s => s.children).filter(c => c.matches.length === 1 && c.source.includes('any order')).length,
     possibleChildren: suggestions.flatMap(s => s.children).filter(c => c.matches.length === 0 && c.possible.length > 0).length,
     missingChildren: suggestions.flatMap(s => s.children).filter(c => c.matches.length === 0 && c.possible.length === 0).length
   }), [suggestions]);
@@ -120,7 +121,7 @@ export default function ParentReconciliationPage() {
         {[['Roster families', entries.length], ['Needs review', totals.review], ['Several Parent records', totals.consolidation], ['One Parent candidate', totals.existing]].map(([label, value]) =>
           <div key={label} className="rounded-xl border bg-white p-4"><p className="text-2xl font-black text-blue-900">{value}</p><p className="text-xs text-slate-600 font-medium">{label}</p></div>)}
       </section>
-      <p className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950"><strong>Name diagnostic:</strong> {totals.exactChildren} children with one unique name-to-app-ID suggestion ({totals.viaStudentRoster} using Student CSV); {totals.possibleChildren} with name-based possibilities requiring manual review; {totals.missingChildren} with no two-token candidate. Ambiguous exact names are not counted in these three numbers. Possible matches are never used to link or merge Parent accounts.</p>
+      <p className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950"><strong>Name diagnostic:</strong> {totals.exactChildren} children with one unique name-to-app-ID suggestion ({totals.viaStudentRoster} using Student CSV; {totals.reorderedNames} same name words in a different order); {totals.possibleChildren} with name-based possibilities requiring manual review; {totals.missingChildren} with no two-token candidate. Ambiguous exact names are not counted in these three numbers. Possible matches are never used to link or merge Parent accounts.</p>
       <div className="flex flex-col sm:flex-row gap-2">
         <label className="relative flex-1"><Search className="absolute left-3 top-3 text-slate-400" size={18} /><span className="sr-only">Search preview</span><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search preview" className="w-full pl-10 pr-3 h-11 rounded-xl border border-slate-300 bg-white" /></label>
         <select value={filter} onChange={e => setFilter(e.target.value as typeof filter)} aria-label="Filter preview" className="h-11 rounded-xl border border-slate-300 bg-white px-3">

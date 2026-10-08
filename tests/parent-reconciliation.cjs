@@ -122,3 +122,20 @@ test('unrecognized student roster IDs do not create app matches', () => {
   assert.equal(result.children[0].matches.length, 0);
   assert.equal(result.children[0].possible.length, 0);
 });
+test('same three name words in a different order suggest the correct school ID', () => {
+  const rows = [{ line: 2, name: 'Guardian', email: '', phone: '', children: ['Doe Michael John'] }];
+  const result = audit.previewRoster(rows, [student('STU-1','John','Doe','P1','Michael')], [],
+    [{ id:'STU-1', fullName:'John Michael Doe' }])[0];
+  assert.equal(result.children[0].matches.length, 1);
+  assert.equal(result.children[0].matches[0].id, 'STU-1');
+  assert.match(result.children[0].source, /any order/);
+  assert.equal(result.kind, 'review');
+});
+test('same word set on two Student IDs remains ambiguous, not unique', () => {
+  const rows = [{ line: 2, name: 'Guardian', email: '', phone: '', children: ['Doe Michael John'] }];
+  const result = audit.previewRoster(rows,
+    [student('STU-1','John','Doe','P1','Michael'), student('STU-2','Michael','John','P2','Doe')], [])[0];
+  assert.equal(result.children[0].matches.length, 2);
+  assert.equal(result.kind, 'review');
+  assert.equal(audit.unorderedNameKey('John Michael Doe'), audit.unorderedNameKey('Doe John Michael'));
+});
