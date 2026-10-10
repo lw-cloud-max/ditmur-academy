@@ -110,12 +110,12 @@ export default function LoginPage() {
 
           {/* Role Selection Tabs */}
           <div className="flex px-6 sm:px-8 mt-6 md:mt-4 mb-6">
-            <div role="group" aria-label="Choose your account type" className="flex w-full bg-slate-100 rounded-2xl p-1.5 relative shadow-inner border border-slate-200/50">
+            <div role="group" aria-label="Choose account type" className="flex w-full bg-slate-100 rounded-2xl p-1.5 relative shadow-inner border border-slate-200/50">
               <button 
                 type="button"
                 onClick={() => { setRoleType('STAFF'); setError(''); }}
                 aria-pressed={roleType === 'STAFF'}
-                className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all z-10 flex justify-center items-center gap-1.5 ${roleType === 'STAFF' ? 'bg-white text-[#2f88ff] shadow-md border border-slate-200/50' : 'text-slate-400 hover:text-slate-700'}`}
+                className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all z-10 flex justify-center items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0033A0] ${roleType === 'STAFF' ? 'bg-white text-[#2f88ff] shadow-md border border-slate-200/50' : 'text-slate-400 hover:text-slate-700'}`}
               >
                 <School className="w-4 h-4" /> Staff
               </button>
@@ -123,7 +123,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => { setRoleType('STUDENT'); setError(''); }}
                 aria-pressed={roleType === 'STUDENT'}
-                className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all z-10 flex justify-center items-center gap-1.5 ${roleType === 'STUDENT' ? 'bg-white text-[#2f88ff] shadow-md border border-slate-200/50' : 'text-slate-400 hover:text-slate-700'}`}
+                className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all z-10 flex justify-center items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0033A0] ${roleType === 'STUDENT' ? 'bg-white text-[#2f88ff] shadow-md border border-slate-200/50' : 'text-slate-400 hover:text-slate-700'}`}
               >
                 <GraduationCap className="w-4 h-4" /> Student
               </button>
@@ -131,7 +131,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => { setRoleType('PARENT'); setError(''); }}
                 aria-pressed={roleType === 'PARENT'}
-                className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all z-10 flex justify-center items-center gap-1.5 ${roleType === 'PARENT' ? 'bg-white text-[#2f88ff] shadow-md border border-slate-200/50' : 'text-slate-400 hover:text-slate-700'}`}
+                className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all z-10 flex justify-center items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0033A0] ${roleType === 'PARENT' ? 'bg-white text-[#2f88ff] shadow-md border border-slate-200/50' : 'text-slate-400 hover:text-slate-700'}`}
               >
                 <Users className="w-4 h-4" /> Parent
               </button>
@@ -159,10 +159,11 @@ export default function LoginPage() {
                 <input
                   id="login-username"
                   name="username"
-                  type={roleType === 'STUDENT' ? 'text' : 'email'}
                   autoComplete="username"
-                  aria-invalid={Boolean(error)}
+                  aria-invalid={!!error}
                   aria-describedby={error ? 'login-error' : undefined}
+                  onChange={() => { if (error) setError(''); }}
+                  type={roleType === 'STUDENT' ? 'text' : 'email'}
                   required
                   placeholder={
                     roleType === 'STUDENT' ? 'e.g. DIT/STU/001' : 
@@ -190,8 +191,9 @@ export default function LoginPage() {
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
-                  aria-invalid={Boolean(error)}
+                  aria-invalid={!!error}
                   aria-describedby={error ? 'login-error' : undefined}
+                  onChange={() => { if (error) setError(''); }}
                   required
                   placeholder="••••••••"
                   className="block w-full pl-12 pr-14 py-4 bg-slate-50 border-none rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#2f88ff]/10 focus:border-[#2f88ff] focus:bg-white transition-all text-sm font-bold shadow-inner tracking-widest"
@@ -212,7 +214,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center gap-3 py-4 mt-6 rounded-xl shadow-[0_8px_20px_rgba(47,136,255,0.3)] text-sm font-black text-white bg-gradient-to-r from-[#2f88ff] to-[#0033A0] hover:from-[#0033A0] hover:to-[#002277] focus:outline-none transition-all disabled:opacity-70 disabled:cursor-not-allowed group uppercase tracking-widest"
+              className="w-full flex justify-center items-center gap-3 py-4 mt-6 rounded-xl shadow-[0_8px_20px_rgba(47,136,255,0.3)] text-sm font-black text-white bg-gradient-to-r from-[#2f88ff] to-[#0033A0] hover:from-[#0033A0] hover:to-[#002277] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0033A0] transition-all disabled:opacity-70 disabled:cursor-not-allowed group uppercase tracking-widest"
             >
               {loading ? (
                 <>
