@@ -1,6 +1,6 @@
 "use client";
 
-import { LockKeyhole, AlertCircle, User, Users, GraduationCap, Monitor, BarChart3, Cloud, ShieldCheck, ArrowRight, School, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { LockKeyhole, AlertCircle, User, Users, GraduationCap, ShieldCheck, ArrowRight, School, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -36,7 +36,7 @@ export default function LoginPage() {
         router.push('/dashboard');
         router.refresh();
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred. Please try again.');
       setLoading(false);
     }
@@ -110,10 +110,11 @@ export default function LoginPage() {
 
           {/* Role Selection Tabs */}
           <div className="flex px-6 sm:px-8 mt-6 md:mt-4 mb-6">
-            <div className="flex w-full bg-slate-100 rounded-2xl p-1.5 relative shadow-inner border border-slate-200/50">
+            <div role="group" aria-label="Choose your account type" className="flex w-full bg-slate-100 rounded-2xl p-1.5 relative shadow-inner border border-slate-200/50">
               <button 
                 type="button"
                 onClick={() => { setRoleType('STAFF'); setError(''); }}
+                aria-pressed={roleType === 'STAFF'}
                 className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all z-10 flex justify-center items-center gap-1.5 ${roleType === 'STAFF' ? 'bg-white text-[#2f88ff] shadow-md border border-slate-200/50' : 'text-slate-400 hover:text-slate-700'}`}
               >
                 <School className="w-4 h-4" /> Staff
@@ -121,6 +122,7 @@ export default function LoginPage() {
               <button 
                 type="button"
                 onClick={() => { setRoleType('STUDENT'); setError(''); }}
+                aria-pressed={roleType === 'STUDENT'}
                 className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all z-10 flex justify-center items-center gap-1.5 ${roleType === 'STUDENT' ? 'bg-white text-[#2f88ff] shadow-md border border-slate-200/50' : 'text-slate-400 hover:text-slate-700'}`}
               >
                 <GraduationCap className="w-4 h-4" /> Student
@@ -128,6 +130,7 @@ export default function LoginPage() {
               <button 
                 type="button"
                 onClick={() => { setRoleType('PARENT'); setError(''); }}
+                aria-pressed={roleType === 'PARENT'}
                 className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all z-10 flex justify-center items-center gap-1.5 ${roleType === 'PARENT' ? 'bg-white text-[#2f88ff] shadow-md border border-slate-200/50' : 'text-slate-400 hover:text-slate-700'}`}
               >
                 <Users className="w-4 h-4" /> Parent
@@ -137,14 +140,14 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="p-6 sm:p-8 pt-0 space-y-5">
             {error && (
-              <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm flex items-start gap-3 border border-red-100/50 animation-fade-in">
+              <div id="login-error" role="alert" className="bg-red-50 text-red-600 p-4 rounded-xl text-sm flex items-start gap-3 border border-red-100/50 animation-fade-in">
                 <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
                 <span className="font-bold">{error}</span>
               </div>
             )}
 
             <div>
-              <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2 pl-1">
+              <label htmlFor="login-username" className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2 pl-1">
                 {roleType === 'STUDENT' ? 'Student ID' : 'Email Address'}
               </label>
               <div className="relative group">
@@ -154,8 +157,12 @@ export default function LoginPage() {
                    <User className="h-5 w-5 text-slate-400 group-focus-within:text-[#2f88ff] transition-colors" />}
                 </div>
                 <input
+                  id="login-username"
                   name="username"
                   type={roleType === 'STUDENT' ? 'text' : 'email'}
+                  autoComplete="username"
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? 'login-error' : undefined}
                   required
                   placeholder={
                     roleType === 'STUDENT' ? 'e.g. DIT/STU/001' : 
@@ -169,7 +176,7 @@ export default function LoginPage() {
 
             <div>
               <div className="flex justify-between items-center mb-2 pl-1 pr-1">
-                <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500">Password</label>
+                <label htmlFor="login-password" className="block text-[11px] font-black uppercase tracking-wider text-slate-500">Password</label>
                 {roleType !== 'STUDENT' && (
                   <span className="text-[11px] font-semibold text-slate-500">Forgot? Ask the school admin for a reset.</span>
                 )}
@@ -183,6 +190,8 @@ export default function LoginPage() {
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? 'login-error' : undefined}
                   required
                   placeholder="••••••••"
                   className="block w-full pl-12 pr-14 py-4 bg-slate-50 border-none rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#2f88ff]/10 focus:border-[#2f88ff] focus:bg-white transition-all text-sm font-bold shadow-inner tracking-widest"
