@@ -1,13 +1,13 @@
 "use client";
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import GroupedMenu, { type MenuItem } from './GroupedMenu';
 import { 
   LayoutDashboard, UserPlus, MonitorPlay, Users, UserCircle, 
   GraduationCap, CalendarDays, ClipboardCheck, FileSpreadsheet,
   Settings2, BookOpen, MessageSquare, MessageCircle, CreditCard, HelpCircle,
-  Settings, School, FileQuestion, Trophy, Gamepad2, Lightbulb, Library, FileText, Bot, Award, FolderOpen, Video, Database, Lock
+  Settings, School, Trophy, Gamepad2, Lightbulb, Bot, Award, FolderOpen, Video, Database, Lock
 } from 'lucide-react';
 
 export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
@@ -39,6 +39,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'Assessment Format', icon: Settings2, path: '/assessment-format' },
     { name: 'Entrance Exam', icon: MonitorPlay, path: '/entrance-exam' },
     { name: 'CBT Portal', icon: MonitorPlay, path: '/cbt' },
+
     { name: 'Study Hub', icon: Gamepad2, path: '/study-hub', isFun: true },
     { name: 'Lesson Notes', icon: BookOpen, path: '/lesson-notes' },
     { name: 'Hall of Fame', icon: Trophy, path: '/hall-of-fame', isFun: true },
@@ -60,6 +61,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'My Portfolio', icon: FolderOpen, path: '/portfolio' },
     { name: 'Join Meetings', icon: Video, path: '/video-meetings' },
     { name: 'My Timetable', icon: CalendarDays, path: '/timetable' },
+
     { name: 'My Results', icon: GraduationCap, path: '/broadsheet' },
     { name: 'Study Hub', icon: Gamepad2, path: '/study-hub', isFun: true },
     { name: 'Hall of Fame', icon: Trophy, path: '/hall-of-fame', isFun: true },
@@ -94,7 +96,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     .filter(item => item.path !== '/sms-notifications' || (userRole === 'ADMIN' && session?.user?.id === 'admin-1'));
 
   return (
-    <aside className={`w-64 bg-gradient-to-b from-[#0A192F] to-[#001744] text-white min-h-screen flex flex-col border-r border-[#0033A0]/50 shadow-xl ${isMobile ? '' : 'hidden md:flex'}`}>
+    <aside className={`w-64 bg-gradient-to-b from-[#0A192F] to-[#001744] text-white h-screen min-h-0 shrink-0 flex flex-col border-r border-[#0033A0]/50 shadow-xl ${isMobile ? '' : 'hidden md:flex'}`}>
       <div className="p-5 flex items-center gap-3 border-b border-[#112240] shrink-0 bg-[#0A192F]">
         <div className="w-14 h-14 flex items-center justify-center flex-shrink-0">
           <img src="/logo.jpg" alt="Ditmur Academy" className="w-full h-full object-contain mix-blend-screen" />
@@ -104,36 +106,8 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
-        <nav className="space-y-1 px-3">
-          {activeMenu.map((item) => {
-            const isActive = pathname === item.path || (pathname?.startsWith(item.path) && item.path !== '/');
-
-            return (
-              <div key={item.name}>
-                {(item as any).isFun && <div className="h-px bg-[#112240] my-3 mx-2"></div>}
-                {(item as any).isFun && <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mb-2">Student Life</p>}
-                
-                <Link
-                  href={item.path}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors font-medium ${
-                    isActive 
-                      ? 'bg-[#112240] text-[#FFD700] border-l-4 border-[#FFD700]' 
-                      : 'text-slate-300 hover:bg-[#112240] hover:text-[#FFD700]'
-                  }`}
-                >
-                  <item.icon className={`w-5 h-5 flex-shrink-0 ${((item as any).isFun) && !isActive ? 'text-[#FFD700]/70' : ''}`} />
-                  <span className="text-sm tracking-wide">{item.name}</span>
-                  {(item as any).isNew && (
-                    <span className="ml-auto px-2 py-0.5 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-[10px] font-black rounded-full text-[#0A192F]">
-                      NEW
-                    </span>
-                  )}
-                </Link>
-              </div>
-            );
-          })}
-        </nav>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 custom-scrollbar">
+        <GroupedMenu key={pathname} idPrefix="desktop-menu" items={activeMenu as MenuItem[]} pathname={pathname} />
       </div>
     </aside>
   );

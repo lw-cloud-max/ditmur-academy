@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { 
-  ArrowRight, BookOpen, GraduationCap, Users, ShieldCheck, Sparkles, Trophy,
-  Calendar, MapPin, Phone, Mail, ChevronRight, Star, Award, Globe, Library,
-  Baby, Palette, Music, Dumbbell, Heart, Clock, CheckCircle2, Pencil, Calculator,
-  Microscope, Globe2, BookOpenCheck, Smile, ChevronLeft, Pause, Play
+  ArrowRight, BookOpen, GraduationCap, ShieldCheck, Sparkles, Trophy,
+  MapPin, Phone, Mail, ChevronRight,
+  Baby, Heart, Clock, CheckCircle2, Pencil,
+  BookOpenCheck, Smile, ChevronLeft, Pause, Play
 } from 'lucide-react';
 
 const HERO_SLIDES = [
@@ -115,7 +115,7 @@ export default function LandingPage() {
       </div>
 
       {/* Navigation */}
-      <nav className="absolute top-9 md:top-[72px] w-full z-50 px-4 sm:px-6 py-5 lg:px-12 flex justify-between items-center bg-transparent">
+      <nav className="absolute inset-x-0 top-9 md:top-[72px] w-full z-50 px-4 sm:px-6 py-5 lg:px-12 flex justify-between items-center bg-transparent">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 sm:w-14 sm:h-14 flex items-center justify-center shadow-md">
             <img src="/logo.jpg" alt="Ditmur Academy" className="w-full h-full object-contain mix-blend-multiply" />
@@ -143,37 +143,37 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <div className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 px-6 lg:px-12 bg-gradient-to-br from-slate-50 to-blue-50 overflow-hidden">
+      <div className="relative pt-32 pb-16 lg:pt-40 lg:pb-20 px-4 sm:px-6 lg:px-12 bg-gradient-to-br from-slate-50 to-blue-50 overflow-hidden">
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-[#0033A0] rounded-full blur-[150px] opacity-5 -mr-64 -mt-64"></div>
         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[#FFD700] rounded-full blur-[150px] opacity-5 -ml-64 -mb-64"></div>
         
-        <div className="max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div className="lg:col-start-1 lg:row-start-1">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#0033A0]/10 border border-[#0033A0]/20 text-[#0033A0] text-xs font-bold uppercase tracking-wider mb-6">
+        <div className="max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-center min-w-0">
+          <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#0033A0]/10 border border-[#0033A0]/20 text-[#0033A0] text-xs font-bold uppercase tracking-wider mb-4">
               <Sparkles className="w-4 h-4 text-[#FFD700]" /> Explore admission options
             </div>
-            <h1 className="text-5xl lg:text-7xl font-black text-[#0A192F] leading-[1.1] mb-6 tracking-tight">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-[4rem] font-black text-[#0A192F] leading-[1.08] mb-4 tracking-tight">
               Cultivating <span className="text-[#0033A0]">Excellence</span> <br/>& Discipline.
             </h1>
-            <p className="text-lg text-slate-600 mb-8 max-w-lg leading-relaxed">
+            <p className="text-base sm:text-lg text-slate-600 mb-6 max-w-lg leading-relaxed">
               From crèche to secondary school, Ditmur Academy provides a caring education that builds strong foundations, nurtures creativity, and prepares your child for a successful future.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link href="/apply" className="px-8 py-4 bg-[#0033A0] hover:bg-[#002277] text-white rounded-xl font-black text-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 hover:-translate-y-1">
+            <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-3 sm:gap-4">
+              <Link href="/apply" className="min-w-0 w-full sm:w-auto lg:w-full xl:w-auto px-5 sm:px-6 py-3.5 bg-[#0033A0] hover:bg-[#002277] text-white rounded-xl font-black text-base sm:text-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-center hover:-translate-y-1">
                 Contact Admissions <ArrowRight className="w-5 h-5" />
               </Link>
-              <Link href="/login" className="px-8 py-4 bg-white hover:bg-slate-50 text-[#0A192F] border border-slate-200 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-sm">
+              <Link href="/login" className="min-w-0 w-full sm:w-auto lg:w-full xl:w-auto px-5 sm:px-6 py-3.5 bg-white hover:bg-slate-50 text-[#0A192F] border border-slate-200 rounded-xl font-bold text-base sm:text-lg transition-all flex items-center justify-center gap-2 text-center shadow-sm">
                 Student & Parent Portal
               </Link>
             </div>
             
           </div>
 
-          <div className="relative mt-4 lg:mt-0 lg:col-start-2 lg:row-start-1 lg:row-span-2"
+          <div className="relative min-w-0 mt-4 lg:mt-0 lg:col-start-2 lg:row-start-1 lg:row-span-2"
             onMouseEnter={() => setCarouselHovered(true)} onMouseLeave={() => setCarouselHovered(false)}>
             <div aria-hidden="true" className="absolute -inset-3 bg-gradient-to-br from-[#0033A0]/15 to-[#FFD700]/20 rounded-[36px] rotate-2"></div>
             <figure className="relative overflow-hidden rounded-[28px] border-4 border-white bg-[#0A192F] shadow-2xl">
-              <div className="relative h-[430px] sm:h-[520px] lg:h-[500px]" role="group" aria-roledescription="carousel" aria-label="Life at Ditmur Academy" aria-live="off">
+              <div className="relative h-[430px] sm:h-[520px] lg:h-[450px]" role="group" aria-roledescription="carousel" aria-label="Life at Ditmur Academy" aria-live="off">
                 <picture key={activeSlide} className="ditmur-slide absolute inset-0 block">
                   <source media="(min-width: 1024px)" srcSet={slide.desktop} type="image/webp" />
                   <img src={slide.mobile} alt={slide.alt} loading={activeSlide === 0 ? 'eager' : 'lazy'}
@@ -218,7 +218,7 @@ export default function LandingPage() {
           </div>
 
           {/* Programme strengths, not unverified enrolment or exam statistics */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-6 border-t border-slate-200 lg:col-start-1 lg:row-start-2 w-full">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-6 border-t border-slate-200 lg:col-start-1 lg:row-start-2 w-full min-w-0">
             <div className="rounded-xl border border-pink-100 bg-pink-50 p-3 sm:p-4 min-w-0">
               <p className="text-base sm:text-xl font-black text-pink-700">Care</p>
               <p className="text-[11px] sm:text-sm text-slate-600 font-medium leading-tight mt-1">Crèche & Nursery</p>
@@ -341,7 +341,7 @@ export default function LandingPage() {
           <h2 className="text-4xl lg:text-5xl font-black text-white mb-6">Ask About Admissions</h2>
           <p className="text-xl text-blue-200 mb-4">Contact our team for current admission information</p>
           <p className="text-blue-300 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Give your child the best start in life. At Ditmur Academy, we don't just teach—we inspire, nurture, and prepare 
+            Give your child the best start in life. At Ditmur Academy, we don&apos;t just teach—we inspire, nurture, and prepare 
             young minds for a bright future. Join our family today!
           </p>
           <Link href="/apply" className="inline-flex items-center gap-2 px-10 py-5 bg-[#FFD700] hover:bg-[#e6c200] text-slate-900 rounded-xl font-black text-lg transition-all shadow-lg hover:shadow-xl hover:-translate-y-1">
@@ -425,7 +425,7 @@ export default function LandingPage() {
                 <Heart className="w-7 h-7" />
               </div>
               <h3 className="font-bold text-slate-900 mb-2">Caring Staff</h3>
-              <p className="text-sm text-slate-600">Dedicated teachers who genuinely care about each child's growth.</p>
+              <p className="text-sm text-slate-600">Dedicated teachers who genuinely care about each child&apos;s growth.</p>
             </div>
           </div>
         </div>
@@ -461,7 +461,7 @@ export default function LandingPage() {
                 <ShieldCheck className="w-7 h-7" />
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-3">Safe & Secure</h3>
-              <p className="text-slate-600 leading-relaxed">Your child's safety is our priority. We maintain a secure, clean, and welcoming environment for all students.</p>
+              <p className="text-slate-600 leading-relaxed">Your child&apos;s safety is our priority. We maintain a secure, clean, and welcoming environment for all students.</p>
             </div>
           </div>
         </div>
