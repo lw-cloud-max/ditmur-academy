@@ -43,7 +43,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#eaf4fa] flex flex-col md:flex-row overflow-hidden font-sans selection:bg-blue-500 selection:text-white">
+    <div className="min-h-screen bg-[#eaf4fa] flex flex-col md:flex-row overflow-x-hidden font-sans selection:bg-blue-500 selection:text-white">
       
       {/* LEFT SIDE: Brand Presentation (Hidden on Mobile) */}
       <div className="hidden md:flex flex-1 bg-gradient-to-br from-[#0A192F] to-[#002277] text-white p-12 flex-col justify-between relative overflow-hidden shadow-[10px_0_30px_rgba(0,0,0,0.2)] z-20">
@@ -64,18 +64,18 @@ export default function LoginPage() {
         </div>
 
         {/* Hero Text */}
-        <div className="relative z-10 max-w-xl my-auto pt-10">
+        <div className="relative z-10 max-w-xl my-auto pt-6 lg:pt-8">
           <h2 className="text-5xl lg:text-6xl font-black leading-[1.1] mb-6 tracking-tight">Cultivating <br/><span className="text-[#FFD700]">Excellence</span> <br/>and Discipline.</h2>
-          <p className="text-blue-100 text-lg leading-relaxed mb-10 max-w-md font-medium opacity-80">Access the next-generation school management system. Stay connected with real-time academic records, live CBT assessments, and learning tools.</p>
+          <p className="text-blue-50 text-base lg:text-lg leading-relaxed mb-8 max-w-md font-medium">Access the next-generation school management system. Stay connected with real-time academic records, live CBT assessments, and learning tools.</p>
           
-          <div className="flex gap-4">
-            <div className="flex items-center gap-2 bg-white/10 px-5 py-2.5 rounded-xl backdrop-blur-md border border-white/10 shadow-lg">
+          <div className="flex flex-wrap gap-3 lg:gap-4">
+            <div className="flex items-center gap-2 bg-white/15 px-4 lg:px-5 py-2.5 rounded-xl backdrop-blur-md border border-white/20 shadow-lg">
               <ShieldCheck className="w-5 h-5 text-emerald-400" />
-              <span className="text-sm font-bold tracking-wide">Secure Access</span>
+              <span className="text-sm lg:text-base font-bold tracking-wide">Secure Access</span>
             </div>
-            <div className="flex items-center gap-2 bg-white/10 px-5 py-2.5 rounded-xl backdrop-blur-md border border-white/10 shadow-lg">
+            <div className="flex items-center gap-2 bg-white/15 px-4 lg:px-5 py-2.5 rounded-xl backdrop-blur-md border border-white/20 shadow-lg">
               <Sparkles className="w-5 h-5 text-[#FFD700]" />
-              <span className="text-sm font-bold tracking-wide">AI Powered</span>
+              <span className="text-sm lg:text-base font-bold tracking-wide">AI Powered</span>
             </div>
           </div>
         </div>
@@ -86,12 +86,12 @@ export default function LoginPage() {
       </div>
 
       {/* RIGHT SIDE: Login Card Container */}
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-slate-50 relative z-10">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 xl:p-10 bg-slate-50 relative z-10">
         
         {/* Faint Grid Background */}
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'linear-gradient(#0033A0 1px, transparent 1px), linear-gradient(90deg, #0033A0 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
         
-        <div className="w-full max-w-md bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-slate-100 overflow-hidden relative z-10 animation-fade-in-up">
+        <div className="w-full max-w-[500px] bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-slate-100 overflow-hidden relative z-10 animation-fade-in-up">
           
           {/* Mobile Header (Only visible on small screens) */}
           <div className="md:hidden bg-gradient-to-br from-[#0A192F] to-[#002277] p-10 text-center relative overflow-hidden">
@@ -103,19 +103,19 @@ export default function LoginPage() {
             <p className="text-[#FFD700] mt-1.5 text-[10px] font-bold uppercase tracking-[0.2em] opacity-90">Cloud Management</p>
           </div>
 
-          <div className="p-8 pb-4 text-center hidden md:block">
+          <div className="p-8 pb-3 text-center hidden md:block">
              <h2 className="text-3xl font-black text-slate-800 tracking-tight">Welcome Back</h2>
-             <p className="text-slate-400 mt-2 font-medium">Please select your role and sign in.</p>
+             <p className="text-slate-600 mt-2 text-base font-medium">Please select your role and sign in.</p>
           </div>
 
           {/* Role Selection Tabs */}
-          <div className="flex px-6 sm:px-8 mt-6 md:mt-4 mb-6">
+          <div className="flex px-6 sm:px-8 mt-6 md:mt-3 mb-5">
             <div role="group" aria-label="Choose account type" className="flex w-full bg-slate-100 rounded-2xl p-1.5 relative shadow-inner border border-slate-200/50">
               <button 
                 type="button"
                 onClick={() => { setRoleType('STAFF'); setError(''); }}
                 aria-pressed={roleType === 'STAFF'}
-                className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all z-10 flex justify-center items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0033A0] ${roleType === 'STAFF' ? 'bg-white text-[#2f88ff] shadow-md border border-slate-200/50' : 'text-slate-400 hover:text-slate-700'}`}
+                className={`flex-1 min-h-12 py-3 text-xs sm:text-sm font-black uppercase tracking-wide rounded-xl transition-all z-10 flex justify-center items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0033A0] ${roleType === 'STAFF' ? 'bg-white text-[#2f88ff] shadow-md border border-slate-200/50' : 'text-slate-600 hover:text-slate-900'}`}
               >
                 <School className="w-4 h-4" /> Staff
               </button>
@@ -123,7 +123,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => { setRoleType('STUDENT'); setError(''); }}
                 aria-pressed={roleType === 'STUDENT'}
-                className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all z-10 flex justify-center items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0033A0] ${roleType === 'STUDENT' ? 'bg-white text-[#2f88ff] shadow-md border border-slate-200/50' : 'text-slate-400 hover:text-slate-700'}`}
+                className={`flex-1 min-h-12 py-3 text-xs sm:text-sm font-black uppercase tracking-wide rounded-xl transition-all z-10 flex justify-center items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0033A0] ${roleType === 'STUDENT' ? 'bg-white text-[#2f88ff] shadow-md border border-slate-200/50' : 'text-slate-600 hover:text-slate-900'}`}
               >
                 <GraduationCap className="w-4 h-4" /> Student
               </button>
@@ -131,7 +131,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => { setRoleType('PARENT'); setError(''); }}
                 aria-pressed={roleType === 'PARENT'}
-                className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all z-10 flex justify-center items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0033A0] ${roleType === 'PARENT' ? 'bg-white text-[#2f88ff] shadow-md border border-slate-200/50' : 'text-slate-400 hover:text-slate-700'}`}
+                className={`flex-1 min-h-12 py-3 text-xs sm:text-sm font-black uppercase tracking-wide rounded-xl transition-all z-10 flex justify-center items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0033A0] ${roleType === 'PARENT' ? 'bg-white text-[#2f88ff] shadow-md border border-slate-200/50' : 'text-slate-600 hover:text-slate-900'}`}
               >
                 <Users className="w-4 h-4" /> Parent
               </button>
@@ -147,7 +147,7 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label htmlFor="login-username" className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2 pl-1">
+              <label htmlFor="login-username" className="block text-sm font-bold uppercase tracking-wide text-slate-700 mb-2 pl-1">
                 {roleType === 'STUDENT' ? 'Student ID' : 'Email Address'}
               </label>
               <div className="relative group">
@@ -170,16 +170,16 @@ export default function LoginPage() {
                     roleType === 'PARENT' ? 'Enter registered email' : 
                     'Enter staff email'
                   }
-                  className={`block w-full pl-12 pr-4 py-4 bg-slate-50 border-none rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#2f88ff]/10 focus:border-[#2f88ff] focus:bg-white transition-all text-sm font-bold shadow-inner ${roleType === 'STUDENT' ? 'uppercase font-mono tracking-widest' : ''}`}
+                  className={`block w-full min-h-14 pl-12 pr-4 py-3.5 text-base bg-slate-50 border-none rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#2f88ff]/10 focus:border-[#2f88ff] focus:bg-white transition-all font-semibold shadow-inner ${roleType === 'STUDENT' ? 'uppercase font-mono tracking-widest' : ''}`}
                 />
               </div>
             </div>
 
             <div>
-              <div className="flex justify-between items-center mb-2 pl-1 pr-1">
-                <label htmlFor="login-password" className="block text-[11px] font-black uppercase tracking-wider text-slate-500">Password</label>
+              <div className="flex flex-wrap justify-between items-baseline gap-x-2 gap-y-1 mb-2 pl-1 pr-1">
+                <label htmlFor="login-password" className="block text-sm font-bold uppercase tracking-wide text-slate-700">Password</label>
                 {roleType !== 'STUDENT' && (
-                  <span className="text-[11px] font-semibold text-slate-500">Forgot? Ask the school admin for a reset.</span>
+                  <span className="text-xs sm:text-sm font-medium text-slate-600">Forgot? Ask the school admin for a reset.</span>
                 )}
               </div>
               <div className="relative group">
@@ -196,7 +196,7 @@ export default function LoginPage() {
                   onChange={() => { if (error) setError(''); }}
                   required
                   placeholder="••••••••"
-                  className="block w-full pl-12 pr-14 py-4 bg-slate-50 border-none rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#2f88ff]/10 focus:border-[#2f88ff] focus:bg-white transition-all text-sm font-bold shadow-inner tracking-widest"
+                  className="block w-full min-h-14 pl-12 pr-14 py-3.5 text-base bg-slate-50 border-none rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#2f88ff]/10 focus:border-[#2f88ff] focus:bg-white transition-all font-semibold shadow-inner tracking-widest"
                 />
                 <button
                   type="button"
@@ -214,7 +214,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center gap-3 py-4 mt-6 rounded-xl shadow-[0_8px_20px_rgba(47,136,255,0.3)] text-sm font-black text-white bg-gradient-to-r from-[#2f88ff] to-[#0033A0] hover:from-[#0033A0] hover:to-[#002277] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0033A0] transition-all disabled:opacity-70 disabled:cursor-not-allowed group uppercase tracking-widest"
+              className="w-full min-h-14 flex justify-center items-center gap-3 py-3.5 mt-5 rounded-xl shadow-[0_8px_20px_rgba(47,136,255,0.3)] text-base font-black text-white bg-gradient-to-r from-[#2f88ff] to-[#0033A0] hover:from-[#0033A0] hover:to-[#002277] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0033A0] transition-all disabled:opacity-70 disabled:cursor-not-allowed group uppercase tracking-widest"
             >
               {loading ? (
                 <>
@@ -232,7 +232,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="px-8 pb-8 text-center text-xs text-slate-500">First login with a temporary password? You will be asked to choose your own password before accessing the system.</p>
+          <p className="px-6 sm:px-8 pb-6 text-center text-xs sm:text-sm text-slate-600">First login with a temporary password? You will be asked to choose your own password before accessing the system.</p>
         </div>
       </div>
     </div>
