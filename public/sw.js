@@ -1,20 +1,18 @@
-// Ditmur Academy service worker, v2.
-// Do not cache login pages, protected pages, or authentication responses.
-// Those pages depend on the current session and must always reach the server.
-self.addEventListener('install', () => {
-  self.skipWaiting();
-});
+// Ditmur Academy PWA: network-only. Never cache accounts, exams or results.
+self.addEventListener('install', () => self.skipWaiting());
 
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', event => {
   event.waitUntil((async () => {
+    // Remove any caches left by older school service workers.
     const names = await caches.keys();
-    await Promise.all(names
-      .filter((name) => name.startsWith('ditmur-academy-'))
-      .map((name) => caches.delete(name)));
+    await Promise.all(names.filter(name => name.startsWith('ditmur-academy-')).map(name => caches.delete(name)));
     await self.clients.claim();
   })());
 });
 
-// Deliberately no fetch handler: the browser handles navigation and API
-// requests normally, including sign-out and the login page. Offline support
-// can be added later with a network-first, auth-safe strategy.
+// A fetch handler allows browsers to recognise the app as installable, but
+// navigations always use the live network. No private or public response is
+// stored offline; authenticated pages and API calls are never cached.
+self.addEventListener('fetch', event => {
+  if (event.request.mode === 'navigate') event.respondWith(fetch(event.request));
+});
