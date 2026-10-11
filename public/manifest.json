@@ -1,79 +1,35 @@
 {
+  "id": "/",
   "name": "Ditmur Academy",
   "short_name": "Ditmur",
   "description": "Ditmur Academy - Cultivating Excellence and Discipline",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0A192F",
   "theme_color": "#0033A0",
-  "orientation": "portrait",
-  "scope": "/",
   "lang": "en",
-  "categories": ["education", "school"],
+  "categories": [
+    "education"
+  ],
   "icons": [
-    {
-      "src": "/icons/icon-72x72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-96x96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-128x128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-144x144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-152x152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-384x384.png",
-      "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable any"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshots/desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Ditmur Academy Desktop View"
+      "purpose": "any"
     },
     {
-      "src": "/screenshots/mobile.png",
-      "sizes": "750x1334",
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
       "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Ditmur Academy Mobile View"
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
@@ -81,19 +37,37 @@
       "name": "Student Portal",
       "short_name": "Students",
       "url": "/login",
-      "icons": [{ "src": "/icons/student.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Parent Portal",
       "short_name": "Parents",
       "url": "/login",
-      "icons": [{ "src": "/icons/parent.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
-      "name": "Apply Now",
-      "short_name": "Apply",
+      "name": "Admissions Enquiry",
+      "short_name": "Admissions",
       "url": "/apply",
-      "icons": [{ "src": "/icons/apply.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

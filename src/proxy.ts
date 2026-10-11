@@ -6,7 +6,7 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   if (path.startsWith('/api/auth')) return NextResponse.next();
   const session = await auth();
-  const publicRoutes = ['/', '/login', '/apply', '/api/apply', '/programs/creche', '/programs/primary', '/programs/secondary', '/terms', '/privacy'];
+  const publicRoutes = ['/', '/login', '/apply', '/api/apply', '/programs/creche', '/programs/primary', '/programs/secondary', '/terms', '/privacy', '/manifest.json', '/sw.js'];
   const isPublic = publicRoutes.some(route => path === route || path.startsWith(route + '/'));
   if (!session?.user) {
     if (isPublic) return NextResponse.next();
