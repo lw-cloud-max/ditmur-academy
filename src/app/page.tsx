@@ -115,35 +115,35 @@ export default function LandingPage() {
       </div>
 
       {/* Navigation */}
-      <nav className="absolute inset-x-0 top-9 md:top-[72px] w-full z-50 px-4 sm:px-6 py-5 lg:px-12 flex justify-between items-center bg-transparent">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 sm:w-14 sm:h-14 flex items-center justify-center shadow-md">
-            <img src="/logo.jpg" alt="Ditmur Academy" className="w-full h-full object-contain mix-blend-multiply" />
+      <nav className="absolute inset-x-0 top-9 md:top-[72px] z-50 flex w-full items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3 shadow-sm sm:gap-4 sm:px-6 lg:px-12" aria-label="Public site navigation">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center bg-white sm:h-14 sm:w-14">
+            <img src="/logo.jpg" alt="Ditmur Academy crest" className="h-full w-full object-contain" />
           </div>
-          <div>
-            <span className="font-serif font-black text-[#0A192F] text-base sm:text-xl tracking-widest uppercase drop-shadow-md">Ditmur</span>
-            <span className="block font-serif font-bold text-[#0033A0] text-xs tracking-[0.3em] uppercase -mt-1">Academy</span>
+          <div className="min-w-0">
+            <span className="block whitespace-nowrap font-serif text-base font-bold leading-tight tracking-tight text-[#0A192F] sm:text-xl">Ditmur Academy</span>
+            <span className="block text-[9px] leading-tight text-slate-600 sm:text-[11px]">Cultivating Excellence and Discipline</span>
           </div>
         </div>
-        <div className="hidden lg:flex items-center gap-8">
+        <div className="hidden lg:flex items-center gap-5">
           <Link href="#about" className="text-slate-700 hover:text-[#0033A0] font-medium transition-colors">About</Link>
           <Link href="#programs" className="text-slate-700 hover:text-[#0033A0] font-medium transition-colors">Programs</Link>
           <Link href="#admissions" className="text-slate-700 hover:text-[#0033A0] font-medium transition-colors">Admissions</Link>
           <Link href="#school-life" className="text-slate-700 hover:text-[#0033A0] font-medium transition-colors">School Life</Link>
           <Link href="#contact" className="text-slate-700 hover:text-[#0033A0] font-medium transition-colors">Contact</Link>
         </div>
-        <div className="flex gap-4">
-          <Link href="/login" className="hidden sm:inline-flex px-6 py-2.5 bg-white/10 hover:bg-white/20 text-[#0A192F] border border-slate-200 backdrop-blur-md rounded-full font-bold text-sm transition-all shadow-sm">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <Link href="/login" className="hidden sm:inline-flex rounded-full border border-slate-200 px-4 py-2.5 text-sm font-bold text-[#0A192F] shadow-sm transition-all hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-[#0033A0]">
             Portal Login
           </Link>
-          <Link href="/apply" className="px-4 sm:px-6 py-2.5 bg-[#0033A0] hover:bg-[#002277] text-white rounded-full font-black text-sm transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5">
-            Admissions Enquiry
+          <Link href="/apply" className="rounded-full bg-[#FFD700] px-3 py-2.5 text-xs font-black text-[#0A192F] shadow-md transition-all hover:bg-[#f2c800] focus-visible:outline-2 focus-visible:outline-[#0033A0] sm:px-5 sm:text-sm">
+            <span className="sm:hidden">Admissions</span><span className="hidden sm:inline">Admissions Enquiry</span>
           </Link>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <div className="relative pt-32 pb-16 lg:pt-40 lg:pb-20 px-4 sm:px-6 lg:px-12 bg-gradient-to-br from-slate-50 to-blue-50 overflow-hidden">
+      <div className="relative pt-32 pb-16 lg:pt-36 lg:pb-20 px-4 sm:px-6 lg:px-12 bg-gradient-to-br from-slate-50 to-blue-50 overflow-hidden">
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-[#0033A0] rounded-full blur-[150px] opacity-5 -mr-64 -mt-64"></div>
         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[#FFD700] rounded-full blur-[150px] opacity-5 -ml-64 -mb-64"></div>
         
@@ -166,7 +166,12 @@ export default function LandingPage() {
                 Student & Parent Portal
               </Link>
             </div>
-            
+            <ul aria-label="School credentials" className="mt-5 grid grid-cols-2 gap-2 text-[11px] font-semibold text-[#0A192F] sm:flex sm:flex-wrap sm:text-xs">
+              <li className="flex min-w-0 items-center gap-1.5 rounded-lg border border-blue-200 bg-white/90 px-2.5 py-2"><CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0 text-[#0033A0]" /><span>Government-approved</span></li>
+              <li className="flex min-w-0 items-center gap-1.5 rounded-lg border border-blue-200 bg-white/90 px-2.5 py-2"><CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0 text-[#0033A0]" /><span>BECE centre</span></li>
+              <li className="flex min-w-0 items-center gap-1.5 rounded-lg border border-blue-200 bg-white/90 px-2.5 py-2"><CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0 text-[#0033A0]" /><span>WAEC centre</span></li>
+              <li className="flex min-w-0 items-center gap-1.5 rounded-lg border border-blue-200 bg-white/90 px-2.5 py-2"><CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0 text-[#0033A0]" /><span>Since 2014</span></li>
+            </ul>
           </div>
 
           <div className="relative min-w-0 mt-4 lg:mt-0 lg:col-start-2 lg:row-start-1 lg:row-span-2"
@@ -358,7 +363,7 @@ export default function LandingPage() {
               About Ditmur Academy
             </div>
             <h2 className="text-4xl lg:text-5xl font-black text-[#0A192F] mb-6 leading-tight">
-              Nurturing Young Minds Since Establishment
+              Nurturing Young Minds Since 2014
             </h2>
             <p className="text-slate-600 mb-6 leading-relaxed">
               Ditmur Academy was established to provide quality education for children from crèche to secondary school. 
