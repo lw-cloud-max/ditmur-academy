@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { parseInternalQuestionUpload } from '@/lib/internal-question-upload';
 import { 
   Search, Plus, Upload, Loader2, Trash2, CheckCircle2, Type, Database, 
   BookOpen, Edit2, X, Save, Sparkles, Wand2, GraduationCap, Filter
@@ -151,38 +152,21 @@ export default function InternalQuestionBankPage() {
 
   const handleBulkUpload = async () => {
     if (!bulkCsv.trim()) return;
+    if (!newQ.subjectId) {
+      alert('Select a subject before uploading questions.');
+      return;
+    }
+    const parsed = parseInternalQuestionUpload(bulkCsv);
+    if (parsed.errors.length) {
+      alert(parsed.errors.slice(0, 5).join('\n') + (parsed.errors.length > 5 ? `\nAnd ${parsed.errors.length - 5} more line error(s).` : ''));
+      return;
+    }
     setUploadingBulk(true);
     try {
-      const lines = bulkCsv.split('\n');
-      const parsedQuestions = [];
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        const parts = line.split('|').map(s => s.trim());
-        if (parts.length >= 6) {
-          const [text, optionA, optionB, optionC, optionD, correctAnswer, explanation, topic, difficulty] = parts;
-          if (text && optionA && optionB && optionC && optionD && correctAnswer) {
-            parsedQuestions.push({ 
-              subjectId: newQ.subjectId || subjects[0]?.id,
-              text, optionA, optionB, optionC, optionD, 
-              correctAnswer: correctAnswer.toUpperCase(), 
-              explanation: explanation || '',
-              topic: topic || '',
-              difficulty: difficulty || 'MEDIUM'
-            });
-          }
-        }
-      }
-      
-      if (parsedQuestions.length === 0) {
-        alert("No valid questions found. Format: Question | A | B | C | D | Answer | Explanation | Topic | Difficulty");
-        setUploadingBulk(false);
-        return;
-      }
-
-      const res = await fetch('/api/internal-question-bank', { 
-        method: 'PUT', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ questions: parsedQuestions }) 
+      const res = await fetch('/api/internal-question-bank', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions: parsed.questions.map(question => ({ ...question, subjectId: newQ.subjectId })) })
       });
       const data = await res.json();
       if (data.success) {
@@ -391,14 +375,22 @@ export default function InternalQuestionBankPage() {
         <div className="bg-emerald-50/50 rounded-xl border border-emerald-200 p-6">
           <h3 className="font-bold text-emerald-900 mb-2">Bulk Upload Questions</h3>
           <p className="text-sm text-emerald-700 mb-4">
-            Format: Question | Option A | Option B | Option C | Option D | Correct Answer | Explanation | Topic | Difficulty
+            Format: Question | Option A | Option B | Option C | Option D | Correct Answer (A, B, C or D). One question per line.
           </p>
+          <label className="mb-3 block text-sm font-semibold text-emerald-950">Subject for these questions
+            <select value={newQ.subjectId} onChange={e => setNewQ({ ...newQ, subjectId: e.target.value })}
+              className="mt-1 block w-full rounded-lg border border-emerald-200 bg-white p-3">
+              <option value="">Select a subject</option>
+              {subjects.map(subject => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
+            </select>
+          </label>
           <textarea
             value={bulkCsv}
             onChange={(e) => setBulkCsv(e.target.value)}
             rows={8}
+            aria-label="Bulk questions, one six-field question per line"
             className="w-full px-4 py-3 bg-white border border-emerald-200 rounded-xl text-sm font-mono outline-none"
-            placeholder="What is 2 + 2? | 3 | 4 | 5 | 6 | B | 2 + 2 = 4 | Arithmetic | EASY"
+            placeholder="What is 2 + 2? | 3 | 4 | 5 | 6 | B"
           />
           <div className="flex justify-end gap-3 pt-4">
             <button
