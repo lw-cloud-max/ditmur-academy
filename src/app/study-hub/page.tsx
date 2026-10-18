@@ -166,7 +166,7 @@ export default function StudyHubPage() {
         <div className="bg-white rounded-2xl border border-slate-200 p-16 text-center shadow-sm">
           <BrainCircuit className="w-16 h-16 text-slate-300 mx-auto mb-4" />
           <h3 className="text-xl font-bold text-slate-900 mb-2">No questions found</h3>
-          <p className="text-slate-500">The global question bank for this subject is currently empty.</p>
+          <p className="text-slate-600">No practice flashcards are available for this subject yet. Ask the school to add practice-approved questions to the general Question Bank. Graded Internal Exam questions and answer keys are not shown here.</p>
         </div>
       ) : selectedSubject && questions.length > 0 ? (
         <div className="flex flex-col items-center">

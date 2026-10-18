@@ -19,7 +19,7 @@ export default function CrechePage() {
               <Baby className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-black text-white">Crèche & Nursery</h1>
+              <h1 className="text-4xl font-black text-white">Early Years</h1>
               <p className="text-pink-100 mt-2">Ages 1-3 years • Play-based Learning</p>
             </div>
           </div>
@@ -32,7 +32,7 @@ export default function CrechePage() {
           <div>
             <h2 className="text-3xl font-black text-slate-900 mb-6">Nurturing Your Little Ones</h2>
             <p className="text-slate-600 leading-relaxed mb-6">
-              Our Crèche & Nursery program provides a warm, safe, and stimulating environment where your child can explore, learn, and grow. We understand that the early years are crucial for development, and our dedicated staff ensures every child feels valued and supported.
+              Our Early Years programme provides a warm, safe, and stimulating environment where your child can explore, learn, and grow. We understand that the early years are crucial for development, and our dedicated staff ensures every child feels valued and supported.
             </p>
 
             <div className="space-y-4 mb-8">
@@ -67,14 +67,14 @@ export default function CrechePage() {
           {/* Real crèche photos provided by the school */}
           <section aria-labelledby="creche-gallery-title" className="space-y-4">
             <div>
-              <h2 id="creche-gallery-title" className="text-xl font-bold text-slate-900">A look inside our crèche</h2>
+              <h2 id="creche-gallery-title" className="text-xl font-bold text-slate-900">A look inside Early Years</h2>
               <p className="text-sm text-slate-600 mt-1">A colourful space for play, rest and discovery.</p>
             </div>
             <figure className="overflow-hidden rounded-2xl border border-pink-100 bg-pink-50 shadow-sm">
               <div className="relative aspect-[16/10]">
                 <Image
                   src="/images/creche/rest-space-wide.webp"
-                  alt="Crèche room with colourful play mats, cushions and rest spaces"
+                  alt="Early Years room with colourful play mats, cushions and rest spaces"
                   fill
                   sizes="(max-width: 1024px) 100vw, 50vw"
                   priority
@@ -88,7 +88,7 @@ export default function CrechePage() {
                 <div className="relative aspect-[3/4]">
                   <Image
                     src="/images/creche/room-play-shelf.webp"
-                    alt="Crèche play area with toys on a shelf and floor mats"
+                    alt="Early Years play area with toys on a shelf and floor mats"
                     fill
                     sizes="(max-width: 640px) 48vw, (max-width: 1024px) 45vw, 24vw"
                     className="object-cover object-center"
@@ -100,7 +100,7 @@ export default function CrechePage() {
                 <div className="relative aspect-[3/4]">
                   <Image
                     src="/images/creche/room-rest-area.webp"
-                    alt="Crèche rest area with cushioned mats and colourful curtains"
+                    alt="Early Years rest area with cushioned mats and colourful curtains"
                     fill
                     sizes="(max-width: 640px) 48vw, (max-width: 1024px) 45vw, 24vw"
                     className="object-cover object-center"

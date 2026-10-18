@@ -128,20 +128,47 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, ...updateData } = await req.json();
-
-    if (!id) {
-      return NextResponse.json({ success: false, error: 'Question ID required' }, { status: 400 });
+    const body = await req.json();
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ success: false, error: 'Invalid question update' }, { status: 400 });
     }
+    const id = typeof body.id === 'string' ? body.id.trim() : '';
+    if (!id) return NextResponse.json({ success: false, error: 'Question ID required' }, { status: 400 });
 
-    if (updateData.correctAnswer) {
-      updateData.correctAnswer = updateData.correctAnswer.toUpperCase();
+    // GET includes subject/class relations and timestamps. Never pass those
+    // objects back into Prisma's update data; accept editable fields only.
+    const data: {
+      text?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string;
+      correctAnswer?: string; explanation?: string | null; topic?: string | null; difficulty?: string;
+    } = {};
+    for (const field of ['text', 'optionA', 'optionB', 'optionC', 'optionD'] as const) {
+      if (body[field] === undefined) continue;
+      if (typeof body[field] !== 'string' || !body[field].trim()) {
+        return NextResponse.json({ success: false, error: `${field} cannot be empty` }, { status: 400 });
+      }
+      data[field] = body[field].trim();
     }
+    if (body.correctAnswer !== undefined) {
+      const answer = typeof body.correctAnswer === 'string' ? body.correctAnswer.trim().toUpperCase() : '';
+      if (!/^[ABCD]$/.test(answer)) return NextResponse.json({ success: false, error: 'Answer must be A, B, C or D' }, { status: 400 });
+      data.correctAnswer = answer;
+    }
+    for (const field of ['explanation', 'topic'] as const) {
+      if (body[field] === undefined) continue;
+      if (body[field] !== null && typeof body[field] !== 'string') {
+        return NextResponse.json({ success: false, error: `${field} must be text` }, { status: 400 });
+      }
+      data[field] = typeof body[field] === 'string' ? body[field].trim() || null : null;
+    }
+    if (body.difficulty !== undefined) {
+      if (!['EASY', 'MEDIUM', 'HARD'].includes(body.difficulty)) {
+        return NextResponse.json({ success: false, error: 'Invalid difficulty' }, { status: 400 });
+      }
+      data.difficulty = body.difficulty;
+    }
+    if (!Object.keys(data).length) return NextResponse.json({ success: false, error: 'No editable changes supplied' }, { status: 400 });
 
-    const question = await prisma.internalQuestionBank.update({
-      where: { id },
-      data: updateData
-    });
+    const question = await prisma.internalQuestionBank.update({ where: { id }, data });
 
     return NextResponse.json({ success: true, data: question });
   } catch (error) {

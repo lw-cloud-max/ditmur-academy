@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { ArrowLeft, Shield, FileText, Scale, Users, Lock, Eye, Globe, Mail, Phone, MapPin } from 'lucide-react';
+import { ArrowLeft, Shield, FileText, Scale, Users, Lock, Eye, Globe, Mail, Phone, MapPin, MessageCircle } from 'lucide-react';
 
 export default function TermsPage() {
   return (
@@ -128,16 +128,20 @@ export default function TermsPage() {
               <p className="text-slate-600 mb-4">If you have any questions about these Terms, please contact us:</p>
               <div className="space-y-2">
                 <p className="flex items-center gap-2 text-slate-700">
-                  <Mail className="w-4 h-4 text-[#0033A0]" />
-                  info@ditmuracademy.edu.ng
+                  <Mail className="w-4 h-4 shrink-0 text-[#0033A0]" aria-hidden="true" />
+                  <a href="mailto:ditmuracademy@gmail.com" className="underline underline-offset-2 hover:text-[#0033A0]">ditmuracademy@gmail.com</a>
                 </p>
                 <p className="flex items-center gap-2 text-slate-700">
-                  <Phone className="w-4 h-4 text-[#0033A0]" />
-                  +234 801 234 5678
+                  <Phone className="w-4 h-4 shrink-0 text-[#0033A0]" aria-hidden="true" />
+                  <a href="tel:+2348038164705" className="underline underline-offset-2 hover:text-[#0033A0]">08038164705 — Call the school</a>
                 </p>
                 <p className="flex items-center gap-2 text-slate-700">
-                  <MapPin className="w-4 h-4 text-[#0033A0]" />
-                  123 Academy Road, Lagos, Nigeria
+                  <MessageCircle className="w-4 h-4 shrink-0 text-[#0033A0]" aria-hidden="true" />
+                  <a href="https://wa.me/2349018009872" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-[#0033A0]">09018009872 — WhatsApp the school</a>
+                </p>
+                <p className="flex items-start gap-2 text-slate-700">
+                  <MapPin className="mt-1 w-4 h-4 shrink-0 text-[#0033A0]" aria-hidden="true" />
+                  <span>11, Adeshina Close Off Pipeline, Ishasi Akute, Ogun State</span>
                 </p>
               </div>
             </div>

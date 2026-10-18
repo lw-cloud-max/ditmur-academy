@@ -122,10 +122,17 @@ export default function InternalQuestionBankPage() {
       const res = await fetch('/api/internal-question-bank', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editQ)
+        body: JSON.stringify({
+          id: editQ.id,
+          text: editQ.text,
+          optionA: editQ.optionA, optionB: editQ.optionB,
+          optionC: editQ.optionC, optionD: editQ.optionD,
+          correctAnswer: editQ.correctAnswer,
+          explanation: editQ.explanation, topic: editQ.topic, difficulty: editQ.difficulty
+        })
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setEditingId(null);
         fetchQuestions();
         alert('Question updated!');
