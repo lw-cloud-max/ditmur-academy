@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { 
   ArrowRight, BookOpen, GraduationCap, ShieldCheck, Sparkles, Trophy,
-  MapPin, Phone, Mail, ChevronRight,
+  MapPin, Phone, Mail, ChevronRight, MessageCircle,
   Baby, Heart, Clock, CheckCircle2, Pencil,
   BookOpenCheck, Smile, ChevronLeft, Pause, Play
 } from 'lucide-react';
@@ -28,15 +28,15 @@ const HERO_SLIDES = [
   },
   {
     title: 'A warm start for little learners',
-    detail: 'Explore our Crèche & Nursery',
+    detail: 'Explore our Early Years',
     href: '/programs/creche',
     mobile: '/images/creche/room-play-shelf.webp',
     desktop: '/images/creche/rest-space-wide.webp',
-    alt: 'Colourful crèche learning and rest space at Ditmur Academy'
+    alt: 'Colourful Early Years learning and rest space at Ditmur Academy'
   }
 ] as const;
 
-const TICKER_TEXT = 'DITMUR ACADEMY  •  CULTIVATING EXCELLENCE AND DISCIPLINE  •  CRÈCHE  •  PRIMARY  •  SECONDARY  •  EXPLORE OUR PROGRAMMES  •  ASK ABOUT ADMISSIONS  •  ';
+const TICKER_TEXT = 'DITMUR ACADEMY  •  CULTIVATING EXCELLENCE AND DISCIPLINE  •  EARLY YEARS  •  PRIMARY  •  SECONDARY  •  EXPLORE OUR PROGRAMMES  •  ASK ABOUT ADMISSIONS  •  ';
 
 export default function LandingPage() {
   const [activeSlide, setActiveSlide] = useState(0);
@@ -156,7 +156,7 @@ export default function LandingPage() {
               Cultivating <span className="text-[#0033A0]">Excellence</span> <br/>& Discipline.
             </h1>
             <p className="text-base sm:text-lg text-slate-600 mb-6 max-w-lg leading-relaxed">
-              From crèche to secondary school, Ditmur Academy provides a caring education that builds strong foundations, nurtures creativity, and prepares your child for a successful future.
+              From Early Years through secondary school, Ditmur Academy provides a caring education that builds strong foundations, nurtures creativity, and prepares your child for a successful future.
             </p>
             <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-3 sm:gap-4">
               <Link href="/apply" className="min-w-0 w-full sm:w-auto lg:w-full xl:w-auto px-5 sm:px-6 py-3.5 bg-[#0033A0] hover:bg-[#002277] text-white rounded-xl font-black text-base sm:text-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-center hover:-translate-y-1">
@@ -226,7 +226,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-6 border-t border-slate-200 lg:col-start-1 lg:row-start-2 w-full min-w-0">
             <div className="rounded-xl border border-pink-100 bg-pink-50 p-3 sm:p-4 min-w-0">
               <p className="text-base sm:text-xl font-black text-pink-700">Care</p>
-              <p className="text-[11px] sm:text-sm text-slate-600 font-medium leading-tight mt-1">Crèche & Nursery</p>
+              <p className="text-[11px] sm:text-sm text-slate-600 font-medium leading-tight mt-1">Early Years</p>
             </div>
             <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 sm:p-4 min-w-0">
               <p className="text-base sm:text-xl font-black text-[#0033A0]">Curiosity</p>
@@ -257,7 +257,7 @@ export default function LandingPage() {
               <div className="w-16 h-16 bg-pink-100 text-pink-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <Baby className="w-8 h-8" />
               </div>
-              <h3 className="text-2xl font-black text-slate-900 mb-3">Crèche & Nursery</h3>
+              <h3 className="text-2xl font-black text-slate-900 mb-3">Early Years</h3>
               <p className="text-slate-600 leading-relaxed mb-4">
                 A safe, nurturing environment for your little ones. We focus on early childhood development through play-based learning, creativity, and social skills.
               </p>
@@ -366,11 +366,11 @@ export default function LandingPage() {
               Nurturing Young Minds Since 2014
             </h2>
             <p className="text-slate-600 mb-6 leading-relaxed">
-              Ditmur Academy was established to provide quality education for children from crèche to secondary school. 
+              Ditmur Academy was established to provide quality education for children from Early Years through secondary school. 
               We are committed to nurturing well-rounded individuals who excel academically, morally, and socially.
             </p>
             <p className="text-slate-600 mb-8 leading-relaxed">
-              Across our crèche, primary and secondary programmes, we aim to create a welcoming environment where
+              Across our Early Years, primary and secondary programmes, we aim to create a welcoming environment where
               every child can discover their potential and thrive.
             </p>
             <div className="grid grid-cols-2 gap-4 mb-8">
@@ -505,11 +505,15 @@ export default function LandingPage() {
                 </div>
               </div>
               <p className="text-blue-300 text-sm leading-relaxed mb-6">
-                Nurturing Future Leaders. Providing quality crèche, primary, and secondary education in a safe and caring environment.
+                Nurturing Future Leaders. Providing quality Early Years, primary, and secondary education in a safe and caring environment.
               </p>
               <div className="flex gap-4">
                 {['Facebook', 'Twitter', 'Instagram', 'WhatsApp'].map((social, i) => (
-                  <a key={i} href="#" className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center hover:bg-[#FFD700] hover:text-[#0A192F] transition-all text-sm font-bold">
+                  <a key={i} href={social === 'WhatsApp' ? 'https://wa.me/2349018009872' : '#'}
+                    target={social === 'WhatsApp' ? '_blank' : undefined}
+                    rel={social === 'WhatsApp' ? 'noopener noreferrer' : undefined}
+                    aria-label={social === 'WhatsApp' ? 'WhatsApp Ditmur Academy at 09018009872' : social}
+                    className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center hover:bg-[#FFD700] hover:text-[#0A192F] transition-all text-sm font-bold">
                     {social[0]}
                   </a>
                 ))}
@@ -530,7 +534,7 @@ export default function LandingPage() {
             <div>
               <h3 className="font-bold text-lg mb-6">Programs</h3>
               <ul className="space-y-3">
-                {['Crèche & Nursery', 'Primary School', 'Secondary School', 'After School Care', 'Holiday Programs'].map((link, i) => (
+                {['Early Years', 'Primary School', 'Secondary School', 'After School Care', 'Holiday Programs'].map((link, i) => (
                   <li key={i}>
                     <a href="#" className="text-blue-300 hover:text-[#FFD700] transition-colors text-sm">{link}</a>
                   </li>
@@ -546,11 +550,17 @@ export default function LandingPage() {
                   <p className="text-blue-300 text-sm">11, Adeshina Close Off Pipeline, Ishasi Akute, Ogun State</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Phone className="w-5 h-5 text-[#FFD700] shrink-0" />
-                  <div className="text-blue-300 text-sm">
-                    <p>08038164705</p>
-                    <p>09069937111</p>
+                  <a href="tel:+2348038164705" aria-label="Call Ditmur Academy at 08038164705" className="shrink-0 rounded focus-visible:outline-2 focus-visible:outline-[#FFD700]">
+                    <Phone className="w-5 h-5 text-[#FFD700]" aria-hidden="true" />
+                  </a>
+                  <div className="flex flex-col text-blue-300 text-sm">
+                    <a href="tel:+2348038164705" className="hover:text-white hover:underline">08038164705</a>
+                    <a href="tel:+2349069937111" className="hover:text-white hover:underline">09069937111</a>
                   </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <MessageCircle className="w-5 h-5 shrink-0 text-[#FFD700]" aria-hidden="true" />
+                  <a href="https://wa.me/2349018009872" target="_blank" rel="noopener noreferrer" className="text-blue-300 text-sm hover:text-white hover:underline">WhatsApp: 09018009872</a>
                 </div>
                 <div className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-[#FFD700] shrink-0" />
