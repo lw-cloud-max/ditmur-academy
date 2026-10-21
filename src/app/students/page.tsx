@@ -67,19 +67,18 @@ export default function StudentsPage() {
     fetchData();
   }, [userRole, session?.user?.id]);
 
-  const handleDeleteStudent = async (id: string, name: string) => {
-    if (!window.confirm(`Are you absolutely sure you want to delete ${name}?`)) return;
-
+  const handleMarkInactive = async (id: string, name: string) => {
+    if (!window.confirm(`Mark ${name} as inactive because they have left the school? Their grades, invoices and other records will be kept, and Student login will stop.`)) return;
     try {
-      const res = await fetch(`/api/students?id=${id}`, { method: 'DELETE' });
+      const res = await fetch('/api/students/status', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action: 'MARK_INACTIVE', confirmed: true })
+      });
       const data = await res.json();
-      if (data.success) {
-        setStudents(students.filter(student => student.id !== id));
-      } else {
-        alert(data.error);
-      }
-    } catch (err) {
-      alert("An error occurred while deleting the student.");
+      if (!res.ok || !data.success) throw new Error(data.error || 'Could not update Student status');
+      setStudents(current => current.filter(student => student.id !== id));
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Could not mark Student inactive');
     }
   };
 
@@ -374,11 +373,11 @@ export default function StudentsPage() {
                                 <MessageSquare className="w-4 h-4 text-slate-400" /> Message Parent
                               </button>
 
-                              {!isReadOnly && (
+                              {isSuperAdmin && (
                                 <>
                                   <div className="h-px bg-slate-100 my-2"></div>
-                                  <button onClick={() => { handleDeleteStudent(student.id, `${student.firstName} ${student.lastName}`); setActiveDropdown(null); }} className="w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors font-medium">
-                                    <Trash2 className="w-4 h-4 text-red-500" /> Delete Student
+                                  <button onClick={() => { void handleMarkInactive(student.id, `${student.firstName} ${student.lastName}`); setActiveDropdown(null); }} className="w-full px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 flex items-center gap-2 transition-colors font-medium">
+                                    <Trash2 className="w-4 h-4 text-amber-600" /> Mark Inactive (left school)
                                   </button>
                                 </>
                               )}
