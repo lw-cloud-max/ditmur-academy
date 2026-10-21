@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const students = await prisma.student.findMany({
+      where: { status: 'ACTIVE' },
       include: {
         grades: { include: { subject: true } },
         cbtResults: true,
