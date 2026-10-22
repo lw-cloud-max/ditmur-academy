@@ -64,15 +64,28 @@ export default function ManageInternalExamQuestions() {
   };
 
   const handleUpdateQuestion = async (e: React.FormEvent) => {
-    e.preventDefault(); setSavingEdit(true);
+    e.preventDefault();
+    if (!editQ?.id) { alert('Question ID is missing. Close the editor and refresh the exam.'); return; }
+    setSavingEdit(true);
     try {
-      const res = await fetch('/api/internal-exams/questions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editQ) });
-      const data = await res.json();
-      if (data.success) {
-        setEditingId(null);
-        fetchData();
-      } else alert(data.error);
-    } catch (err) {} finally { setSavingEdit(false); }
+      // Send only editable columns; GET response fields such as exam relations
+      // and timestamps are not question update fields.
+      const res = await fetch('/api/internal-exams/questions', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editQ.id, text: editQ.text, imageUrl: editQ.imageUrl || null,
+          optionA: editQ.optionA, optionB: editQ.optionB, optionC: editQ.optionC, optionD: editQ.optionD,
+          correctAnswer: editQ.correctAnswer, marks: Number(editQ.marks) })
+      });
+      const raw = await res.text();
+      let data: { success?: boolean; error?: string };
+      try { data = JSON.parse(raw); }
+      catch { throw new Error(`Unexpected server response (${res.status}). Refresh the exam and try again.`); }
+      if (!res.ok || data.success !== true) throw new Error(data.error || `Update failed (${res.status})`);
+      setEditingId(null);
+      await fetchData();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to update exam question');
+    } finally { setSavingEdit(false); }
   };
 
   const handleDeleteQuestion = async (id: string) => {
