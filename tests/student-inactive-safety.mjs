@@ -48,7 +48,8 @@ test('ordinary staff, malformed requests and already inactive pupils cannot chan
 test('old permanent DELETE path always refuses and does not call Prisma', async () => {
   const route = load('src/app/api/students/route.ts', {
     'next/server': next, '@/auth': { auth: async () => null },
-    '@/lib/prisma': { prisma: { student: { delete: () => { throw Error('Must never delete'); } } } }
+    '@/lib/prisma': { prisma: { student: { delete: () => { throw Error('Must never delete'); } } } },
+    '@/lib/permissions': { isSuperAdmin: () => false }
   });
   const res = await route.DELETE();
   assert.equal(res.status, 405);

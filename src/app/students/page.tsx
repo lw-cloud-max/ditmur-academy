@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import TemporaryPasswordNotice, { type IssuedCredential } from '@/components/TemporaryPasswordNotice';
 import { 
@@ -8,6 +8,19 @@ import {
   Eye, Edit, BookOpen, Link as LinkIcon, KeyRound, Mail, MessageSquare, X, ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
+
+type ExistingParentOption = {
+  id: string; fullName: string; email: string | null; phone: string;
+  students: { id: string; firstName: string; lastName: string; class: { name: string } | null }[];
+};
+async function readApiResponse(response: Response): Promise<Record<string, unknown>> {
+  const raw = await response.text();
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (value && typeof value === 'object' && !Array.isArray(value)) return value as Record<string, unknown>;
+  } catch { /* return a clear message below instead of a browser JSON exception */ }
+  throw new Error(`The server returned an unexpected response (${response.status}). Please refresh and retry.`);
+}
 
 export default function StudentsPage() {
   const { data: session } = useSession();
@@ -30,7 +43,13 @@ export default function StudentsPage() {
   // Form states
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', dob: '', gender: '', status: '' });
   const [classForm, setClassForm] = useState({ classId: '' });
-  const [parentForm, setParentForm] = useState({ parentName: '', email: '', phone: '' });
+  const [parentSearch, setParentSearch] = useState('');
+  const [parentOptions, setParentOptions] = useState<ExistingParentOption[]>([]);
+  const [selectedParentId, setSelectedParentId] = useState('');
+  const [parentSearchLoading, setParentSearchLoading] = useState(false);
+  const [parentSearchError, setParentSearchError] = useState('');
+  const parentSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const parentSearchAbort = useRef<AbortController | null>(null);
   const [messageForm, setMessageForm] = useState({ message: '', subject: 'Message from School' });
   
   // Search and filter state
@@ -98,62 +117,105 @@ export default function StudentsPage() {
     } else if (type === 'class') {
       setClassForm({ classId: student.classId || '' });
     } else if (type === 'parent') {
-      setParentForm({
-        parentName: student.parent?.fullName || '',
-        email: student.parent?.email || '',
-        phone: student.parent?.phone || ''
-      });
+      if (parentSearchTimer.current) clearTimeout(parentSearchTimer.current);
+      parentSearchAbort.current?.abort();
+      setParentSearch(''); setParentOptions([]); setSelectedParentId('');
+      setParentSearchLoading(false); setParentSearchError('');
     } else if (type === 'message') {
       setMessageForm({ message: '', subject: 'Message from School Admin' });
     }
   };
 
+  const searchExistingParents = (studentId: string, value: string) => {
+    if (parentSearchTimer.current) clearTimeout(parentSearchTimer.current);
+    parentSearchAbort.current?.abort();
+    setParentSearchError('');
+    const query = value.trim();
+    if (query.length < 2) {
+      setParentOptions([]); setParentSearchLoading(false);
+      if (query.length) setParentSearchError('Enter at least two characters to search existing Parent records.');
+      return;
+    }
+    setParentSearchLoading(true);
+    parentSearchTimer.current = setTimeout(async () => {
+      const controller = new AbortController(); parentSearchAbort.current = controller;
+      try {
+        const params = new URLSearchParams({ studentId, search: query });
+        const response = await fetch(`/api/students/parent-options?${params}`, { cache: 'no-store', signal: controller.signal });
+        const data = await readApiResponse(response);
+        if (!response.ok || data.success !== true) throw new Error(typeof data.error === 'string' ? data.error : `Search failed (${response.status})`);
+        const options = Array.isArray(data.data) ? data.data as ExistingParentOption[] : [];
+        setParentOptions(options);
+        setParentSearchError(options.length ? '' : 'No existing Parent record matched. Ask the super admin to verify or create the guardian record first.');
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return;
+        setParentOptions([]);
+        setParentSearchError(error instanceof Error ? error.message : 'Could not search Parent records.');
+      } finally { if (!controller.signal.aborted) setParentSearchLoading(false); }
+    }, 250);
+  };
+
   const handleActionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedStudent) return;
     setIsSubmitting(true);
-
     try {
       if (modalType === 'message') {
-        await fetch('/api/messaging', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            audience: 'specific_student',
-            type: 'email',
-            subject: messageForm.subject,
-            message: `Dear ${selectedStudent.parent?.fullName || 'Parent/Guardian'},\n\n${messageForm.message}`
-          })
+        const response = await fetch('/api/messaging', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ audience: 'specific_student', type: 'email', subject: messageForm.subject,
+            message: `Dear ${selectedStudent.parent?.fullName || 'Parent/Guardian'},\n\n${messageForm.message}` })
         });
-        alert('Message sent successfully!');
+        const result = await readApiResponse(response);
+        if (!response.ok || result.success !== true) throw new Error(typeof result.error === 'string' ? result.error : 'Message was not sent');
+        alert(typeof result.message === 'string' ? result.message : 'Message request accepted.');
       } else {
-        let payload: any = { id: selectedStudent.id };
-        
+        let payload: Record<string, unknown> = { id: selectedStudent.id };
         if (modalType === 'edit') {
-          payload = { ...payload, action: 'update_student', ...editForm };
+          if (!isSuperAdmin) throw new Error('Super admin required to edit student records.');
+          payload = { ...payload, action: 'update_student', firstName: editForm.firstName,
+            lastName: editForm.lastName, dob: editForm.dob, gender: editForm.gender };
         } else if (modalType === 'class') {
-          payload = { ...payload, action: 'assign_class', ...classForm };
+          if (!isSuperAdmin) throw new Error('Only the super admin can move a student to another class.');
+          if (!classForm.classId) throw new Error('Select the correct class first.');
+          if (classForm.classId === selectedStudent.classId) throw new Error('Student is already in that class.');
+          if (!window.confirm(`Move ${selectedStudent.firstName} ${selectedStudent.lastName} to the selected class? Existing Parent links and records stay attached. Historical class reports may be affected.`)) return;
+          payload = { ...payload, action: 'assign_class', classId: classForm.classId,
+            expectedClassId: selectedStudent.classId || null, confirmed: true };
         } else if (modalType === 'parent') {
-          payload = { ...payload, action: 'link_parent', ...parentForm };
+          if (!selectedParentId) throw new Error('Search for and select an existing Parent account.');
+          const choice = parentOptions.find(parent => parent.id === selectedParentId);
+          if (!choice) throw new Error('Search again and select a current Parent record.');
+          const from = selectedStudent.parent?.fullName || 'no Parent linked';
+          if (!window.confirm(`Link ${selectedStudent.firstName} ${selectedStudent.lastName} to ${choice.fullName} (${choice.phone})? Current link: ${from}. This selects an existing Parent account; it does not create one.`)) return;
+          payload = { ...payload, action: 'link_parent', parentId: selectedParentId,
+            expectedParentId: selectedStudent.parentId || null, confirmed: true };
+        } else {
+          throw new Error('Choose a supported student action.');
         }
 
-        const res = await fetch('/api/students', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        const data = await res.json();
-        if (!data.success) throw new Error(data.error);
-        
-        fetchData(); // Refresh UI
+        const sendUpdate = async (dataToSend: Record<string, unknown>) => {
+          const response = await fetch('/api/students', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataToSend) });
+          return { response, data: await readApiResponse(response) };
+        };
+        let result = await sendUpdate(payload);
+        if (modalType === 'class' && result.data.needsHistoryConfirmation === true && result.data.historyCounts && typeof result.data.historyCounts === 'object') {
+          const counts = result.data.historyCounts as Record<string, unknown>;
+          const summary = Object.entries(counts).filter(([, count]) => typeof count === 'number' && count > 0)
+            .map(([label, count]) => `${label}: ${count}`).join('\n');
+          const proceed = window.confirm(`This student has existing records:\n${summary}\n\nThe records are retained, but historical class reports may be affected by changing the current class. Confirm the placement change?`);
+          if (!proceed) return;
+          result = await sendUpdate({ ...payload, historyConfirmed: true });
+        }
+        if (!result.response.ok || result.data.success !== true) {
+          throw new Error(typeof result.data.error === 'string' ? result.data.error : `Update failed (${result.response.status})`);
+        }
+        await fetchData();
       }
-
       setModalType(null);
-    } catch (err: any) {
-      alert(err.message || 'Failed to complete action');
-    } finally {
-      setIsSubmitting(false);
-    }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to complete action');
+    } finally { setIsSubmitting(false); }
   };
 
   const resetStudentPassword = async (id: string) => {
@@ -354,15 +416,15 @@ export default function StudentsPage() {
                                 <Eye className="w-4 h-4 text-slate-400" /> View Profile
                               </Link>
                               
-                              <button onClick={() => openModal(student, 'edit')} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
+                              {isSuperAdmin && <button onClick={() => openModal(student, 'edit')} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
                                 <Edit className="w-4 h-4 text-slate-400" /> Edit Student
-                              </button>
-                              <button onClick={() => openModal(student, 'class')} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
-                                <BookOpen className="w-4 h-4 text-slate-400" /> Assign Class
-                              </button>
-                              <button onClick={() => openModal(student, 'parent')} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
-                                <LinkIcon className="w-4 h-4 text-slate-400" /> Link Parent/Guardian
-                              </button>
+                              </button>}
+                              {isSuperAdmin && <button onClick={() => openModal(student, 'class')} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
+                                <BookOpen className="w-4 h-4 text-slate-400" /> Move to Another Class
+                              </button>}
+                              {(isSuperAdmin || (userRole === 'STAFF' && ['TEACHER', 'ACCOUNTANT_TEACHER'].includes(session?.user?.staffRole || '') && student.class?.teacherId === session?.user?.id)) && <button onClick={() => openModal(student, 'parent')} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
+                                <LinkIcon className="w-4 h-4 text-slate-400" /> Link Existing Parent
+                              </button>}
                               
                               <div className="h-px bg-slate-100 my-2"></div>
                               
@@ -439,45 +501,53 @@ export default function StudentsPage() {
                       </select>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Student Status</label>
-                    <select required value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm outline-none">
-                      <option value="ACTIVE">Active</option>
-                      <option value="INACTIVE">Inactive</option>
-                      <option value="GRADUATED">Graduated</option>
-                      <option value="SUSPENDED">Suspended</option>
-                    </select>
-                  </div>
+                  <p className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">Student status is managed separately so departure records and login access remain consistent.</p>
                 </>
               )}
 
               {/* ASSIGN CLASS */}
               {modalType === 'class' && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Select Class for {selectedStudent?.firstName}</label>
-                  <select required value={classForm.classId} onChange={e => setClassForm({classId: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm outline-none">
-                    <option value="">-- Unassigned --</option>
-                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Move {selectedStudent?.firstName} {selectedStudent?.lastName} from {selectedStudent?.class?.name || 'Unassigned'} to
+                    <select required value={classForm.classId} onChange={e => setClassForm({classId: e.target.value})} className="mt-1 w-full rounded-lg border bg-slate-50 px-3 py-3 text-sm outline-none">
+                      <option value="">Choose the correct class</option>
+                      {classes.filter(c => c.id !== selectedStudent?.classId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </label>
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">Super admin only. The Student ID, Parent link, grades, attendance, exam attempts and invoices are retained. If class-based history exists, you will review its counts and confirm again before moving.</p>
                 </div>
               )}
 
-              {/* LINK PARENT */}
+              {/* LINK EXISTING PARENT */}
               {modalType === 'parent' && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Parent Full Name</label>
-                    <input type="text" required value={parentForm.parentName} onChange={e => setParentForm({...parentForm, parentName: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm outline-none" placeholder="e.g. John Doe" />
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-700">Student: <strong>{selectedStudent?.firstName} {selectedStudent?.lastName}</strong> · {selectedStudent?.class?.name || 'Unassigned'}</p>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+                    <span className="font-semibold text-slate-600">Current Parent:</span>{' '}
+                    <span className="text-slate-900">{selectedStudent?.parent?.fullName || 'None linked'}</span>
+                    {selectedStudent?.parent?.phone && <span className="block text-xs text-slate-600">{selectedStudent.parent.phone}</span>}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
-                    <input type="email" required value={parentForm.email} onChange={e => setParentForm({...parentForm, email: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm outline-none" placeholder="john@example.com" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
-                    <input type="tel" required value={parentForm.phone} onChange={e => setParentForm({...parentForm, phone: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm outline-none" placeholder="+1 234 567 8900" />
-                  </div>
-                </>
+                  <label className="block text-sm font-semibold text-slate-800">Search existing Parent accounts by name, email or phone
+                    <input type="search" value={parentSearch}
+                      onChange={event => { const value = event.target.value; setParentSearch(value); searchExistingParents(selectedStudent.id, value); }}
+                      autoComplete="off" placeholder="Type at least 2 characters" className="mt-1 w-full rounded-lg border bg-slate-50 px-3 py-3 text-sm font-normal" />
+                  </label>
+                  <p className="text-xs text-slate-600">Only existing Parent records are shown. No Parent is created or their details changed here. Class teachers can link only a student in their assigned class; super admin can link any active student.</p>
+                  {parentSearchLoading && <p role="status" className="text-sm text-blue-800">Searching existing Parent records…</p>}
+                  {parentSearchError && <p role={parentOptions.length ? 'status' : 'alert'} className="text-sm text-amber-900">{parentSearchError}</p>}
+                  {parentOptions.length > 0 && <fieldset className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-2">
+                    <legend className="px-1 text-xs font-semibold text-slate-600">Choose the verified guardian record</legend>
+                    {parentOptions.map(parent => <button key={parent.id} type="button" aria-pressed={selectedParentId === parent.id}
+                      onClick={() => setSelectedParentId(parent.id)}
+                      className={`w-full rounded-lg border p-3 text-left focus-visible:outline-2 focus-visible:outline-[#0033A0] ${selectedParentId === parent.id ? 'border-blue-700 bg-blue-50 ring-2 ring-blue-200' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                      <span className="block font-bold text-slate-900">{parent.fullName}</span>
+                      <span className="block break-all text-xs text-slate-700">{parent.email || 'No email'} · {parent.phone}</span>
+                      {parent.students.length > 0 && <span className="mt-1 block text-xs text-slate-600">Active linked children: {parent.students.map(child => `${child.firstName} ${child.lastName}${child.class?.name ? ` (${child.class.name})` : ''}`).join(', ')}</span>}
+                      <span className="mt-1 block text-[10px] text-slate-500">Record {parent.id}</span>
+                    </button>)}
+                  </fieldset>}
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">Changing the link does not move or delete invoices/grades. Existing Parent-specific chat or SMS history remains with the original Parent account; contact the super admin if history also needs review.</p>
+                </div>
               )}
 
               {/* MESSAGE PARENT */}
