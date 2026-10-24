@@ -264,7 +264,7 @@ export default function LandingPage() {
               <ul className="space-y-2 mb-6">
                 <li className="flex items-center gap-2 text-sm text-slate-700">
                   <CheckCircle2 className="w-4 h-4 text-pink-500" />
-                  Ages 1-3 years
+                  Ages 3 months to 5 years
                 </li>
                 <li className="flex items-center gap-2 text-sm text-slate-700">
                   <CheckCircle2 className="w-4 h-4 text-pink-500" />
@@ -292,7 +292,7 @@ export default function LandingPage() {
               <ul className="space-y-2 mb-6">
                 <li className="flex items-center gap-2 text-sm text-slate-700">
                   <CheckCircle2 className="w-4 h-4 text-blue-500" />
-                  Ages 4-10 years
+                  Ages 6-10 years
                 </li>
                 <li className="flex items-center gap-2 text-sm text-slate-700">
                   <CheckCircle2 className="w-4 h-4 text-blue-500" />

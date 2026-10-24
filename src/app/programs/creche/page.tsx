@@ -20,7 +20,7 @@ export default function CrechePage() {
             </div>
             <div>
               <h1 className="text-4xl font-black text-white">Early Years</h1>
-              <p className="text-pink-100 mt-2">Ages 1-3 years • Play-based Learning</p>
+              <p className="text-pink-100 mt-2">Ages 3 months to 5 years • Play-based Learning</p>
             </div>
           </div>
         </div>

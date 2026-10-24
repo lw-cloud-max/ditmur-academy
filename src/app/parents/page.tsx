@@ -36,10 +36,6 @@ export default function ParentsPage() {
     phone: ''
   });
 
-  useEffect(() => {
-    fetchParents();
-  }, []);
-
   const fetchParents = async () => {
     setLoading(true);
     try {
@@ -54,6 +50,11 @@ export default function ParentsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void fetchParents(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const handleEditParent = (parent: Parent) => {
     setEditingParent(parent);
@@ -172,7 +173,7 @@ export default function ParentsPage() {
 
       <TemporaryPasswordNotice credential={credential} onClose={() => setCredential(null)} />
       {/* Parents List */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="min-w-0 max-w-full bg-white rounded-xl border border-slate-200 shadow-sm">
         {loading ? (
           <div className="flex justify-center p-12">
             <Loader2 className="w-8 h-8 animate-spin text-[#0033A0]" />
@@ -186,37 +187,37 @@ export default function ParentsPage() {
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="min-w-0 max-w-full divide-y divide-slate-100">
             {filteredParents.map((parent) => (
-              <div key={parent.id} className="p-4 hover:bg-slate-50 transition-colors">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-4 flex-1">
+              <div key={parent.id} className="min-w-0 max-w-full p-4 hover:bg-slate-50 transition-colors">
+                <div className="flex min-w-0 max-w-full items-start justify-between gap-2 sm:gap-4">
+                  <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
                     <div className="w-12 h-12 bg-blue-100 text-[#0033A0] rounded-full flex items-center justify-center shrink-0">
                       <UserCircle className="w-6 h-6" />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold text-slate-900">{parent.fullName}</h3>
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                        <h3 className="min-w-0 break-words font-bold text-slate-900">{parent.fullName}</h3>
+                        <span className="shrink-0 px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold">
                           {parent.students.length} {parent.students.length === 1 ? 'child' : 'children'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-slate-500 mb-2">
+                      <div className="mb-2 flex min-w-0 max-w-full flex-col gap-1 text-sm text-slate-500 sm:flex-row sm:flex-wrap sm:gap-x-4">
                         {parent.email && (
-                          <span className="flex items-center gap-1">
-                            <Mail className="w-3.5 h-3.5" />
-                            {parent.email}
+                          <span className="flex min-w-0 max-w-full items-start gap-1">
+                            <Mail aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                            <a href={`mailto:${parent.email}`} title={parent.email} className="block min-w-0 max-w-full break-all underline-offset-2 hover:text-[#0033A0] hover:underline">{parent.email}</a>
                           </span>
                         )}
-                        <span className="flex items-center gap-1">
-                          <Phone className="w-3.5 h-3.5" />
-                          {parent.phone}
+                        <span className="flex min-w-0 max-w-full items-start gap-1 break-words">
+                          <Phone aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <a href={`tel:${parent.phone.replace(/[^+\d]/g, '')}`} className="min-w-0 break-words underline-offset-2 hover:text-[#0033A0] hover:underline">{parent.phone}</a>
                         </span>
                       </div>
                       {parent.students.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex min-w-0 flex-wrap gap-2">
                           {parent.students.map(student => (
-                            <span key={student.id} className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs">
+                            <span key={student.id} className="max-w-full break-words px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs">
                               {student.firstName} {student.lastName}
                               {student.class?.name && ` (${student.class.name})`}
                             </span>
@@ -225,10 +226,13 @@ export default function ParentsPage() {
                       )}
                     </div>
                   </div>
-                  <div className="relative">
-                    <button
+                  <div className="relative z-10 shrink-0">
+                    <button type="button"
+                      aria-label={`Actions for ${parent.fullName}`}
+                      aria-expanded={activeDropdown === parent.id}
+                      aria-haspopup="menu"
                       onClick={() => setActiveDropdown(activeDropdown === parent.id ? null : parent.id)}
-                      className="p-2 text-slate-400 hover:text-[#0033A0] hover:bg-blue-50 rounded-lg transition-colors"
+                      className="flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-slate-500 transition-colors hover:bg-blue-50 hover:text-[#0033A0] focus-visible:outline-2 focus-visible:outline-[#0033A0]"
                     >
                       <MoreVertical className="w-5 h-5" />
                     </button>
@@ -236,17 +240,17 @@ export default function ParentsPage() {
                     {activeDropdown === parent.id && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setActiveDropdown(null)}></div>
-                        <div className="absolute right-0 top-10 w-48 bg-white rounded-xl shadow-xl border border-slate-200 z-50 py-2">
+                        <div role="menu" className="absolute right-0 top-11 z-50 w-48 rounded-xl border border-slate-200 bg-white py-2 shadow-xl">
                           <button
                             onClick={() => handleEditParent(parent)}
-                            className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                            role="menuitem" className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
                           >
                             <Edit className="w-4 h-4 text-slate-400" /> Edit Details
                           </button>
-                          {isSuperAdmin && <button type="button" onClick={() => resetParentPassword(parent.id)} className="w-full px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 text-left">Reset Login Password</button>}
+                          {isSuperAdmin && <button type="button" onClick={() => resetParentPassword(parent.id)} role="menuitem" className="w-full px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 text-left">Reset Login Password</button>}
                           <button
                             onClick={() => handleDeleteParent(parent.id, parent.fullName)}
-                            className="w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                            role="menuitem" className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                           >
                             <Trash2 className="w-4 h-4 text-red-500" /> Delete Parent
                           </button>

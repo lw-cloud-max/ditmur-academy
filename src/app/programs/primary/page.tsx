@@ -20,7 +20,7 @@ export default function PrimaryPage() {
             </div>
             <div>
               <h1 className="text-4xl font-black text-white">Primary School</h1>
-              <p className="text-blue-100 mt-2">Ages 4-10 years • Building Strong Foundations</p>
+              <p className="text-blue-100 mt-2">Ages 6-10 years • Building Strong Foundations</p>
             </div>
           </div>
         </div>
