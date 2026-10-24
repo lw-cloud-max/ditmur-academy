@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { ArrowLeft, Lock, Eye, Shield, Database, Cookie, Globe, Mail, Phone, MapPin, UserCheck, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Lock, Eye, Shield, Database, Cookie, Globe, Mail, Phone, MapPin, UserCheck, MessageCircle, AlertTriangle } from 'lucide-react';
 
 export default function PrivacyPage() {
   return (
@@ -32,7 +32,7 @@ export default function PrivacyPage() {
               1. Introduction
             </h2>
             <p className="text-slate-600 leading-relaxed mb-4">
-              Ditmur Academy ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our School Management System.
+              Ditmur Academy (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our School Management System.
             </p>
           </section>
 
@@ -135,7 +135,7 @@ export default function PrivacyPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
               <AlertTriangle className="w-6 h-6 text-[#0033A0]" />
-              7. Children's Privacy
+              7. Children&apos;s Privacy
             </h2>
             <p className="text-slate-600 leading-relaxed mb-4">
               We collect information about students from parents/guardians and the school. We do not knowingly collect personal information directly from children under 13 without parental consent.
@@ -145,7 +145,7 @@ export default function PrivacyPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-slate-900 mb-4">8. Changes to This Policy</h2>
             <p className="text-slate-600 leading-relaxed mb-4">
-              We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.
+              We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the &quot;Last updated&quot; date.
             </p>
           </section>
 
@@ -157,17 +157,21 @@ export default function PrivacyPage() {
             <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
               <p className="text-slate-600 mb-4">If you have any questions about this Privacy Policy, please contact us:</p>
               <div className="space-y-2">
-                <p className="flex items-center gap-2 text-slate-700">
-                  <Mail className="w-4 h-4 text-[#0033A0]" />
-                  privacy@ditmuracademy.edu.ng
+                <p className="flex min-w-0 items-center gap-2 text-slate-700">
+                  <Mail aria-hidden="true" className="w-4 h-4 shrink-0 text-[#0033A0]" />
+                  <a href="mailto:ditmuracademy@gmail.com" className="break-all underline underline-offset-2 hover:text-[#0033A0]">ditmuracademy@gmail.com</a>
                 </p>
                 <p className="flex items-center gap-2 text-slate-700">
-                  <Phone className="w-4 h-4 text-[#0033A0]" />
-                  +234 801 234 5678
+                  <Phone aria-hidden="true" className="w-4 h-4 shrink-0 text-[#0033A0]" />
+                  <a href="tel:+2348038164705" className="underline underline-offset-2 hover:text-[#0033A0]">08038164705 — Call the school</a>
                 </p>
                 <p className="flex items-center gap-2 text-slate-700">
-                  <MapPin className="w-4 h-4 text-[#0033A0]" />
-                  123 Academy Road, Lagos, Nigeria
+                  <MessageCircle aria-hidden="true" className="w-4 h-4 shrink-0 text-[#0033A0]" />
+                  <a href="https://wa.me/2349018009872" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-[#0033A0]">09018009872 — WhatsApp the school</a>
+                </p>
+                <p className="flex items-start gap-2 text-slate-700">
+                  <MapPin aria-hidden="true" className="mt-1 w-4 h-4 shrink-0 text-[#0033A0]" />
+                  <span>11, Adeshina Close Off Pipeline, Ishasi Akute, Ogun State</span>
                 </p>
               </div>
             </div>
