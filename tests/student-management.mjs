@@ -58,6 +58,14 @@ test('parent linking is blocked for inactive/out-of-class students, non-teachers
  const inactive=manageFixture({student:{id:'STU-1',status:'INACTIVE',classId:'CLASS-1',parentId:'P-OLD'}});
  assert.equal((await inactive.route.PATCH(request('https://school.test/api/students',{id:'STU-1',action:'link_parent',parentId:'P-NEW',expectedParentId:'P-OLD',confirmed:true}))).status,404);
 });
+test('only superadmin can unlink current Parent; Student is retained with a null parent link',async()=>{
+ const admin=manageFixture({actor:session('ADMIN','admin-1')});
+ const result=await admin.route.PATCH(request('https://school.test/api/students',{id:'STU-1',action:'unlink_parent',expectedParentId:'P-OLD',confirmed:true}));
+ assert.equal(result.status,200);
+ assert.deepEqual(admin.calls,[['updateMany',{where:{id:'STU-1',status:'ACTIVE',parentId:'P-OLD'},data:{parentId:null}}]]);
+ const teacher=manageFixture();
+ assert.equal((await teacher.route.PATCH(request('https://school.test/api/students',{id:'STU-1',action:'unlink_parent',expectedParentId:'P-OLD',confirmed:true}))).status,403);
+});
 test('Parent search requires a class teacher assignment and returns contact/linked-child preview without secrets',async()=>{
  const f=optionsFixture();
  const response=await f.route.GET(new Request('https://school.test/api/students/parent-options?studentId=STU-1&search=Guardian'));
@@ -93,7 +101,7 @@ test('the student edit UI uses JSON-safe error handling, chooses an existing Par
  assert.match(page,/const raw = await response\.text\(\)/);assert.match(page,/parent-options\?/);
  assert.match(page,/Link Existing Parent/);assert.ok(page.includes('student.class?.teacherId === session?.user?.id'));
  assert.ok(page.includes("isSuperAdmin && <button onClick={() => openModal(student, 'class')}"));
- assert.match(page,/Student status is managed separately/);
+ assert.match(page,/Student status is managed separately/);assert.match(page,/Unlink current Parent \(keep records\)/);
 });
 test('flashcards explicitly use the general practice bank, not internal graded exam answers',()=>{
  const page=fs.readFileSync('src/app/study-hub/page.tsx','utf8');
