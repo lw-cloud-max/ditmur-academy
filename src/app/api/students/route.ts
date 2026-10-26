@@ -73,7 +73,7 @@ export async function PATCH(req: Request) {
     const input = body as Record<string, unknown>;
     const id = typeof input.id === 'string' ? input.id.trim() : '';
     const action = input.action;
-    if (!id || id.length > 150 || !['update_student', 'assign_class', 'link_parent'].includes(String(action))) {
+    if (!id || id.length > 150 || !['update_student', 'assign_class', 'link_parent', 'unlink_parent'].includes(String(action))) {
       return NextResponse.json({ success: false, error: 'Valid student and action required' }, { status: 400 });
     }
     const superAdmin = isSuperAdmin(session);
@@ -141,6 +141,16 @@ export async function PATCH(req: Request) {
       if (result.count !== 1) return NextResponse.json({ success: false, error: 'Student changed while saving. Refresh and try again.' }, { status: 409 });
       return NextResponse.json({ success: true, data: { id, classId, className: targetClass.name, historyCounts } },
         { headers: { 'Cache-Control': 'no-store' } });
+    }
+
+    if (action === 'unlink_parent') {
+      if (!superAdmin) return NextResponse.json({ success: false, error: 'Only the super admin may unlink a Parent' }, { status: 403 });
+      const expectedParentId = typeof input.expectedParentId === 'string' ? input.expectedParentId.trim() : '';
+      if (!expectedParentId || input.confirmed !== true) return NextResponse.json({ success: false, error: 'Confirm the existing Parent link before unlinking' }, { status: 400 });
+      if (student.parentId !== expectedParentId) return NextResponse.json({ success: false, error: "This Student's Parent link changed. Refresh and try again." }, { status: 409 });
+      const result = await prisma.student.updateMany({ where: { id, status: 'ACTIVE', parentId: expectedParentId }, data: { parentId: null } });
+      if (result.count !== 1) return NextResponse.json({ success: false, error: 'Student Parent link changed while saving. Refresh and try again.' }, { status: 409 });
+      return NextResponse.json({ success: true, data: { id, parentId: null }, message: 'Parent link removed. Student and Parent records and all history were retained.' }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
     if (action === 'link_parent') {

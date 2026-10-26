@@ -218,6 +218,22 @@ export default function StudentsPage() {
     } finally { setIsSubmitting(false); }
   };
 
+  const handleUnlinkParent = async () => {
+    if (!isSuperAdmin || !selectedStudent?.parentId) return;
+    const currentParent = selectedStudent.parent?.fullName || 'the linked Parent account';
+    if (!window.confirm(`Unlink ${selectedStudent.firstName} ${selectedStudent.lastName} from ${currentParent}? Student grades, invoices and attendance remain. Parent-only chat/SMS history remains on the Parent account.`)) return;
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('/api/students', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: selectedStudent.id, action: 'unlink_parent', expectedParentId: selectedStudent.parentId, confirmed: true }) });
+      const data = await readApiResponse(response);
+      if (!response.ok || data.success !== true) throw new Error(typeof data.error === 'string' ? data.error : `Unlink failed (${response.status})`);
+      await fetchData();
+      setModalType(null);
+    } catch (error) { alert(error instanceof Error ? error.message : 'Could not unlink Parent'); }
+    finally { setIsSubmitting(false); }
+  };
+
   const resetStudentPassword = async (id: string) => {
     setActiveDropdown(null); setCredential(null);
     if (!confirm('Reset student login? The old password will stop working.')) return;
@@ -547,6 +563,7 @@ export default function StudentsPage() {
                     </button>)}
                   </fieldset>}
                   <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">Changing the link does not move or delete invoices/grades. Existing Parent-specific chat or SMS history remains with the original Parent account; contact the super admin if history also needs review.</p>
+                  {isSuperAdmin && selectedStudent?.parentId && <button type="button" onClick={() => void handleUnlinkParent()} disabled={isSubmitting} className="min-h-11 w-full rounded-lg border border-red-200 px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50 disabled:opacity-50">Unlink current Parent (keep records)</button>}
                 </div>
               )}
 

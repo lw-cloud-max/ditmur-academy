@@ -1,5 +1,7 @@
 "use client";
 
+import Link from 'next/link';
+
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import TemporaryPasswordNotice, { type IssuedCredential } from '@/components/TemporaryPasswordNotice';
@@ -147,7 +149,10 @@ export default function ParentsPage() {
             Parents Directory
           </h1>
           <p className="text-slate-500 mt-1">Manage parent accounts and their linked students</p>
-          {isSuperAdmin && <a href="/parent-reconciliation" className="mt-2 inline-flex min-h-10 items-center rounded-lg bg-blue-50 px-3 text-sm font-bold text-blue-800 hover:bg-blue-100">Preview Excel parent roster (no changes)</a>}
+          {isSuperAdmin && <div className="mt-2 flex flex-wrap gap-2">
+            <a href="/parent-reconciliation" className="inline-flex min-h-10 items-center rounded-lg bg-blue-50 px-3 text-sm font-bold text-blue-800 hover:bg-blue-100">Preview Excel parent roster (no changes)</a>
+            <Link href="/parent-households" className="inline-flex min-h-10 items-center rounded-lg bg-emerald-50 px-3 text-sm font-bold text-emerald-800 hover:bg-emerald-100">Review possible sibling households</Link>
+          </div>}
         </div>
       </div>
 
