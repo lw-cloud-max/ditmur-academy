@@ -29,6 +29,7 @@ export default function ClassDetailsPage() {
   const [skillsSaveMessage, setSkillsSaveMessage] = useState('');
   const [selectedTerm, setSelectedTerm] = useState('Term 1 - 2024');
   const [termOptions, setTermOptions] = useState<string[]>(['Term 1 - 2024']);
+  const [scoreEntryWindow, setScoreEntryWindow] = useState<{term:string;configured:boolean;isOpen:boolean;isReopened:boolean;reason:string}|null>(null);
 
   const PHYSICAL_SKILLS = ['Soccer', 'Basketball', 'Table Tennis', 'Volleyball', 'Athletics', 'Swimming'];
   const AFFECTIVE_SKILLS = ['Punctuality', 'Neatness', 'Etiquette', 'Leadership', 'Team Communication', 'Emotional Stability'];
@@ -81,6 +82,22 @@ export default function ClassDetailsPage() {
       .catch(() => setSkillsSaveMessage('Could not load skill ratings.'));
   }, [classId, selectedTerm, canEditResults]);
 
+  useEffect(() => {
+    if (!canEditResults || !selectedTerm) return;
+    let active = true;
+    const refreshWindow = () => fetch(`/api/score-entry-windows?term=${encodeURIComponent(selectedTerm)}`, { cache: 'no-store' })
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.error || 'Could not check score-entry deadline');
+        if (active) setScoreEntryWindow(data.data);
+      })
+      .catch(() => { if (active) setScoreEntryWindow(null); });
+    void refreshWindow();
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void refreshWindow(); }, 30_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [selectedTerm, canEditResults]);
+  const scoreEntryOpen = !!scoreEntryWindow && scoreEntryWindow.term === selectedTerm && scoreEntryWindow.isOpen;
+
   const tabs = [
     { id: 'members', label: 'Members', icon: Users },
     { id: 'subjects', label: 'Subjects', icon: BookOpen },
@@ -91,6 +108,7 @@ export default function ClassDetailsPage() {
   ];
 
   const handleSkillChange = (studentId: string, category: string, name: string, rating: string) => {
+    if (!scoreEntryOpen) return;
     const numRating = parseInt(rating, 10);
     const existingIndex = skillsRecord.findIndex(s => s.studentId === studentId && s.name === name);
     
@@ -105,6 +123,7 @@ export default function ClassDetailsPage() {
   };
 
   const handleSaveSkills = async () => {
+    if (!scoreEntryOpen) { setSkillsSaveMessage(scoreEntryWindow?.reason || 'Score entry is locked until the super admin configures a term window.'); return; }
     setSavingSkills(true);
     setSkillsSaveMessage('');
     try {
@@ -379,13 +398,17 @@ export default function ClassDetailsPage() {
             </label>
             <button 
               onClick={handleSaveSkills}
-              disabled={savingSkills}
+              disabled={savingSkills || !scoreEntryOpen}
               className="flex items-center gap-2 bg-[#0033A0] text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-[#002277] transition-colors disabled:bg-blue-400"
             >
               {savingSkills ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save Ratings
             </button>
           </div>
 
+          <div className={`border-b p-3 text-sm ${scoreEntryOpen ? 'border-emerald-200 bg-emerald-50 text-emerald-950' : 'border-amber-200 bg-amber-50 text-amber-950'}`}>
+            <p className="font-bold">{scoreEntryWindow?.term === selectedTerm && scoreEntryWindow.isOpen ? scoreEntryWindow.isReopened ? 'Score entry temporarily reopened' : 'Score entry is open' : 'Score entry is locked'}</p>
+            <p className="mt-1">{scoreEntryWindow?.term === selectedTerm ? scoreEntryWindow.reason : 'Checking the school-wide term deadline…'}</p>
+          </div>
           {skillsSaveMessage && (
             <div className="bg-emerald-50 border-b border-emerald-200 text-emerald-700 p-3 flex items-center gap-3 text-sm">
               <CheckCircle2 className="w-4 h-4" /> <span className="font-bold">{skillsSaveMessage}</span>
@@ -429,6 +452,7 @@ export default function ClassDetailsPage() {
                             <select 
                               value={rec ? rec.rating : ''}
                               onChange={(e) => handleSkillChange(student.id, 'PHYSICAL', skill, e.target.value)}
+                              disabled={!scoreEntryOpen}
                               className="w-full bg-transparent outline-none text-center text-sm font-medium text-blue-900"
                             >
                               <option value="">-</option>
@@ -449,6 +473,7 @@ export default function ClassDetailsPage() {
                             <select 
                               value={rec ? rec.rating : ''}
                               onChange={(e) => handleSkillChange(student.id, 'AFFECTIVE', skill, e.target.value)}
+                              disabled={!scoreEntryOpen}
                               className="w-full bg-transparent outline-none text-center text-sm font-medium text-emerald-900"
                             >
                               <option value="">-</option>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { School, BookOpen, Plus, Trash2, Loader2, AlertCircle, Calendar, ArrowRight, CheckCircle2, Star, CalendarRange, Pencil, X, Save } from 'lucide-react';
+import { School, BookOpen, Plus, Trash2, Loader2, AlertCircle, Calendar, ArrowRight, CheckCircle2, Star, CalendarRange, Pencil, X, Save, Clock, RotateCcw, LockKeyhole } from 'lucide-react';
 
 export default function ConfigurationPage() {
   const [activeTab, setActiveTab] = useState('classes');
@@ -28,6 +28,16 @@ export default function ConfigurationPage() {
   const [newTerm, setNewTerm] = useState({ name: 'First Term', session: '2026-2027', isCurrent: false, startDate: '', endDate: '' });
   const academicYear = new Date().getMonth() >= 7 ? new Date().getFullYear() : new Date().getFullYear() - 1;
   const sessionOptions = Array.from(new Set([newTerm.session, ...terms.map(t => t.session as string), ...Array.from({ length: 4 }, (_, i) => `${academicYear + i}-${academicYear + i + 1}`)])).sort().reverse();
+  const [scoreWindowTerm, setScoreWindowTerm] = useState('Term 1 - 2024');
+  const [scoreWindow, setScoreWindow] = useState<any>(null);
+  const [scoreWindowLoading, setScoreWindowLoading] = useState(false);
+  const [scoreWindowSaving, setScoreWindowSaving] = useState(false);
+  const [scoreWindowMessage, setScoreWindowMessage] = useState('');
+  const [scoreOpenLocal, setScoreOpenLocal] = useState('');
+  const [scoreCloseLocal, setScoreCloseLocal] = useState('');
+  const [scoreReopenLocal, setScoreReopenLocal] = useState('');
+  const [scoreReopenReason, setScoreReopenReason] = useState('');
+
 
   // States for Calendar Events
   const [events, setEvents] = useState<any[]>([]);
@@ -70,7 +80,11 @@ export default function ConfigurationPage() {
     try {
       const res = await fetch('/api/terms');
       const data = await res.json();
-      if (data.success) setTerms(data.data);
+      if (data.success) {
+        setTerms(data.data);
+        const current = data.data.find((term: any) => term.isCurrent);
+        if (current) setScoreWindowTerm(`${current.name} ${current.session}`);
+      }
     } catch (err) { console.error(err); } finally { setLoadingTerms(false); }
   };
 
@@ -80,6 +94,68 @@ export default function ConfigurationPage() {
       const data = await res.json();
       if (data.success) setEvents(data.data);
     } catch (err) { console.error(err); } finally { setLoadingEvents(false); }
+  };
+
+  const fromWATIso = (value: string | null | undefined) => {
+    if (!value) return '';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '' : new Date(date.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16);
+  };
+  const loadScoreWindow = async (term: string, clearMessage = true) => {
+    setScoreWindowLoading(true); if (clearMessage) setScoreWindowMessage('');
+    try {
+      const response = await fetch(`/api/score-entry-windows?term=${encodeURIComponent(term)}`, { cache: 'no-store' });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Could not load score-entry window');
+      setScoreWindow(result.data);
+      setScoreOpenLocal(fromWATIso(result.data.opensAt));
+      setScoreCloseLocal(fromWATIso(result.data.closesAt));
+      setScoreReopenLocal(fromWATIso(result.data.reopenUntil));
+      setScoreReopenReason(result.data.reopenReason || '');
+    } catch (cause) {
+      setScoreWindow(null); setScoreOpenLocal(''); setScoreCloseLocal(''); setScoreReopenLocal('');
+      setScoreWindowMessage(cause instanceof Error ? cause.message : 'Could not load score-entry window');
+    } finally { setScoreWindowLoading(false); }
+  };
+  useEffect(() => { void loadScoreWindow(scoreWindowTerm); }, [scoreWindowTerm]);
+
+  const saveScoreWindow = async () => {
+    setScoreWindowSaving(true); setScoreWindowMessage('');
+    try {
+      const response = await fetch('/api/score-entry-windows', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'SET_WINDOW', term: scoreWindowTerm, opensAtLocal: scoreOpenLocal, closesAtLocal: scoreCloseLocal }) });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Could not save score-entry window');
+      await loadScoreWindow(scoreWindowTerm, false);
+      setScoreWindowMessage('Score-entry schedule saved in Nigeria time (WAT, UTC+1).');
+    } catch (cause) { setScoreWindowMessage(cause instanceof Error ? cause.message : 'Could not save score-entry window'); }
+    finally { setScoreWindowSaving(false); }
+  };
+  const reopenScoreWindow = async () => {
+    if (!window.confirm(`Temporarily reopen score entry for ${scoreWindowTerm} until the selected WAT time? This will be recorded.`)) return;
+    setScoreWindowSaving(true); setScoreWindowMessage('');
+    try {
+      const response = await fetch('/api/score-entry-windows', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'REOPEN', term: scoreWindowTerm, reopenUntilLocal: scoreReopenLocal, reason: scoreReopenReason }) });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Could not reopen score entry');
+      await loadScoreWindow(scoreWindowTerm, false);
+      setScoreWindowMessage(result.message || 'Score entry reopened temporarily.');
+    } catch (cause) { setScoreWindowMessage(cause instanceof Error ? cause.message : 'Could not reopen score entry'); }
+    finally { setScoreWindowSaving(false); }
+  };
+  const endScoreReopen = async () => {
+    if (!window.confirm(`End the temporary score-entry reopening for ${scoreWindowTerm} now?`)) return;
+    setScoreWindowSaving(true); setScoreWindowMessage('');
+    try {
+      const response = await fetch('/api/score-entry-windows', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'END_REOPEN', term: scoreWindowTerm }) });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Could not close reopened window');
+      await loadScoreWindow(scoreWindowTerm, false);
+      setScoreWindowMessage(result.message || 'Temporary reopening ended.');
+    } catch (cause) { setScoreWindowMessage(cause instanceof Error ? cause.message : 'Could not close reopened window'); }
+    finally { setScoreWindowSaving(false); }
   };
 
   // Create Handlers
@@ -377,6 +453,42 @@ export default function ConfigurationPage() {
               </table>
             )}
           </div>
+          <section className="md:col-span-3 rounded-xl border border-indigo-200 bg-white p-5 shadow-sm sm:p-6 space-y-4">
+            <div className="flex items-start gap-3"><div className="rounded-lg bg-indigo-100 p-2 text-indigo-700"><Clock className="h-5 w-5"/></div><div><h3 className="font-bold text-slate-900">Whole-school score-entry window</h3><p className="mt-1 text-sm text-slate-600">Controls subject grades and skills for one term across every class. Times are Nigeria time (WAT, UTC+1). A term without a schedule is locked until configured.</p></div></div>
+            <label className="block max-w-xl text-sm font-semibold text-slate-700">Academic term
+              <select value={scoreWindowTerm} onChange={event => { setScoreWindowTerm(event.target.value); setScoreWindowMessage(''); }} className="mt-1 block w-full rounded-lg border bg-white p-3">
+                <option value="Term 1 - 2024">Term 1 - 2024 (legacy)</option>
+                {Array.from(new Set(terms.map((term: any) => `${term.name} ${term.session}`))).map(term => <option key={term} value={term}>{term}</option>)}
+              </select>
+            </label>
+            {scoreWindowLoading ? <p role="status" className="text-sm text-slate-600">Loading score-entry schedule…</p> : <>
+              <div className={`rounded-lg border p-3 text-sm ${scoreWindow?.isOpen ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-amber-200 bg-amber-50 text-amber-950'}`}>
+                <strong>{scoreWindow?.isOpen ? scoreWindow.isReopened ? 'Temporarily reopened' : 'Score entry open' : scoreWindow?.configured ? 'Score entry closed' : 'No window configured — score entry is locked'}</strong>
+                <p className="mt-1">{scoreWindow?.reason || 'Set a start and close time below.'}</p>
+                {scoreWindow?.reopenReason && <p className="mt-1 text-xs">Reopen reason: {scoreWindow.reopenReason}</p>}
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-semibold text-slate-700">Entry opens (WAT)
+                  <input type="datetime-local" value={scoreOpenLocal} onChange={event => setScoreOpenLocal(event.target.value)} className="mt-1 block w-full rounded-lg border p-3" />
+                </label>
+                <label className="block text-sm font-semibold text-slate-700">Entry closes (WAT)
+                  <input type="datetime-local" value={scoreCloseLocal} onChange={event => setScoreCloseLocal(event.target.value)} className="mt-1 block w-full rounded-lg border p-3" />
+                </label>
+              </div>
+              <button type="button" onClick={() => void saveScoreWindow()} disabled={scoreWindowSaving || scoreWindowLoading || !scoreOpenLocal || !scoreCloseLocal} className="min-h-11 rounded-lg bg-indigo-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{scoreWindowSaving ? 'Saving…' : 'Save entry window'}</button>
+              {scoreWindow?.canReopen && <div className="border-t pt-4 space-y-3">
+                <div className="flex items-center gap-2 font-bold text-slate-900"><RotateCcw size={17}/> Temporarily reopen a closed term</div>
+                <p className="text-sm text-slate-600">Only the super admin can reopen. Choose an expiry within 14 days and record a reason.</p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="block text-sm font-semibold text-slate-700">Reopen until (WAT)<input type="datetime-local" value={scoreReopenLocal} onChange={event => setScoreReopenLocal(event.target.value)} className="mt-1 block w-full rounded-lg border p-3" /></label>
+                  <label className="block text-sm font-semibold text-slate-700">Reason<textarea maxLength={300} minLength={10} value={scoreReopenReason} onChange={event => setScoreReopenReason(event.target.value)} placeholder="Why is a correction window needed?" className="mt-1 block w-full rounded-lg border p-3" /></label>
+                </div>
+                <button type="button" onClick={() => void reopenScoreWindow()} disabled={scoreWindowSaving || !scoreReopenLocal || scoreReopenReason.trim().length < 10} className="min-h-11 rounded-lg border border-amber-400 px-5 py-2.5 text-sm font-bold text-amber-900 disabled:opacity-50">{scoreWindowSaving ? 'Saving…' : 'Reopen temporarily'}</button>
+              </div>}
+              {scoreWindow?.isReopened && <button type="button" onClick={() => void endScoreReopen()} disabled={scoreWindowSaving} className="min-h-11 rounded-lg border border-red-200 px-4 py-2 text-sm font-bold text-red-700 disabled:opacity-50"><LockKeyhole className="mr-2 inline h-4 w-4"/>End temporary reopening now</button>}
+            </>}
+            {scoreWindowMessage && <p role="status" className="text-sm font-semibold text-slate-700">{scoreWindowMessage}</p>}
+          </section>
         </div>
       )}
 
