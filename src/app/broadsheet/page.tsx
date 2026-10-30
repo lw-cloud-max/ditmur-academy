@@ -24,6 +24,7 @@ export default function BroadsheetPage() {
   const [reportError, setReportError] = useState('');
   const [approving, setApproving] = useState(false);
   const [approvalMessage, setApprovalMessage] = useState('');
+  const [scoreEntryWindow, setScoreEntryWindow] = useState<{term:string;configured:boolean;isOpen:boolean;isReopened:boolean;reason:string}|null>(null);
 
   const [viewMode, setViewMode] = useState<'class' | 'entry'>('class');
 
@@ -99,6 +100,22 @@ export default function BroadsheetPage() {
     };
     fetchData();
   }, [userRole, session?.user?.id]);
+
+  useEffect(() => {
+    if (isReadOnly || !selectedTerm) return;
+    let active = true;
+    const refreshWindow = () => fetch(`/api/score-entry-windows?term=${encodeURIComponent(selectedTerm)}`, { cache: 'no-store' })
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.error || 'Could not check score-entry deadline');
+        if (active) setScoreEntryWindow(data.data);
+      })
+      .catch(() => { if (active) setScoreEntryWindow(null); });
+    void refreshWindow();
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void refreshWindow(); }, 30_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [selectedTerm, isReadOnly]);
+  const scoreEntryOpen = !!scoreEntryWindow && scoreEntryWindow.term === selectedTerm && scoreEntryWindow.isOpen;
 
   // Fetch full class broadsheet
   useEffect(() => {
@@ -248,6 +265,7 @@ export default function BroadsheetPage() {
 
   const saveGrades = async () => {
     if (!selectedClass || !selectedSubject || students.length === 0) return;
+    if (!scoreEntryOpen) { setSaveMessage(scoreEntryWindow?.reason || 'Checking score-entry deadline. Refresh or contact the super admin.'); return; }
     setSaving(true);
     setSaveMessage('');
     try {
@@ -451,8 +469,13 @@ export default function BroadsheetPage() {
       {/* --- DATA ENTRY VIEW --- */}
       {viewMode === 'entry' && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className={`border-b p-4 text-sm ${scoreEntryOpen ? 'border-emerald-200 bg-emerald-50 text-emerald-950' : 'border-amber-200 bg-amber-50 text-amber-950'}`}>
+            <p className="font-bold">{scoreEntryWindow?.term === selectedTerm && scoreEntryWindow.isOpen ? scoreEntryWindow.isReopened ? 'Score entry temporarily reopened' : 'Score entry is open' : 'Score entry is locked'}</p>
+            <p className="mt-1">{scoreEntryWindow?.term === selectedTerm ? scoreEntryWindow.reason : 'Checking the school-wide term deadline…'}</p>
+            {!scoreEntryWindow?.configured && <p className="mt-1 text-xs">The super admin must configure this term’s score-entry window in Configuration → Terms & Sessions.</p>}
+          </div>
           <div className="p-4 border-b border-slate-200 flex justify-end bg-slate-50">
-            <button onClick={saveGrades} disabled={saving || students.length === 0} className={`flex items-center gap-2 text-white px-5 py-2 rounded-lg text-sm font-bold ${saving || students.length === 0 ? 'bg-blue-400' : 'bg-[#0033A0] hover:bg-[#002277]'}`}>
+            <button onClick={saveGrades} disabled={saving || students.length === 0 || !scoreEntryOpen} className={`flex items-center gap-2 text-white px-5 py-2 rounded-lg text-sm font-bold ${saving || students.length === 0 || !scoreEntryOpen ? 'bg-blue-400' : 'bg-[#0033A0] hover:bg-[#002277]'}`}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save Subject Grades
             </button>
           </div>
@@ -487,9 +510,9 @@ export default function BroadsheetPage() {
                       return (
                         <tr key={student.id} className="hover:bg-slate-50">
                           <td className="px-4 py-3 text-sm font-bold text-slate-900">{student.firstName} {student.lastName}</td>
-                          <td className="px-4 py-3"><input type="number" value={student.ca1 || ''} onChange={(e) => handleScoreChange(student.id, 'ca1', e.target.value)} className="w-full px-2 py-1.5 text-center border rounded outline-none" /></td>
-                          <td className="px-4 py-3"><input type="number" value={student.ca2 || ''} onChange={(e) => handleScoreChange(student.id, 'ca2', e.target.value)} className="w-full px-2 py-1.5 text-center border rounded outline-none" /></td>
-                          <td className="px-4 py-3"><input type="number" value={student.exam || ''} onChange={(e) => handleScoreChange(student.id, 'exam', e.target.value)} className="w-full px-2 py-1.5 text-center border rounded outline-none" /></td>
+                          <td className="px-4 py-3"><input type="number" value={student.ca1 || ''} onChange={(e) => handleScoreChange(student.id, 'ca1', e.target.value)} disabled={!scoreEntryOpen} className="w-full px-2 py-1.5 text-center border rounded outline-none" /></td>
+                          <td className="px-4 py-3"><input type="number" value={student.ca2 || ''} onChange={(e) => handleScoreChange(student.id, 'ca2', e.target.value)} disabled={!scoreEntryOpen} className="w-full px-2 py-1.5 text-center border rounded outline-none" /></td>
+                          <td className="px-4 py-3"><input type="number" value={student.exam || ''} onChange={(e) => handleScoreChange(student.id, 'exam', e.target.value)} disabled={!scoreEntryOpen} className="w-full px-2 py-1.5 text-center border rounded outline-none" /></td>
                           <td className="px-4 py-3 text-center font-bold text-slate-700">{total}</td>
                           <td className="px-4 py-3 text-center"><span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${color}`}>{grade}</span></td>
                         </tr>

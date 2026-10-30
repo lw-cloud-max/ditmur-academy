@@ -35,7 +35,7 @@ model Application {
 
 model Student {
   id               String   @id 
-  password String?
+  password         String?  // bcrypt hash; NULL means admin must issue a temporary password
   mustChangePassword Boolean @default(true)
   sessionVersion Int @default(0)
   firstName        String
@@ -74,7 +74,7 @@ model Parent {
   conversations     Conversation[]
   smsNotifications  SMSNotification[]
   id                String    @id @default(cuid())
-  password String?
+  password          String?   // bcrypt hash; NULL means admin must issue a temporary password
   mustChangePassword Boolean @default(true)
   sessionVersion Int @default(0)
   fullName          String
@@ -87,7 +87,7 @@ model Parent {
 
 model Staff {
   id          String   @id 
-  passwordHash String?
+  passwordHash String? // bcrypt hash; null until admin provisions a login
   mustChangePassword Boolean @default(true)
   sessionVersion Int @default(0)
   firstName   String
@@ -378,6 +378,20 @@ model AcademicTerm {
   endDate   DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Whole-school score-entry windows are keyed by the exact term label used
+// by Grade.term and SkillRating.term (for example, "First Term 2026-2027").
+model ScoreEntryWindow {
+  id                 String   @id @default(cuid())
+  term               String   @unique
+  opensAt            DateTime
+  closesAt           DateTime
+  reopenUntil        DateTime?
+  reopenReason       String?
+  reopenedBy         String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
 model CalendarEvent {
@@ -693,7 +707,7 @@ model InternalExamAnswer {
 }
 
 
-// School report grades and skills are hidden until super-admin release.
+// Term reports remain private until explicitly released by the super admin.
 model ReportRelease {
   id         String    @id @default(cuid())
   classId    String

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
+import { getScoreEntryStatus } from '@/lib/score-entry-window';
 
 export const dynamic = 'force-dynamic';
 const LEGACY_TERM = 'Term 1 - 2024';
@@ -15,6 +16,8 @@ export async function POST(req: Request) {
         !Array.isArray(ratings) || !ratings.length || ratings.length > 6000) {
       return NextResponse.json({ success: false, error: 'Class, term and ratings required' }, { status: 400 });
     }
+    const entryWindow = await getScoreEntryStatus(term.trim());
+    if (!entryWindow.isOpen) return NextResponse.json({ success: false, error: entryWindow.reason, entryWindow }, { status: 423, headers: { 'Cache-Control': 'no-store' } });
     const safe = ratings.map((item: unknown) => {
       if (!item || typeof item !== 'object') return null;
       const row = item as Record<string, unknown>;
