@@ -33,9 +33,10 @@ export async function POST(req: Request) {
     if (!isSuperAdmin(await auth())) return NextResponse.json({ success: false, error: 'Super admin required' }, { status: 403 });
     const config = getSMSConfig();
     if (!config.enabled) return NextResponse.json({ success: false, error: config.reason }, { status: 503 });
-    const { type, studentId, customMessage, term, confirmed } = await req.json();
-    if (confirmed !== true || !validTypes.includes(type) || typeof studentId !== 'string' || !studentId) {
-      return NextResponse.json({ success: false, error: 'Confirm one student and an SMS type before sending' }, { status: 400 });
+    if (!config.parentSendEnabled) return NextResponse.json({ success: false, error: 'Parent notices are disabled. Use the one-number test tool first or ask the super admin to enable parent notices explicitly.' }, { status: 503 });
+    const { type, studentId, customMessage, term, consent, confirmed } = await req.json();
+    if (confirmed !== true || consent !== true || !validTypes.includes(type) || typeof studentId !== 'string' || !studentId) {
+      return NextResponse.json({ success: false, error: 'Explicit consent and confirmation for one student and one SMS type are required' }, { status: 400 });
     }
     const student = await prisma.student.findUnique({ where: { id: studentId }, select: {
       id: true, firstName: true, lastName: true, classId: true, status: true,

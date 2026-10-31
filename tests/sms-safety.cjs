@@ -18,7 +18,7 @@ const templates = load('src/lib/sms-templates.ts');
 const gateway = load('src/lib/africastalking.ts', { './sms-templates': templates });
 const permissions = load('src/lib/permissions.ts');
 const next = { NextResponse: { json: (body, init) => Response.json(body, init) } };
-const envNames = ['AFRICASTALKING_MODE','AFRICASTALKING_LIVE_ENABLED','AFRICASTALKING_USERNAME','AFRICASTALKING_API_KEY','AFRICASTALKING_SENDER_ID'];
+const envNames = ['AFRICASTALKING_MODE','AFRICASTALKING_LIVE_ENABLED','AFRICASTALKING_PARENT_SEND_ENABLED','AFRICASTALKING_USERNAME','AFRICASTALKING_API_KEY','AFRICASTALKING_SENDER_ID'];
 async function withEnv(values, run) {
   const previous = Object.fromEntries(envNames.map(name => [name,process.env[name]]));
   for (const name of envNames) {
@@ -50,6 +50,22 @@ test('live mode requires explicit opt-in AND approved sender ID setting', () => 
   assert.equal(gateway.getSMSConfig().enabled,false);
   process.env.AFRICASTALKING_SENDER_ID='DITMUR';
   assert.equal(gateway.getSMSConfig().enabled,true);
+}));
+
+test('live credentials expose only the test tool until parent notices are separately enabled', () => withEnv({
+  AFRICASTALKING_MODE:'live', AFRICASTALKING_LIVE_ENABLED:'true', AFRICASTALKING_USERNAME:'live-user',
+  AFRICASTALKING_API_KEY:'dummy-live-key', AFRICASTALKING_SENDER_ID:'DITMUR'
+}, async () => {
+  const config = gateway.getSMSConfig();
+  assert.equal(config.enabled, true);
+  assert.equal(config.parentSendEnabled, false);
+  let sendCount = 0;
+  const route = smsRoute({ user: { id:'admin-1', role:'ADMIN' } }, {}, {
+    ...gateway, sendSMS: async () => { sendCount++; return { success:true, status:'ACCEPTED' }; }
+  });
+  const response = await route.POST(request({ studentId:'STU1', type:'CUSTOM', customMessage:'Hello', consent:true, confirmed:true }));
+  assert.equal(response.status, 503);
+  assert.equal(sendCount, 0);
 }));
 
 test('one live Nigerian recipient can be ACCEPTED; not counted as delivered', () => withEnv({
@@ -90,12 +106,20 @@ test('teacher cannot send or browse every parent SMS', async () => {
   assert.equal((await route.GET(new Request('https://ditmur.test/api/sms'))).status,403);
 });
 
+test('parent sends require server-validated consent after the separate parent-send flag is enabled', () => withEnv({
+  AFRICASTALKING_MODE:'sandbox', AFRICASTALKING_PARENT_SEND_ENABLED:'true', AFRICASTALKING_USERNAME:'sandbox', AFRICASTALKING_API_KEY:'dummy'
+}, async () => {
+  const route=smsRoute({user:{id:'admin-1',role:'ADMIN'}},{}, {...gateway,sendSMS:async () => {throw Error('Must not send');}});
+  const response=await route.POST(request({studentId:'STU1',type:'CUSTOM',customMessage:'Hi',consent:false,confirmed:true}));
+  assert.equal(response.status,400);
+}));
+
 test('unapproved term results cannot trigger a result SMS', () => withEnv({
-  AFRICASTALKING_MODE:'sandbox', AFRICASTALKING_USERNAME:'sandbox', AFRICASTALKING_API_KEY:'dummy'
+  AFRICASTALKING_MODE:'sandbox', AFRICASTALKING_PARENT_SEND_ENABLED:'true', AFRICASTALKING_USERNAME:'sandbox', AFRICASTALKING_API_KEY:'dummy'
 }, async () => {
   const prisma = { student: { findUnique: async () => ({id:'STU1',status:'ACTIVE',classId:'C1',firstName:'Ada',lastName:'Bello',parent:{id:'P1',phone:'08012345678'}}) },
     reportRelease: { findUnique: async () => null } };
   const route=smsRoute({user:{id:'admin-1',role:'ADMIN'}},prisma,{...gateway,sendSMS:async () => {throw Error('Must not send');}});
-  const result=await route.POST(request({studentId:'STU1',type:'RESULT',term:'First Term 2026-2027',confirmed:true}));
+  const result=await route.POST(request({studentId:'STU1',type:'RESULT',term:'First Term 2026-2027',consent:true,confirmed:true}));
   assert.equal(result.status,409);
 }));
