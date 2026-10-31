@@ -33,10 +33,17 @@ export default function ReportSheetPage() {
   const studentId = decodeURIComponent(params.id as string);
   const classId = searchParams.get('classId');
   const term = searchParams.get('term') || 'Term 1 - 2024';
-  
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [reportError, setReportError] = useState('');
+  const [attendanceSummaryState, setAttendanceSummaryState] = useState<{
+    key: string;
+    data: { available: boolean; message: string | null; throughDate: string | null;
+      schoolDaysOpened: number; presentDays: number; absentDays: number; unmarkedDays: number };
+  } | null>(null);
+  const attendanceSummaryKey = `${studentId}:${term}`;
+  const attendanceSummary = attendanceSummaryState?.key === attendanceSummaryKey ? attendanceSummaryState.data : null;
+  const attendanceSummaryLoading = !attendanceSummary;
 
   // AI Comment States
   const [teacherComment, setTeacherComment] = useState("This is an excellent result, keep it up.");
@@ -108,6 +115,26 @@ export default function ReportSheetPage() {
     };
     fetchReportData();
   }, [studentId, classId, term]);
+
+  useEffect(() => {
+    let active = true;
+    const refreshAttendanceSummary = async () => {
+      try {
+        const response = await fetch(`/api/attendance/summary?studentId=${encodeURIComponent(studentId)}&term=${encodeURIComponent(term)}`, { cache: 'no-store' });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.error || 'Attendance summary unavailable');
+        if (active) setAttendanceSummaryState({ key: attendanceSummaryKey, data: result.data });
+      } catch {
+        if (active) setAttendanceSummaryState({ key: attendanceSummaryKey, data: {
+          available: false, message: 'Attendance totals are currently unavailable.', throughDate: null,
+          schoolDaysOpened: 0, presentDays: 0, absentDays: 0, unmarkedDays: 0
+        } });
+      }
+    };
+    refreshAttendanceSummary();
+    window.addEventListener('focus', refreshAttendanceSummary);
+    return () => { active = false; window.removeEventListener('focus', refreshAttendanceSummary); };
+  }, [attendanceSummaryKey, session?.user?.id, studentId, term]);
 
   const handleGenerateComment = async () => {
     setIsGeneratingAI(true);
@@ -192,9 +219,13 @@ export default function ReportSheetPage() {
               <p><span className="font-bold text-slate-700 uppercase">Percentage:</span> <span className="font-bold text-slate-900">{student.average.toFixed(2)}%</span></p>
             </div>
             <div className="space-y-2">
-              <p><span className="font-bold text-slate-700 uppercase">No of Days School Opened:</span> <span className="font-bold text-slate-900">130</span></p>
-              <p><span className="font-bold text-slate-700 uppercase">No of Days Present:</span> <span className="font-bold text-slate-900">106</span></p>
-              <p><span className="font-bold text-slate-700 uppercase">No of Days Absent:</span> <span className="font-bold text-slate-900">0</span></p>
+              {attendanceSummaryLoading ? <p className="text-slate-500">Loading attendance totals…</p> : attendanceSummary?.available ? <>
+                <p><span className="font-bold text-slate-700 uppercase">Days School Opened (to date):</span> <span className="font-bold text-slate-900">{attendanceSummary.schoolDaysOpened}</span></p>
+                <p><span className="font-bold text-slate-700 uppercase">Days Present (including late):</span> <span className="font-bold text-slate-900">{attendanceSummary.presentDays}</span></p>
+                <p><span className="font-bold text-slate-700 uppercase">Days Absent:</span> <span className="font-bold text-slate-900">{attendanceSummary.absentDays}</span></p>
+                <p><span className="font-bold text-slate-700 uppercase">Days Not Marked:</span> <span className="font-bold text-slate-900">{attendanceSummary.unmarkedDays}</span></p>
+                <p className="text-[10px] text-slate-500">Holiday dates are excluded automatically. {attendanceSummary.throughDate ? `Through ${attendanceSummary.throughDate}.` : 'Term has not started.'}</p>
+              </> : <p className="text-amber-800" role="status">{attendanceSummary?.message || 'Attendance totals require term dates in Configuration.'}</p>}
             </div>
           </div>
 

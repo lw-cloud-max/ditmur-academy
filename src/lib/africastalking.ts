@@ -1,24 +1,32 @@
 // Africa's Talking legacy SMS API. Mode is DISABLED unless explicitly set.
 // Live sending requires a separate, deliberate opt-in and approved sender ID.
 export type SMSMode = 'disabled' | 'sandbox' | 'live';
-export type SMSConfig = { mode: SMSMode; enabled: boolean; reason: string; senderId?: string };
+export type SMSConfig = { mode: SMSMode; enabled: boolean; parentSendEnabled: boolean; reason: string; senderId?: string };
 
 export function getSMSConfig(): SMSConfig {
   const selected = process.env.AFRICASTALKING_MODE;
   const mode: SMSMode = selected === 'sandbox' || selected === 'live' ? selected : 'disabled';
-  if (mode === 'disabled') return { mode, enabled: false, reason: 'SMS sending is disabled while live Sender ID approval is pending.' };
+  if (mode === 'disabled') return { mode, enabled: false, parentSendEnabled: false, reason: 'SMS sending is disabled until the super admin enables and configures the approved Africa’s Talking sender.' };
   const key = process.env.AFRICASTALKING_API_KEY?.trim();
   const username = process.env.AFRICASTALKING_USERNAME?.trim();
+  const parentSendRequested = process.env.AFRICASTALKING_PARENT_SEND_ENABLED === 'true';
   if (mode === 'sandbox') {
-    return key && username === 'sandbox'
-      ? { mode, enabled: true, reason: 'Sandbox only: SMS goes to the simulator, not real phones.' }
-      : { mode, enabled: false, reason: 'Sandbox needs a sandbox API key and username sandbox.' };
+    const enabled = !!key && username === 'sandbox';
+    return enabled
+      ? { mode, enabled: true, parentSendEnabled: parentSendRequested, reason: 'Sandbox only: SMS goes to the simulator, not real phones.' }
+      : { mode, enabled: false, parentSendEnabled: false, reason: 'Sandbox needs a sandbox API key and username sandbox.' };
   }
   const senderId = process.env.AFRICASTALKING_SENDER_ID?.trim();
-  if (process.env.AFRICASTALKING_LIVE_ENABLED !== 'true') return { mode, enabled: false, reason: 'Live SMS requires explicit approval and AFRICASTALKING_LIVE_ENABLED=true.' };
-  if (!key || !username || username === 'sandbox') return { mode, enabled: false, reason: 'A live application username and live API key are required.' };
-  if (!senderId || !/^[A-Za-z0-9]{3,11}$/.test(senderId)) return { mode, enabled: false, reason: 'A registered Nigeria sender ID (3-11 letters/numbers) is required.' };
-  return { mode, enabled: true, reason: 'Live SMS enabled: sending may incur charges. Provider acceptance is NOT phone delivery.', senderId };
+  if (process.env.AFRICASTALKING_LIVE_ENABLED !== 'true') return { mode, enabled: false, parentSendEnabled: false, reason: 'Live SMS requires explicit approval and AFRICASTALKING_LIVE_ENABLED=true.' };
+  if (!key || !username || username === 'sandbox') return { mode, enabled: false, parentSendEnabled: false, reason: 'A live application username and live API key are required.' };
+  if (!senderId || !/^[A-Za-z0-9]{3,11}$/.test(senderId)) return { mode, enabled: false, parentSendEnabled: false, reason: 'A registered Nigeria sender ID (3-11 letters/numbers) is required.' };
+  return {
+    mode, enabled: true, parentSendEnabled: parentSendRequested,
+    reason: parentSendRequested
+      ? 'Live SMS enabled: sending may incur charges. Provider acceptance is NOT phone delivery.'
+      : 'Live connection test is enabled. Parent notices remain off until AFRICASTALKING_PARENT_SEND_ENABLED=true.',
+    senderId
+  };
 }
 
 export type SMSResult = { success: boolean; status: 'ACCEPTED' | 'FAILED' | 'UNKNOWN'; messageId?: string; error?: string };

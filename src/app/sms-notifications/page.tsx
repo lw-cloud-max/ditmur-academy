@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { AlertCircle, Clock, Loader2, MessageSquare, Send, ShieldCheck } from 'lucide-react';
+import { Clock, Loader2, MessageSquare, Send, ShieldCheck } from 'lucide-react';
 import { SMS_TEMPLATES } from '@/lib/sms-templates';
 
-type Config = { mode: 'disabled' | 'sandbox' | 'live'; enabled: boolean; reason: string; senderId?: string };
+type Config = { mode: 'disabled' | 'sandbox' | 'live'; enabled: boolean; parentSendEnabled: boolean; reason: string; senderId?: string };
 type Notice = { id: string; type: string; message: string; status: string; createdAt: string;
   parent?: { fullName: string; phone: string }; student?: { firstName: string; lastName: string } };
 type Student = { id: string; firstName: string; lastName: string; parent?: { phone?: string } };
@@ -32,6 +32,11 @@ export default function SMSNotificationsPage() {
   const [customMessage, setCustomMessage] = useState('');
   const [term, setTerm] = useState('Term 1 - 2024');
   const [consentChecked, setConsentChecked] = useState(false);
+  const [testPhone, setTestPhone] = useState('');
+  const [testConsent, setTestConsent] = useState(false);
+  const [testSending, setTestSending] = useState(false);
+  const [testMessage, setTestMessage] = useState('');
+  const [testError, setTestError] = useState('');
   const [search, setSearch] = useState('');
 
   const refreshHistory = async () => {
@@ -71,15 +76,35 @@ export default function SMSNotificationsPage() {
     : type === 'RESULT' ? SMS_TEMPLATES.resultPublished(term)
     : SMS_TEMPLATES.feeReminder();
   const maskedPhone = selected?.parent?.phone ? `***${selected.parent.phone.slice(-4)}` : 'No parent phone';
+  const maskedTestPhone = testPhone.replace(/\D/g, '').slice(-4);
+
+  const sendTest = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!config?.enabled || !testPhone.trim() || !testConsent || testSending) return;
+    if (!window.confirm(`Send exactly ONE ${config.mode === 'live' ? 'billable LIVE' : 'sandbox'} test SMS to the number ending ${maskedTestPhone}?\n\nDitmur Academy SMS connection test. Please ignore this message.\n\nThe number is not a student/parent record. If the result is unknown, check Africa’s Talking before retrying.`)) return;
+    setTestSending(true); setTestError(''); setTestMessage('');
+    try {
+      const response = await fetch('/api/sms/test', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: testPhone, consent: true, confirmed: true })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Test SMS was not accepted. Check provider logs before retrying.');
+      setTestMessage(result.message || 'Accepted by the provider; phone delivery is not confirmed.');
+      setTestPhone(''); setTestConsent(false);
+    } catch (cause) {
+      setTestError(cause instanceof Error ? cause.message : 'SMS outcome may be unknown. Check provider logs before retrying.');
+    } finally { setTestSending(false); }
+  };
 
   const send = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!config?.enabled || !studentId || !consentChecked || sending || !preview || preview.length > 320) return;
+    if (!config?.enabled || !config.parentSendEnabled || !studentId || !consentChecked || sending || !preview || preview.length > 320) return;
     if (!window.confirm(`Send ONE ${config.mode === 'live' ? 'billable LIVE' : 'sandbox'} SMS to the parent of ${studentName} (${maskedPhone})?\n\n${preview}\n\nProvider acceptance is NOT proof the phone received it.`)) return;
     setSending(true); setError(''); setMessage('');
     try {
       const res = await fetch('/api/sms', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, studentId, customMessage, term, confirmed: true }) });
+        body: JSON.stringify({ type, studentId, customMessage, term, consent: true, confirmed: true }) });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || 'SMS was not accepted. Check history before retrying.');
       setMessage(json.message || 'Accepted by provider. Delivery has not yet been confirmed.');
@@ -95,19 +120,42 @@ export default function SMSNotificationsPage() {
 
   return <div className="max-w-5xl mx-auto pb-32 space-y-6">
     <header><h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><MessageSquare className="text-blue-700" /> SMS Notifications</h1>
-      <p className="text-slate-600 mt-1 text-sm">One parent at a time. No automatic or bulk SMS is enabled.</p></header>
+      <p className="text-slate-600 mt-1 text-sm">Notices go to one linked parent at a time. A separate test tool sends only one fixed, explicitly confirmed message. No automatic or bulk SMS is enabled.</p></header>
     {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</p>}
     {message && <p role="status" className="rounded-xl border border-green-200 bg-green-50 p-4 text-green-800">{message}</p>}
     <section aria-label="SMS mode" className={`rounded-xl border p-4 flex items-start gap-3 ${config?.mode === 'live' && config.enabled ? 'bg-amber-50 border-amber-300' : 'bg-blue-50 border-blue-200'}`}>
       <ShieldCheck className="w-5 h-5 text-blue-700 shrink-0" />
-      <div><h2 className="font-bold">{loading ? 'Checking SMS mode...' : config?.enabled ? config.mode === 'sandbox' ? 'Sandbox simulator active' : 'Live SMS enabled - charges may apply' : 'SMS sending disabled (safe for launch)'}</h2>
+      <div><h2 className="font-bold">{loading ? 'Checking SMS mode...' : !config?.enabled ? 'SMS sending disabled (safe for launch)' : config.mode === 'sandbox' ? 'Sandbox simulator active' : config.parentSendEnabled ? 'Live parent SMS enabled - charges may apply' : 'Live connection test enabled - parent notices are off'}</h2>
         <p className="text-sm mt-1">{config?.reason || 'SMS settings have not been loaded. No messages can be sent.'}</p>
         {config?.mode === 'live' && config.senderId && <p className="text-sm mt-1">Approved sender ID configured: {config.senderId}</p>}
-        <p className="text-xs mt-2">"Accepted" means the provider received the request. Handset delivery requires a separate delivery report.</p>
+        <p className="text-xs mt-2">&ldquo;Accepted&rdquo; means the provider received the request. Handset delivery requires a separate delivery report.</p>
       </div>
     </section>
 
-    {config?.enabled && <form onSubmit={send} className="rounded-2xl border bg-white p-4 sm:p-6 space-y-4">
+    {testError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{testError}</p>}
+    {testMessage && <p role="status" className="rounded-xl border border-green-200 bg-green-50 p-4 text-green-800">{testMessage}</p>}
+    {config?.enabled && <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-6 space-y-3">
+      <div><h2 className="font-bold text-lg text-amber-950">Send one connection-test SMS</h2>
+        <p className="mt-1 text-sm text-amber-900">Use your own phone or a staff member who has agreed to receive one test. This does not use a student or parent record, and the phone number is not saved in school SMS history.</p></div>
+      <form onSubmit={sendTest} className="space-y-3">
+        <label className="block text-sm font-semibold text-slate-800">Test mobile number
+          <input type="tel" required maxLength={32} autoComplete="off" value={testPhone}
+            onChange={event => setTestPhone(event.target.value)} placeholder="080… or +234…"
+            className="mt-1 block w-full rounded-lg border border-amber-300 bg-white p-3" />
+        </label>
+        <p className="rounded-lg border border-amber-200 bg-white p-3 text-sm text-slate-700">Fixed message: “Ditmur Academy SMS connection test. Please ignore this message.”</p>
+        <label className="flex items-start gap-2 text-sm text-slate-800"><input type="checkbox" checked={testConsent}
+          onChange={event => setTestConsent(event.target.checked)} className="mt-1" />
+          I own this number or have the holder’s consent. I understand that a live test may use the school’s paid SMS balance.
+        </label>
+        <button type="submit" disabled={!testPhone.trim() || !testConsent || testSending}
+          className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-amber-700 px-5 py-3 font-bold text-white disabled:opacity-50">
+          {testSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          {testSending ? 'Sending one test…' : config.mode === 'live' ? 'Review and send one LIVE test' : 'Review and send one sandbox test'}
+        </button>
+      </form>
+    </section>}
+    {config?.enabled && config.parentSendEnabled && <form onSubmit={send} className="rounded-2xl border bg-white p-4 sm:p-6 space-y-4">
       <h2 className="font-bold text-lg">Compose a single-parent SMS</h2>
       <label className="block text-sm font-semibold">Student (message goes to linked parent)
         <select required value={studentId} onChange={event => setStudentId(event.target.value)} className="block mt-1 w-full rounded-lg border p-3 bg-white">
