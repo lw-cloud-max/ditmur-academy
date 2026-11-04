@@ -5,11 +5,22 @@ import { isSuperAdmin } from "@/lib/permissions";
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const classes = await prisma.class.findMany({
-      orderBy: { name: 'asc' }
-    });
+    const includeTeacher = !!req?.url && new URL(req.url).searchParams.get('includeTeacher') === '1';
+    let classes;
+    if (includeTeacher) {
+      const session = await auth();
+      if (!session?.user || !['ADMIN', 'STAFF'].includes(session.user.role)) {
+        return NextResponse.json({ success: false, error: 'Staff access required' }, { status: 403 });
+      }
+      classes = await prisma.class.findMany({
+        include: { teacher: { select: { id: true, firstName: true, lastName: true, role: true, status: true } } },
+        orderBy: { name: 'asc' }
+      });
+    } else {
+      classes = await prisma.class.findMany({ orderBy: { name: 'asc' } });
+    }
 
     // To prevent Vercel caching issues with aggregate count sub-queries, 
     // we fetch the counts manually and attach them.
@@ -31,9 +42,9 @@ export async function GET() {
     }));
 
     return NextResponse.json({ success: true, data: sanitizedClasses });
-  } catch (error: any) {
-    console.error("GET Classes Error:", error);
-    return NextResponse.json({ success: false, error: error.message || "Failed to fetch classes" }, { status: 500 });
+  } catch (error: unknown) {
+    console.error('GET Classes Error:', error instanceof Error ? error.name : 'unknown');
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Failed to fetch classes' }, { status: 500 });
   }
 }
 
@@ -48,7 +59,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, data: newClass }, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: false, error: "Failed to create class. It may already exist." }, { status: 500 });
   }
 }
@@ -63,7 +74,7 @@ export async function DELETE(req: Request) {
 
     await prisma.class.delete({ where: { id } });
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: false, error: "Failed to delete class. It may have students attached." }, { status: 500 });
   }
 }

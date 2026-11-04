@@ -22,6 +22,8 @@ interface Parent {
 export default function ParentsPage() {
   const { data: session } = useSession();
   const isSuperAdmin = session?.user?.role === 'ADMIN' && session?.user?.id === 'admin-1';
+  const isClassTeacher = session?.user?.role === 'STAFF' && ['TEACHER', 'ACCOUNTANT_TEACHER'].includes(session.user.staffRole || '');
+  const canEditParents = isSuperAdmin || isClassTeacher;
   const [credential, setCredential] = useState<IssuedCredential | null>(null);
   const [parents, setParents] = useState<Parent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +73,8 @@ export default function ParentsPage() {
   const handleSaveParent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingParent) return;
+    const emailChanged = (editingParent.email || '').trim().toLowerCase() !== editForm.email.trim().toLowerCase();
+    if (emailChanged && !window.confirm('Changing this Parent email may affect their sign-in and email notices. Continue with the new email?')) return;
 
     setIsSubmitting(true);
     try {
@@ -79,7 +83,8 @@ export default function ParentsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editingParent.id,
-          ...editForm
+          ...editForm,
+          confirmEmailChange: emailChanged
         })
       });
 
@@ -231,7 +236,7 @@ export default function ParentsPage() {
                       )}
                     </div>
                   </div>
-                  <div className="relative z-10 shrink-0">
+                  {canEditParents && <div className="relative z-10 shrink-0">
                     <button type="button"
                       aria-label={`Actions for ${parent.fullName}`}
                       aria-expanded={activeDropdown === parent.id}
@@ -253,16 +258,16 @@ export default function ParentsPage() {
                             <Edit className="w-4 h-4 text-slate-400" /> Edit Details
                           </button>
                           {isSuperAdmin && <button type="button" onClick={() => resetParentPassword(parent.id)} role="menuitem" className="w-full px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 text-left">Reset Login Password</button>}
-                          <button
+                          {isSuperAdmin && <button
                             onClick={() => handleDeleteParent(parent.id, parent.fullName)}
                             role="menuitem" className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                           >
                             <Trash2 className="w-4 h-4 text-red-500" /> Delete Parent
-                          </button>
+                          </button>}
                         </div>
                       </>
                     )}
-                  </div>
+                  </div>}
                 </div>
               </div>
             ))}
@@ -304,6 +309,7 @@ export default function ParentsPage() {
                   onChange={(e) => setEditForm({...editForm, email: e.target.value})}
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
                 />
+                <p className="mt-1 text-xs text-amber-800">Changing the email may change how this Parent signs in and receives school notices.</p>
               </div>
 
               <div>

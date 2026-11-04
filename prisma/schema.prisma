@@ -53,6 +53,7 @@ model Student {
   status           String   @default("ACTIVE") 
   enrollmentDate   DateTime @default(now())
   grades           Grade[]
+  subjectOfferings StudentSubjectOffering[]
   invoices         Invoice[]
   skillRatings     SkillRating[]
   cbtResults       CBTResult[] 
@@ -131,6 +132,7 @@ model Subject {
   id        String    @id @default(cuid())
   name      String    @unique 
   grades    Grade[]
+  studentOfferings StudentSubjectOffering[]
   timetableEntries TimetableEntry[]
   internalExams    InternalExam[]
   questionBank     QuestionBank[] 
@@ -173,6 +175,24 @@ model Grade {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([studentId, subjectId, term])
+}
+
+// Per-student, per-term record of the subjects the pupil is enrolled to take.
+// It is intentionally separate from Grade so a missing score is not mistaken
+// for a subject the student does not offer.
+model StudentSubjectOffering {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  term      String
+  assignedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, subjectId, term])
+  @@index([term, studentId])
 }
 
 model SkillRating {
