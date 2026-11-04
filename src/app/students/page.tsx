@@ -27,6 +27,8 @@ export default function StudentsPage() {
   const userRole = session?.user?.role;
   const isReadOnly = userRole !== 'STAFF' && userRole !== 'ADMIN';
   const isSuperAdmin = userRole === 'ADMIN' && session?.user?.id === 'admin-1';
+  const isClassTeacher = userRole === 'STAFF' && ['TEACHER', 'ACCOUNTANT_TEACHER'].includes(session?.user?.staffRole || '');
+  const canAddStudent = isSuperAdmin || isClassTeacher;
   const [credential, setCredential] = useState<IssuedCredential | null>(null);
 
   const [students, setStudents] = useState<any[]>([]);
@@ -329,8 +331,8 @@ export default function StudentsPage() {
           <p className="text-slate-500">Manage student records and information.</p>
         </div>
         {isSuperAdmin && <Link href="/students/preserve-id" className="flex min-h-11 items-center gap-2 rounded-lg border border-blue-700 bg-white px-4 text-sm font-bold text-blue-800 hover:bg-blue-50">Add missing Student - keep ID</Link>}
-        {!isReadOnly && (
-          <Link href="/admissions" className="flex items-center gap-2 bg-[#0033A0] text-white px-4 py-2 rounded-lg hover:bg-[#002277] transition-colors">
+        {canAddStudent && (
+          <Link href="/students/new" className="flex items-center gap-2 bg-[#0033A0] text-white px-4 py-2 rounded-lg hover:bg-[#002277] transition-colors">
             <Plus className="w-4 h-4" />
             <span className="text-sm font-medium">Add New Student</span>
           </Link>

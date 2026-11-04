@@ -9,6 +9,7 @@ import { useSession } from 'next-auth/react';
 export default function ClassDetailsPage() {
   const { data: session } = useSession();
   const isSuperAdmin = session?.user?.role === 'ADMIN' && session?.user?.id === 'admin-1';
+  const isClassTeacher = session?.user?.role === 'STAFF' && ['TEACHER', 'ACCOUNTANT_TEACHER'].includes(session.user.staffRole || '');
   const canEditResults = session?.user?.role === 'ADMIN' || session?.user?.role === 'STAFF';
   const params = useParams();
   const classId = params.id as string;
@@ -38,7 +39,7 @@ export default function ClassDetailsPage() {
     const fetchData = async () => {
       try {
         const [classRes, studentsRes, timetableRes, subjectsRes, termRes] = await Promise.all([
-          fetch('/api/classes'),
+          fetch('/api/classes?includeTeacher=1'),
           fetch(`/api/students?classId=${classId}`),
           fetch(`/api/timetable?classId=${classId}`),
           fetch('/api/subjects'),
@@ -97,6 +98,7 @@ export default function ClassDetailsPage() {
     return () => { active = false; window.clearInterval(timer); };
   }, [selectedTerm, canEditResults]);
   const scoreEntryOpen = !!scoreEntryWindow && scoreEntryWindow.term === selectedTerm && scoreEntryWindow.isOpen;
+  const canAddStudent = isSuperAdmin || (isClassTeacher && classInfo?.teacherId === session?.user?.id);
 
   const tabs = [
     { id: 'members', label: 'Members', icon: Users },
@@ -201,9 +203,9 @@ export default function ClassDetailsPage() {
               <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-100 transition-colors text-sm font-medium">
                 <Upload className="w-4 h-4" /> Bulk Add
               </button>
-              <Link href="/admissions" className="flex items-center gap-2 bg-[#0033A0] text-white px-4 py-2 rounded-lg hover:bg-[#002277] transition-colors text-sm font-medium">
+              {canAddStudent && <Link href={`/students/new?classId=${encodeURIComponent(classId)}`} className="flex items-center gap-2 bg-[#0033A0] text-white px-4 py-2 rounded-lg hover:bg-[#002277] transition-colors text-sm font-medium">
                 <Plus className="w-4 h-4" /> Add Student
-              </Link>
+              </Link>}
             </div>
           </div>
 

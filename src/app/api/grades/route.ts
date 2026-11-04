@@ -48,6 +48,17 @@ export async function POST(req: Request) {
     if (!subject || !schoolClass || studentCount !== ids.length) {
       return NextResponse.json({ success: false, error: 'Subject, class or student list does not match school records' }, { status: 400 });
     }
+    const [classOfferingCount, assignedRows, legacyGrades] = await Promise.all([
+      prisma.studentSubjectOffering.count({ where: { term, student: { classId, status: 'ACTIVE' } } }),
+      prisma.studentSubjectOffering.findMany({ where: { term, subjectId, studentId: { in: ids }, student: { classId, status: 'ACTIVE' } }, select: { studentId: true } }),
+      prisma.grade.findMany({ where: { term, subjectId, studentId: { in: ids } }, select: { studentId: true } })
+    ]);
+    const allowedIds = new Set(classOfferingCount ? assignedRows.map(row => row.studentId) : legacyGrades.map(row => row.studentId));
+    if (ids.some(id => !allowedIds.has(id))) {
+      return NextResponse.json({ success: false, error: classOfferingCount
+        ? 'One or more students do not offer this subject for the selected term. Update subject offerings first.'
+        : 'Subjects must be configured before entering new grades for this class and term.' }, { status: 409, headers: { 'Cache-Control': 'no-store' } });
+    }
     // Any saved change returns the class-term to DRAFT in the same transaction.
     // No newly edited mark remains public under an old approval.
     await prisma.$transaction(async tx => {
@@ -80,8 +91,13 @@ export async function GET(req: Request) {
     if (!subjectId || !classId || term.length < 3 || term.length > 120) {
       return NextResponse.json({ success: false, error: 'Subject, class and term required' }, { status: 400 });
     }
-    const grades = await prisma.grade.findMany({ where: { subjectId, term, student: { classId } } });
-    return NextResponse.json({ success: true, data: grades });
+    const [classOfferingCount, assignedRows, grades] = await Promise.all([
+      prisma.studentSubjectOffering.count({ where: { term, student: { classId, status: 'ACTIVE' } } }),
+      prisma.studentSubjectOffering.findMany({ where: { subjectId, term, student: { classId, status: 'ACTIVE' } }, select: { studentId: true } }),
+      prisma.grade.findMany({ where: { subjectId, term, student: { classId } } })
+    ]);
+    const offeredStudentIds = Array.from(new Set((classOfferingCount ? assignedRows.map(row => row.studentId) : grades.map(row => row.studentId))));
+    return NextResponse.json({ success: true, data: grades, offeredStudentIds, subjectsConfigured: classOfferingCount > 0 }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     console.error('Fetch grades error:', error);
     return NextResponse.json({ success: false, error: 'Failed to fetch grades' }, { status: 500 });

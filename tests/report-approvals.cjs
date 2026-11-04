@@ -14,7 +14,8 @@ function load(file, session, prisma) {
   const permissionModule = { exports: {} };
   new Function('require','module','exports',perms)(require,permissionModule,permissionModule.exports);
   const deps = { 'next/server': { NextResponse: { json: (body, opts) => Response.json(body,opts) } },
-    '@/auth': { auth: async () => session }, '@/lib/prisma': { prisma }, '@/lib/permissions': permissionModule.exports };
+    '@/auth': { auth: async () => session }, '@/lib/prisma': { prisma }, '@/lib/permissions': permissionModule.exports,
+    '@/lib/score-entry-window': { getScoreEntryStatus: async term => ({ term, isOpen: true, reason: 'Test score window is open' }) } };
   new Function('require','module','exports',js)(name => {
     if (!(name in deps)) throw Error('Unknown dependency ' + name);
     return deps[name];
@@ -51,6 +52,7 @@ test('even after approval, students and parents receive only their own reports',
     student: { findUnique: async () => ({ classId: 'C1' }), findFirst: async () => ({ id: 'STU1' }),
       findMany: async ({ where }) => { whereList.push(where); return []; } },
     class: { findUnique: async () => ({ id:'C1',name:'JSS 1' }) }, subject: { findMany: async () => [] },
+    studentSubjectOffering: { findMany: async () => [] },
     reportRelease: { findUnique: async () => ({ approvedAt: new Date() }) }
   };
   assert.equal((await load(classRoute,student,prisma).GET(request('/api/broadsheet/class?classId=C1'))).status,200);
@@ -63,7 +65,7 @@ test('teacher sees draft, but families cannot GET raw grades endpoint', async ()
   const prisma = {
     reportRelease: { findUnique: async () => null },
     class: { findUnique: async () => ({ id:'C1',name:'JSS 1' }) }, subject: { findMany: async () => [] },
-    student: { findMany: async () => [] }, grade: { findMany: async () => [] }
+    student: { findMany: async () => [] }, studentSubjectOffering: { findMany: async () => [] }, grade: { findMany: async () => [] }
   };
   const response = await load(classRoute,teacher,prisma).GET(request('/api/broadsheet/class?classId=C1'));
   assert.equal(response.status,200);
@@ -89,6 +91,8 @@ test('saving grades reverts previously approved results to draft inside the same
   const prisma = {
     class: { findUnique: async () => ({ id:'C1' }) }, subject: { findUnique: async () => ({ id:'S1' }) },
     student: { count: async () => 1 },
+    studentSubjectOffering: { count: async () => 1, findMany: async () => [{ studentId: 'STU1' }] },
+    grade: { findMany: async () => [] },
     $transaction: async callback => callback({
       grade: { upsert: async () => ({}) },
       reportRelease: { upsert: async ({ update }) => { release=update; return {}; } }

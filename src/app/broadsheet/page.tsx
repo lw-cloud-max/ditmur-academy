@@ -19,6 +19,7 @@ export default function BroadsheetPage() {
   const userRole = session?.user?.role;
   const isReadOnly = userRole !== 'STAFF' && userRole !== 'ADMIN';
   const isSuperAdmin = userRole === 'ADMIN' && session?.user?.id === 'admin-1';
+  const canManageSubjectOfferings = isSuperAdmin || (userRole === 'STAFF' && ['TEACHER', 'ACCOUNTANT_TEACHER'].includes(session?.user?.staffRole || ''));
   const [termOptions, setTermOptions] = useState<string[]>(['Term 1 - 2024']);
   const [selectedTerm, setSelectedTerm] = useState('Term 1 - 2024');
   const [reportError, setReportError] = useState('');
@@ -42,6 +43,7 @@ export default function BroadsheetPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  const [entryNotice, setEntryNotice] = useState('');
 
   // Modal State
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -198,7 +200,10 @@ export default function BroadsheetPage() {
             highestAverage,
             lowestAverage: lowestAverage === 100 ? 0 : lowestAverage,
             subjectStats,
-            approved: data.data.approved
+            approved: data.data.approved,
+            subjectsConfigured: data.data.subjectsConfigured,
+            subjectOfferingsComplete: data.data.subjectOfferingsComplete,
+            studentsWithoutConfiguredOfferings: data.data.studentsWithoutConfiguredOfferings
           });
         }
       } catch (err) {
@@ -215,32 +220,33 @@ export default function BroadsheetPage() {
     if (viewMode !== 'entry' || !selectedClass || !selectedSubject) return;
     
     const fetchEntryData = async () => {
-      setLoading(true);
+      setLoading(true); setEntryNotice('');
       try {
         const [stuRes, gradeRes] = await Promise.all([
           fetch(`/api/students?classId=${selectedClass}`),
           fetch(`/api/grades?classId=${encodeURIComponent(selectedClass)}&subjectId=${encodeURIComponent(selectedSubject)}&term=${encodeURIComponent(selectedTerm)}`)
         ]);
-        const stuData = await stuRes.json();
-        const gradeData = await gradeRes.json();
-
-        if (stuData.success) {
-          const studentsWithGrades = stuData.data.map((stu: any) => {
-            const existingGrade = gradeData.success ? gradeData.data.find((g: any) => g.studentId === stu.id) : null;
-            return {
-              ...stu,
-              ca1: existingGrade?.ca1 || 0,
-              ca2: existingGrade?.ca2 || 0,
-              exam: existingGrade?.exam || 0
-            };
-          });
-          setStudents(studentsWithGrades);
+        const [stuData, gradeData] = await Promise.all([stuRes.json(), gradeRes.json()]);
+        if (!stuRes.ok || !stuData.success) throw new Error(stuData.error || 'Could not load students');
+        if (!gradeRes.ok || !gradeData.success) throw new Error(gradeData.error || 'Could not load offered students');
+        const offeredIds = new Set(Array.isArray(gradeData.offeredStudentIds) ? gradeData.offeredStudentIds : []);
+        if (!offeredIds.size) {
+          setStudents([]);
+          setEntryNotice(gradeData.subjectsConfigured
+            ? 'No active students are assigned this subject for the selected term.'
+            : 'Subject offerings are not configured for this class and term. Use Manage Subject Offerings first.');
+          return;
         }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+        const eligibleStudents = stuData.data.filter((stu: any) => offeredIds.has(stu.id));
+        const studentsWithGrades = eligibleStudents.map((stu: any) => {
+          const existingGrade = gradeData.data.find((grade: any) => grade.studentId === stu.id);
+          return { ...stu, ca1: existingGrade?.ca1 || 0, ca2: existingGrade?.ca2 || 0, exam: existingGrade?.exam || 0 };
+        });
+        setStudents(studentsWithGrades);
+      } catch (cause) {
+        setStudents([]);
+        setEntryNotice(cause instanceof Error ? cause.message : 'Could not load subject entry.');
+      } finally { setLoading(false); }
     };
     fetchEntryData();
   }, [selectedClass, selectedSubject, selectedTerm, viewMode]);
@@ -334,6 +340,7 @@ export default function BroadsheetPage() {
             </button>
           )}
         </div>
+        {canManageSubjectOfferings && <Link href="/subject-offerings" className="inline-flex min-h-10 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-sm font-bold text-blue-800 hover:bg-blue-100">Manage Subject Offerings</Link>}
       </div>
 
       {isReadOnly && userRole === 'STUDENT' && (
@@ -413,6 +420,10 @@ export default function BroadsheetPage() {
                 <p className="text-slate-600 font-medium">Highest Average in Class: <span className="font-bold text-[#0033A0]">{classData.highestAverage.toFixed(2)}</span></p>
                 <p className="text-slate-600 font-medium">Lowest Average in Class: <span className="font-bold text-[#0033A0]">{classData.lowestAverage.toFixed(2)}</span></p>
               </div>
+              {!classData.subjectOfferingsComplete && <div role="status" className="border-b border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                {classData.studentsWithoutConfiguredOfferings ? `${classData.studentsWithoutConfiguredOfferings} student(s) still use their existing graded subjects or have no subject list set for this term.` : 'Subject offerings are not fully configured for this class and term.'}
+                {canManageSubjectOfferings && <Link href="/subject-offerings" className="ml-1 font-bold underline">Manage Subject Offerings</Link>}
+              </div>}
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
@@ -450,9 +461,10 @@ export default function BroadsheetPage() {
                         </td>
                         {classData.subjects.map((sub: any) => {
                           const score = stu.subjectScores[sub.id]?.total;
+                          const offered = Array.isArray(stu.offeredSubjectIds) && stu.offeredSubjectIds.includes(sub.id);
                           return (
                             <td key={sub.id} className="px-4 py-3 text-center border-l border-slate-100 text-sm font-medium text-slate-700">
-                              {score !== undefined ? score : '-'}
+                              {score !== undefined ? score : offered ? '-' : '—'}
                             </td>
                           );
                         })}
@@ -474,6 +486,7 @@ export default function BroadsheetPage() {
             <p className="mt-1">{scoreEntryWindow?.term === selectedTerm ? scoreEntryWindow.reason : 'Checking the school-wide term deadline…'}</p>
             {!scoreEntryWindow?.configured && <p className="mt-1 text-xs">The super admin must configure this term’s score-entry window in Configuration → Terms & Sessions.</p>}
           </div>
+          {entryNotice && <div role="status" className="border-b border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">{entryNotice} {canManageSubjectOfferings && <Link href="/subject-offerings" className="ml-1 font-bold underline">Manage Subject Offerings</Link>}</div>}
           <div className="p-4 border-b border-slate-200 flex justify-end bg-slate-50">
             <button onClick={saveGrades} disabled={saving || students.length === 0 || !scoreEntryOpen} className={`flex items-center gap-2 text-white px-5 py-2 rounded-lg text-sm font-bold ${saving || students.length === 0 || !scoreEntryOpen ? 'bg-blue-400' : 'bg-[#0033A0] hover:bg-[#002277]'}`}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save Subject Grades
