@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { ArrowLeft, Loader2, User, Camera, Mail, Phone, Calendar, School, CreditCard, GraduationCap, Building, Users } from 'lucide-react';
 import Link from 'next/link';
 
 export default function StudentProfilePage() {
+  const { data: session } = useSession();
   const params = useParams();
   
   // The ID from URL will have '%2F' instead of '/' (e.g. DIT%2FSTU%2F001)
@@ -14,6 +16,10 @@ export default function StudentProfilePage() {
   const [student, setStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const isSuperAdmin = session?.user?.role === 'ADMIN' && session.user.id === 'admin-1';
+  const isClassTeacher = session?.user?.role === 'STAFF' && ['TEACHER', 'ACCOUNTANT_TEACHER'].includes(session.user.staffRole || '');
+  const canUploadImage = !!student && (isSuperAdmin || (isClassTeacher && student.class?.teacherId === session?.user?.id));
+  const profileImageSrc = student?.imageUrl || null;
 
   const fetchStudent = async () => {
     try {
@@ -56,15 +62,10 @@ export default function StudentProfilePage() {
         body: formData
       });
       const data = await res.json();
-      
-      if (data.success) {
-        // Update local state instantly so UI updates without full refresh
-        setStudent({ ...student, imageUrl: data.imageUrl });
-      } else {
-        alert(data.error);
-      }
+      if (!res.ok || !data.success) throw new Error(data.error || 'Could not upload this image');
+      setStudent({ ...student, imageUrl: data.imageUrl });
     } catch (err) {
-      alert("Failed to upload image");
+      alert(err instanceof Error ? err.message : 'Failed to upload image');
     } finally {
       setUploadingImage(false);
     }
@@ -108,13 +109,13 @@ export default function StudentProfilePage() {
           <div className="-mt-16 relative group shrink-0">
             <div className="w-32 h-32 rounded-full border-4 border-white bg-slate-100 shadow-md overflow-hidden relative flex items-center justify-center">
               {student.imageUrl ? (
-                <img src={student.imageUrl} alt={student.firstName} className="w-full h-full object-cover" />
+                <img src={profileImageSrc || ''} alt={student.firstName} className="w-full h-full object-cover" />
               ) : (
                 <User className="w-16 h-16 text-slate-300" />
               )}
               
-              {/* Upload Overlay */}
-              <label className="absolute inset-0 bg-black/50 text-white flex flex-col items-center justify-center opacity-100 cursor-pointer transition-opacity">
+              {/* Photo upload is limited to the super admin and this student's assigned class teacher. */}
+              {canUploadImage && <label className="absolute inset-0 bg-black/50 text-white flex flex-col items-center justify-center opacity-100 cursor-pointer transition-opacity">
                 {uploadingImage ? (
                   <Loader2 className="w-6 h-6 animate-spin" />
                 ) : (
@@ -124,7 +125,7 @@ export default function StudentProfilePage() {
                     <input type="file" accept="image/jpeg, image/png, image/webp" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
                   </>
                 )}
-              </label>
+              </label>}
             </div>
           </div>
 

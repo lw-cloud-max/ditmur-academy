@@ -1,41 +1,59 @@
 import { NextResponse } from 'next/server';
+import { put } from '@vercel/blob';
+import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { writeFile } from 'fs/promises';
-import path from 'path';
+import { isSuperAdmin } from '@/lib/permissions';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+const noStore = { 'Cache-Control': 'private, no-store, max-age=0' };
+const allowedImageTypes: Record<string, string> = {
+  'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp'
+};
 
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData();
-    const file = formData.get('file') as File;
-    const studentId = formData.get('studentId') as string;
+    const session = await auth();
+    const isClassTeacher = session?.user?.role === 'STAFF' && ['TEACHER', 'ACCOUNTANT_TEACHER'].includes(session.user.staffRole || '');
+    if (!session?.user || !(isSuperAdmin(session) || isClassTeacher)) {
+      return NextResponse.json({ success: false, error: 'Assigned class teacher or super admin required' }, { status: 403, headers: noStore });
+    }
+    const origin = req.headers.get('origin');
+    if (origin && new URL(origin).host !== new URL(req.url).host) {
+      return NextResponse.json({ success: false, error: 'Request origin not allowed' }, { status: 403, headers: noStore });
+    }
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    if (!token) return NextResponse.json({ success: false, error: 'Student photo storage is not configured. Ask the super admin to attach the Vercel Blob store.' }, { status: 503, headers: noStore });
 
-    if (!file || !studentId) {
-      return NextResponse.json({ success: false, error: 'File and Student ID are required.' }, { status: 400 });
+    const formData = await req.formData();
+    const file = formData.get('file');
+    const studentId = typeof formData.get('studentId') === 'string' ? String(formData.get('studentId')).trim() : '';
+    if (!file || typeof file === 'string' || typeof file.arrayBuffer !== 'function' || !studentId || studentId.length > 150) {
+      return NextResponse.json({ success: false, error: 'Image file and valid Student ID are required' }, { status: 400, headers: noStore });
+    }
+    const extension = allowedImageTypes[file.type];
+    if (!extension) return NextResponse.json({ success: false, error: 'Choose a JPEG, PNG, or WebP image' }, { status: 400, headers: noStore });
+    if (file.size < 1 || file.size > 2 * 1024 * 1024) {
+      return NextResponse.json({ success: false, error: 'Image must be smaller than 2 MB' }, { status: 400, headers: noStore });
     }
 
-    // Convert file to buffer
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const student = await prisma.student.findUnique({ where: { id: studentId }, select: { id: true, status: true, classId: true } });
+    if (!student || student.status !== 'ACTIVE') return NextResponse.json({ success: false, error: 'Active student not found' }, { status: 404, headers: noStore });
+    if (!isSuperAdmin(session)) {
+      const assigned = student.classId ? await prisma.class.findUnique({ where: { id: student.classId }, select: { teacherId: true } }) : null;
+      if (!isClassTeacher || assigned?.teacherId !== session.user.id) {
+        return NextResponse.json({ success: false, error: 'Only the assigned class teacher may upload this student photo' }, { status: 403, headers: noStore });
+      }
+    }
 
-    // Create a unique filename (e.g. DIT-STU-001-163456789.jpg)
-    const sanitizedId = studentId.replace(/\//g, '-');
-    const filename = `${sanitizedId}-${Date.now()}${path.extname(file.name)}`;
-    
-    // Save to public/uploads directory
-    const uploadDir = path.join(process.cwd(), 'public/uploads');
-    const filePath = path.join(uploadDir, filename);
-    await writeFile(filePath, buffer);
-
-    // Update the database with the public URL
-    const imageUrl = `/uploads/${filename}`;
-    await prisma.student.update({
-      where: { id: studentId },
-      data: { imageUrl }
+    const safeId = studentId.replace(/[^A-Za-z0-9_-]/g, '-');
+    const blob = await put(`student-photos/${safeId}/profile.${extension}`, file, {
+      access: 'public', addRandomSuffix: true, contentType: file.type, token
     });
-
-    return NextResponse.json({ success: true, imageUrl });
+    await prisma.student.update({ where: { id: studentId }, data: { imageUrl: blob.url } });
+    return NextResponse.json({ success: true, imageUrl: blob.url }, { headers: noStore });
   } catch (error) {
-    console.error("Image upload failed:", error);
-    return NextResponse.json({ success: false, error: 'Failed to upload image' }, { status: 500 });
+    console.error('Student photo upload failed:', error instanceof Error ? error.name : 'unknown');
+    return NextResponse.json({ success: false, error: 'Could not upload the image. Check the photo and Blob storage setup, then retry.' }, { status: 500, headers: noStore });
   }
 }
