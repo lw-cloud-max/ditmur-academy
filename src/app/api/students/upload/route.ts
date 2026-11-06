@@ -22,8 +22,9 @@ export async function POST(req: Request) {
     if (origin && new URL(origin).host !== new URL(req.url).host) {
       return NextResponse.json({ success: false, error: 'Request origin not allowed' }, { status: 403, headers: noStore });
     }
-    const token = process.env.BLOB_READ_WRITE_TOKEN;
-    if (!token) return NextResponse.json({ success: false, error: 'Student photo storage is not configured. Ask the super admin to attach the Vercel Blob store.' }, { status: 503, headers: noStore });
+    const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+    const storeId = process.env.BLOB_STORE_ID?.trim();
+    if (!token && !storeId) return NextResponse.json({ success: false, error: 'Student photo storage is not configured. Connect the Vercel Blob store to this project and redeploy.' }, { status: 503, headers: noStore });
 
     const formData = await req.formData();
     const file = formData.get('file');
@@ -48,12 +49,15 @@ export async function POST(req: Request) {
 
     const safeId = studentId.replace(/[^A-Za-z0-9_-]/g, '-');
     const blob = await put(`student-photos/${safeId}/profile.${extension}`, file, {
-      access: 'public', addRandomSuffix: true, contentType: file.type, token
+      access: 'public', addRandomSuffix: true, contentType: file.type,
+      // On Vercel, the SDK uses the connected store's OIDC credentials when
+      // no static token is passed. BLOB_READ_WRITE_TOKEN remains a local/CI fallback.
+      ...(token ? { token } : {})
     });
     await prisma.student.update({ where: { id: studentId }, data: { imageUrl: blob.url } });
     return NextResponse.json({ success: true, imageUrl: blob.url }, { headers: noStore });
   } catch (error) {
     console.error('Student photo upload failed:', error instanceof Error ? error.name : 'unknown');
-    return NextResponse.json({ success: false, error: 'Could not upload the image. Check the photo and Blob storage setup, then retry.' }, { status: 500, headers: noStore });
+    return NextResponse.json({ success: false, error: 'Could not upload the image. Check that the Blob store is connected to this Vercel project and redeployed, then retry.' }, { status: 500, headers: noStore });
   }
 }

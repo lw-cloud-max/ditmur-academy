@@ -24,16 +24,22 @@ function uploadRequest() {
   form.append('file', new Blob([Uint8Array.from([137,80,78,71,13,10,26,10])], { type: 'image/png' }), 'profile.png');
   return new Request('https://ditmur.test/api/students/upload', { method: 'POST', body: form });
 }
-
-async function withToken(value, run) {
-  const previous = process.env.BLOB_READ_WRITE_TOKEN;
-  if (value === null) delete process.env.BLOB_READ_WRITE_TOKEN;
-  else process.env.BLOB_READ_WRITE_TOKEN = value;
+const envKeys = ['BLOB_READ_WRITE_TOKEN', 'BLOB_STORE_ID', 'VERCEL_OIDC_TOKEN'];
+async function withBlobEnv(values, run) {
+  const previous = Object.fromEntries(envKeys.map(name => [name, process.env[name]]));
+  for (const name of envKeys) {
+    if (typeof values[name] === 'string' && values[name]) process.env[name] = values[name];
+    else delete process.env[name];
+  }
   try { return await run(); }
-  finally { if (previous === undefined) delete process.env.BLOB_READ_WRITE_TOKEN; else process.env.BLOB_READ_WRITE_TOKEN = previous; }
+  finally {
+    for (const name of envKeys) {
+      if (previous[name] === undefined) delete process.env[name]; else process.env[name] = previous[name];
+    }
+  }
 }
 
-test('student image upload refuses a class teacher outside the assigned class', () => withToken('dummy-token', async () => {
+test('student image upload refuses a class teacher outside the assigned class', () => withBlobEnv({ BLOB_READ_WRITE_TOKEN: 'dummy-token' }, async () => {
   let blobCalls = 0;
   const route = loadRoute({ user: { id: 'teacher-1', role: 'STAFF', staffRole: 'TEACHER' } }, {
     student: { findUnique: async () => ({ id: 'DIT/STU/001', status: 'ACTIVE', classId: 'C1' }) },
@@ -44,7 +50,7 @@ test('student image upload refuses a class teacher outside the assigned class', 
   assert.equal(blobCalls, 0);
 }));
 
-test('student photos require durable Blob storage configuration', () => withToken(null, async () => {
+test('photo upload gives an actionable setup response when no Blob store is connected', () => withBlobEnv({}, async () => {
   let studentQueries = 0;
   const route = loadRoute({ user: { id: 'admin-1', role: 'ADMIN' } }, {
     student: { findUnique: async () => { studentQueries++; return {}; } }
@@ -54,7 +60,9 @@ test('student photos require durable Blob storage configuration', () => withToke
   assert.equal(studentQueries, 0);
 }));
 
-test('assigned class teacher uploads a validated photo to durable Blob storage', () => withToken('dummy-token', async () => {
+test('assigned class teacher upload works with Vercel OIDC store connection and no static token', () => withBlobEnv({
+  BLOB_STORE_ID: 'store_school_photos', VERCEL_OIDC_TOKEN: 'runtime-oidc-token'
+}, async () => {
   let putArgs;
   let updateArgs;
   const route = loadRoute({ user: { id: 'teacher-1', role: 'STAFF', staffRole: 'TEACHER' } }, {
@@ -71,8 +79,21 @@ test('assigned class teacher uploads a validated photo to durable Blob storage',
   const json = await response.json();
   assert.equal(response.status, 200);
   assert.equal(putArgs.options.access, 'public');
-  assert.equal(putArgs.options.token, 'dummy-token');
+  assert.equal('token' in putArgs.options, false);
   assert.equal(putArgs.type, 'image/png');
   assert.equal(updateArgs.data.imageUrl, json.imageUrl);
   assert.equal(json.success, true);
+}));
+
+test('static read-write token remains a fallback outside OIDC-connected Vercel deployments', () => withBlobEnv({
+  BLOB_READ_WRITE_TOKEN: 'local-read-write-token'
+}, async () => {
+  let putArgs;
+  const route = loadRoute({ user: { id: 'admin-1', role: 'ADMIN' } }, {
+    student: { findUnique: async () => ({ id: 'DIT/STU/001', status: 'ACTIVE', classId: 'C1' }),
+      update: async ({ data }) => ({ imageUrl: data.imageUrl }) }
+  }, { put: async (_path, _file, options) => { putArgs = options; return { url: 'https://store.blob.vercel-storage.com/profile.png' }; } });
+  const response = await route.POST(uploadRequest());
+  assert.equal(response.status, 200);
+  assert.equal(putArgs.token, 'local-read-write-token');
 }));
