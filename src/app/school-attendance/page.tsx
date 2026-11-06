@@ -22,6 +22,7 @@ export default function AttendancePage() {
   // Calendar State
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [currentTermLabel, setCurrentTermLabel] = useState('');
   
   // Local state to hold attendance for the selected class/date.
   const [attendanceRecord, setAttendanceRecord] = useState<Record<string, Record<string, string>>>({});
@@ -53,6 +54,17 @@ export default function AttendancePage() {
       }
     };
     fetchClasses();
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/terms', { cache: 'no-store' }).then(response => response.json()).then(data => {
+      if (!active || !data.success || !Array.isArray(data.data)) return;
+      const current = data.data.find((item: { isCurrent: boolean }) => item.isCurrent);
+      const first = data.data[0];
+      setCurrentTermLabel(current ? `${current.name} ${current.session}` : first ? `${first.name} ${first.session}` : 'Term 1 - 2024');
+    }).catch(() => {});
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -244,7 +256,7 @@ export default function AttendancePage() {
                   studentId: record.studentId,
                   attendanceStatus: 'ABSENT',
                   date: record.date,
-                  term: 'Term 1 - 2024',
+                  term: currentTermLabel,
                   reason: record.absenceReason
                 })
               });
@@ -256,7 +268,7 @@ export default function AttendancePage() {
                   studentId: record.studentId,
                   attendanceStatus: 'LATE',
                   date: record.date,
-                  term: 'Term 1 - 2024'
+                  term: currentTermLabel
                 })
               });
             } else if (record.status === 'PRESENT') {
@@ -267,7 +279,7 @@ export default function AttendancePage() {
                   studentId: record.studentId,
                   attendanceStatus: 'PRESENT',
                   date: record.date,
-                  term: 'Term 1 - 2024'
+                  term: currentTermLabel
                 })
               });
             }

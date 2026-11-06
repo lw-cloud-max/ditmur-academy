@@ -43,7 +43,7 @@ export default function StudentsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form states
-  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', dob: '', gender: '', status: '' });
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', otherNames: '', dob: '', gender: '', status: '' });
   const [classForm, setClassForm] = useState({ classId: '' });
   const [parentSearch, setParentSearch] = useState('');
   const [parentOptions, setParentOptions] = useState<ExistingParentOption[]>([]);
@@ -88,6 +88,9 @@ export default function StudentsPage() {
     fetchData();
   }, [userRole, session?.user?.id]);
 
+  const canEditStudent = (student: any) => isSuperAdmin ||
+    (isClassTeacher && student.class?.teacherId === session?.user?.id);
+
   const handleMarkInactive = async (id: string, name: string) => {
     if (!window.confirm(`Mark ${name} as inactive because they have left the school? Their grades, invoices and other records will be kept, and Student login will stop.`)) return;
     try {
@@ -112,6 +115,7 @@ export default function StudentsPage() {
       setEditForm({
         firstName: student.firstName,
         lastName: student.lastName,
+        otherNames: student.otherNames || '',
         dob: new Date(student.dob).toISOString().split('T')[0],
         gender: student.gender,
         status: student.status
@@ -174,9 +178,9 @@ export default function StudentsPage() {
       } else {
         let payload: Record<string, unknown> = { id: selectedStudent.id };
         if (modalType === 'edit') {
-          if (!isSuperAdmin) throw new Error('Super admin required to edit student records.');
+          if (!canEditStudent(selectedStudent)) throw new Error('Only the assigned class teacher or super admin may edit this student.');
           payload = { ...payload, action: 'update_student', firstName: editForm.firstName,
-            lastName: editForm.lastName, dob: editForm.dob, gender: editForm.gender };
+            lastName: editForm.lastName, otherNames: editForm.otherNames, dob: editForm.dob, gender: editForm.gender };
         } else if (modalType === 'class') {
           if (!isSuperAdmin) throw new Error('Only the super admin can move a student to another class.');
           if (!classForm.classId) throw new Error('Select the correct class first.');
@@ -434,7 +438,7 @@ export default function StudentsPage() {
                                 <Eye className="w-4 h-4 text-slate-400" /> View Profile
                               </Link>
                               
-                              {isSuperAdmin && <button onClick={() => openModal(student, 'edit')} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
+                              {canEditStudent(student) && <button onClick={() => openModal(student, 'edit')} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
                                 <Edit className="w-4 h-4 text-slate-400" /> Edit Student
                               </button>}
                               {isSuperAdmin && <button onClick={() => openModal(student, 'class')} className="w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
@@ -506,6 +510,10 @@ export default function StudentsPage() {
                       <input type="text" required value={editForm.lastName} onChange={e => setEditForm({...editForm, lastName: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm outline-none" />
                     </div>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Other Names (optional)</label>
+                    <input type="text" maxLength={120} value={editForm.otherNames} onChange={e => setEditForm({...editForm, otherNames: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm outline-none" />
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">Date of Birth</label>
@@ -519,7 +527,7 @@ export default function StudentsPage() {
                       </select>
                     </div>
                   </div>
-                  <p className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">Student status is managed separately so departure records and login access remain consistent.</p>
+                  <p className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">{isSuperAdmin ? 'Student status and class moves are managed separately so departure records and historical reports remain consistent.' : 'Teachers can edit these basic details only for students in their assigned class. Class moves, Parent links, status and login resets remain super-admin controlled.'}</p>
                 </>
               )}
 

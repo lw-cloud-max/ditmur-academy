@@ -84,10 +84,21 @@ export async function PATCH(req: Request) {
     }
 
     if (action === 'update_student') {
-      if (!superAdmin) return NextResponse.json({ success: false, error: 'Super admin required to edit student records' }, { status: 403 });
+      if (!superAdmin) {
+        const isTeacher = session.user.role === 'STAFF' && ['TEACHER', 'ACCOUNTANT_TEACHER'].includes(session.user.staffRole || '');
+        const assignedClass = isTeacher && student.classId
+          ? await prisma.class.findUnique({ where: { id: student.classId }, select: { teacherId: true } })
+          : null;
+        if (!isTeacher || !student.classId || assignedClass?.teacherId !== session.user.id) {
+          return NextResponse.json({ success: false, error: 'Only the assigned class teacher may edit basic details for this student' }, { status: 403 });
+        }
+      }
       const { firstName, lastName, dob, gender } = input;
+      const otherNamesProvided = Object.hasOwn(input, 'otherNames');
+      const otherNames = typeof input.otherNames === 'string' ? input.otherNames.trim() : '';
       if (typeof firstName !== 'string' || !firstName.trim() || firstName.length > 80 ||
           typeof lastName !== 'string' || !lastName.trim() || lastName.length > 80 ||
+          (otherNamesProvided && (typeof input.otherNames !== 'string' || otherNames.length > 120)) ||
           typeof dob !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dob) ||
           !['Male', 'Female'].includes(String(gender))) {
         return NextResponse.json({ success: false, error: 'Valid first name, surname, date of birth and gender are required' }, { status: 400 });
@@ -96,9 +107,16 @@ export async function PATCH(req: Request) {
       if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== dob || date.getTime() > Date.now()) {
         return NextResponse.json({ success: false, error: 'Enter a valid date of birth' }, { status: 400 });
       }
-      const updated = await prisma.student.update({ where: { id }, data: {
-        firstName: firstName.trim(), lastName: lastName.trim(), dob: date, gender: String(gender)
-      }, select: { id: true, firstName: true, lastName: true, status: true } });
+      const updateData = { firstName: firstName.trim(), lastName: lastName.trim(), dob: date, gender: String(gender),
+        ...(otherNamesProvided ? { otherNames: otherNames || null } : {}) };
+      if (superAdmin) {
+        const updated = await prisma.student.update({ where: { id }, data: updateData,
+          select: { id: true, firstName: true, lastName: true, otherNames: true, dob: true, gender: true, status: true } });
+        return NextResponse.json({ success: true, data: updated }, { headers: { 'Cache-Control': 'no-store' } });
+      }
+      const changed = await prisma.student.updateMany({ where: { id, status: 'ACTIVE', classId: student.classId }, data: updateData });
+      if (changed.count !== 1) return NextResponse.json({ success: false, error: 'Student class changed while editing. Refresh and try again.' }, { status: 409 });
+      const updated = await prisma.student.findUnique({ where: { id }, select: { id: true, firstName: true, lastName: true, otherNames: true, dob: true, gender: true, status: true } });
       return NextResponse.json({ success: true, data: updated }, { headers: { 'Cache-Control': 'no-store' } });
     }
 

@@ -89,19 +89,24 @@ test('superadmin class move warns when history exists and moves only after confi
  const moved=await f.route.PATCH(request('https://school.test/api/students',{...body,historyConfirmed:true}));
  assert.equal(moved.status,200);assert.deepEqual(f.calls,[['updateMany',{where:{id:'STU-1',status:'ACTIVE',classId:'CLASS-1'},data:{classId:'CLASS-2'}}]]);
 });
-test('only superadmin can move class or edit student profile; active/current class is guarded',async()=>{
+test('only superadmin can move class; assigned class teacher can edit basic profile; active/current class is guarded',async()=>{
  const teacher=manageFixture();
  assert.equal((await teacher.route.PATCH(request('https://school.test/api/students',{id:'STU-1',action:'assign_class',classId:'CLASS-2',expectedClassId:'CLASS-1',confirmed:true}))).status,403);
- assert.equal((await teacher.route.PATCH(request('https://school.test/api/students',{id:'STU-1',action:'update_student',firstName:'New',lastName:'Name',dob:'2015-01-01',gender:'Male'}))).status,403);
+ const edited=await teacher.route.PATCH(request('https://school.test/api/students',{id:'STU-1',action:'update_student',firstName:'New',lastName:'Name',dob:'2015-01-01',gender:'Female',otherNames:'Middle'}));
+ assert.equal(edited.status,200);
+ assert.equal(teacher.calls[0][0],'updateMany');
+ assert.equal(teacher.calls[0][1].where.classId,'CLASS-1');
+ assert.equal(teacher.calls[0][1].data.gender,'Female');
  const admin=manageFixture({actor:session('ADMIN','admin-1')});
  assert.equal((await admin.route.PATCH(request('https://school.test/api/students',{id:'STU-1',action:'assign_class',classId:'CLASS-2',expectedClassId:'OLD',confirmed:true}))).status,409);
 });
-test('the student edit UI uses JSON-safe error handling, chooses an existing Parent and limits class/edit actions to superadmin',()=>{
+test('the student edit UI uses JSON-safe errors, assigned-class profile edit and superadmin-only class moves',()=>{
  const page=fs.readFileSync('src/app/students/page.tsx','utf8');
  assert.match(page,/const raw = await response\.text\(\)/);assert.match(page,/parent-options\?/);
  assert.match(page,/Link Existing Parent/);assert.ok(page.includes('student.class?.teacherId === session?.user?.id'));
  assert.ok(page.includes("isSuperAdmin && <button onClick={() => openModal(student, 'class')}"));
- assert.match(page,/Student status is managed separately/);assert.match(page,/Unlink current Parent \(keep records\)/);
+ assert.match(page,/canEditStudent\(student\)/);assert.match(page,/Teachers can edit these basic details only for students in their assigned class/);
+ assert.match(page,/Unlink current Parent \(keep records\)/);
 });
 test('flashcards explicitly use the general practice bank, not internal graded exam answers',()=>{
  const page=fs.readFileSync('src/app/study-hub/page.tsx','utf8');

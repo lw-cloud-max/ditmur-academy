@@ -38,6 +38,10 @@ export default function BehaviorPage() {
   const [showAwardForm, setShowAwardForm] = useState(false);
   const [students, setStudents] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState('');
+  const [awardStudentSearch, setAwardStudentSearch] = useState('');
+  const [awardClassFilter, setAwardClassFilter] = useState('');
+  const [termOptions, setTermOptions] = useState<string[]>(['Term 1 - 2024']);
+  const [termLoading, setTermLoading] = useState(true);
   const [behaviorType, setBehaviorType] = useState('MERIT');
   const [points, setPoints] = useState(5);
   const [category, setCategory] = useState('ACADEMIC');
@@ -49,6 +53,7 @@ export default function BehaviorPage() {
   useEffect(() => {
     fetchRecords();
     fetchStudents();
+    fetchTerms();
   }, []);
 
   const fetchRecords = async () => {
@@ -77,6 +82,32 @@ export default function BehaviorPage() {
       console.error('Error fetching students:', error);
     }
   };
+
+  const fetchTerms = async () => {
+    try {
+      const res = await fetch('/api/terms', { cache: 'no-store' });
+      const data = await res.json();
+      if (!data.success || !Array.isArray(data.data)) return;
+      const options = data.data.map((item: { name: string; session: string }) => `${item.name} ${item.session}`);
+      const available = options.length ? options : ['Term 1 - 2024'];
+      setTermOptions(available);
+      const current = data.data.find((item: { isCurrent: boolean }) => item.isCurrent);
+      setTerm(current ? `${current.name} ${current.session}` : available[0]);
+    } catch (error) {
+      console.error('Error fetching academic terms:', error);
+    } finally {
+      setTermLoading(false);
+    }
+  };
+
+  const awardClasses = Array.from(new Map(students.filter(student => student.classId && student.class?.name)
+    .map(student => [student.classId, { id: student.classId, name: student.class.name }])).values());
+  const filteredAwardStudents = students.filter(student => {
+    const matchesClass = !awardClassFilter || student.classId === awardClassFilter;
+    const search = awardStudentSearch.trim().toLowerCase();
+    const matchesSearch = !search || `${student.firstName} ${student.lastName} ${student.id}`.toLowerCase().includes(search);
+    return matchesClass && matchesSearch;
+  });
 
   const handleAwardPoints = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,7 +171,7 @@ export default function BehaviorPage() {
           <p className="text-slate-500 mt-1">Award points for good behavior and track student conduct</p>
         </div>
         <button
-          onClick={() => setShowAwardForm(true)}
+          onClick={() => { setAwardStudentSearch(''); setAwardClassFilter(''); setSelectedStudent(''); setShowAwardForm(true); }}
           className="px-6 py-3 bg-[#0033A0] text-white rounded-xl font-bold hover:bg-[#002277] transition-colors flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
@@ -293,21 +324,30 @@ export default function BehaviorPage() {
             </div>
             
             <form onSubmit={handleAwardPoints} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Select Student *</label>
-                <select
-                  required
-                  value={selectedStudent}
-                  onChange={(e) => setSelectedStudent(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
-                >
-                  <option value="">Choose a student...</option>
-                  {students.map(student => (
-                    <option key={student.id} value={student.id}>
-                      {student.firstName} {student.lastName} ({student.id})
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="block text-sm font-medium text-slate-700">Filter by class
+                    <select value={awardClassFilter} onChange={event => { setAwardClassFilter(event.target.value); setSelectedStudent(''); }}
+                      className="mt-1 w-full rounded-xl border bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-[#0033A0]">
+                      <option value="">All classes</option>
+                      {awardClasses.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="block text-sm font-medium text-slate-700">Search student by name or ID
+                    <input type="search" value={awardStudentSearch} onChange={event => { setAwardStudentSearch(event.target.value); setSelectedStudent(''); }}
+                      placeholder="Type a name or Student ID" className="mt-1 w-full rounded-xl border bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-[#0033A0]" />
+                  </label>
+                </div>
+                <label className="block text-sm font-medium text-slate-700">Select Student *
+                  <select required value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)}
+                    className="mt-1 w-full rounded-xl border bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-[#0033A0]">
+                    <option value="">Choose a student ({filteredAwardStudents.length} found)…</option>
+                    {filteredAwardStudents.map(student => <option key={student.id} value={student.id}>
+                      {student.firstName} {student.lastName} ({student.id}){student.class?.name ? ` — ${student.class.name}` : ''}
+                    </option>)}
+                  </select>
+                </label>
+                {!filteredAwardStudents.length && <p className="text-sm text-amber-800">No active students match these filters.</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -379,11 +419,10 @@ export default function BehaviorPage() {
                 <select
                   value={term}
                   onChange={(e) => setTerm(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0]"
+                  disabled={termLoading}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0033A0] disabled:opacity-60"
                 >
-                  <option value="Term 1 - 2024">Term 1 - 2024</option>
-                  <option value="Term 2 - 2024">Term 2 - 2024</option>
-                  <option value="Term 3 - 2024">Term 3 - 2024</option>
+                  {termOptions.map(option => <option key={option} value={option}>{option}</option>)}
                 </select>
               </div>
 
@@ -397,7 +436,7 @@ export default function BehaviorPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={!selectedStudent || !title || awarding}
+                  disabled={!selectedStudent || !title || awarding || termLoading}
                   className="flex-1 px-4 py-3 bg-[#0033A0] text-white rounded-xl font-bold hover:bg-[#002277] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {awarding ? (
