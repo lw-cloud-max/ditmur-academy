@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Menu, X, LayoutDashboard, UserPlus, Users, UserCircle, GraduationCap, School, CalendarDays, ClipboardCheck, MessageSquare, Award, Database, BookOpen, FolderOpen, Video, FileSpreadsheet, Settings2, MonitorPlay, Gamepad2, Trophy, Lightbulb, MessageCircle, CreditCard, Settings, HelpCircle, Bot, Lock } from 'lucide-react';
+import { Menu, X, LayoutDashboard, UserPlus, Users, UserCircle, GraduationCap, School, CalendarDays, ClipboardCheck, MessageSquare, Mail, Award, Database, BookOpen, FolderOpen, Video, FileSpreadsheet, Settings2, MonitorPlay, Gamepad2, Trophy, Lightbulb, MessageCircle, CreditCard, Settings, HelpCircle, Bot, Lock } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import GroupedMenu, { type MenuItem } from './GroupedMenu';
@@ -104,6 +104,7 @@ export default function MobileNav() {
         { name: 'School Calendar', icon: CalendarDays, path: '/calendar' },
         { name: 'Attendance', icon: ClipboardCheck, path: '/school-attendance' },
         { name: 'SMS Notifications', icon: MessageSquare, path: '/sms-notifications' },
+        { name: 'Email Center', icon: Mail, path: '/email-center' },
         { name: 'Behavior System', icon: Award, path: '/behavior' },
         { name: 'Question Bank', icon: Database, path: '/question-bank' },
         { name: 'Exam Practice', icon: BookOpen, path: '/exam-practice' },
@@ -130,7 +131,8 @@ export default function MobileNav() {
   const canSeeFinance = (userRole === 'ADMIN' && session?.user?.id === 'admin-1') || userRole === 'ACCOUNTANT' || (userRole === 'STAFF' && session?.user?.staffRole === 'ACCOUNTANT_TEACHER');
   const menuItems = getMenuItems().filter(item => item.path !== '/payments' || canSeeFinance || userRole === 'PARENT')
     .filter(item => !['/configuration', '/assessment-format'].includes(item.path) || (userRole === 'ADMIN' && session?.user?.id === 'admin-1'))
-    .filter(item => item.path !== '/sms-notifications' || (userRole === 'ADMIN' && session?.user?.id === 'admin-1'));
+    .filter(item => item.path !== '/sms-notifications' || (userRole === 'ADMIN' && session?.user?.id === 'admin-1'))
+    .filter(item => item.path !== '/email-center' || (userRole === 'ADMIN' && session?.user?.id === 'admin-1'));
 
   const portalTarget = typeof document !== 'undefined' ? document.getElementById('mobile-menu-portal') || document.body : null;
   return <>
