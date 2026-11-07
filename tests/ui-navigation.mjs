@@ -41,8 +41,8 @@ test('all existing role menus and finance/config/SMS filters remain intact',()=>
   const accountant=paths(itemsFor(file,{id:'A1',role:'ACCOUNTANT'}));
   const parent=paths(itemsFor(file,{id:'P1',role:'PARENT'}));
   const student=paths(itemsFor(file,{id:'S1',role:'STUDENT'}));
-  for(const p of ['/payments','/configuration','/assessment-format','/sms-notifications'])assert.ok(admin.has(p),file+' admin '+p);
-  for(const p of ['/payments','/configuration','/assessment-format','/sms-notifications'])assert.equal(teacher.has(p),false,file+' teacher '+p);
+  for(const p of ['/payments','/configuration','/assessment-format','/sms-notifications','/email-center'])assert.ok(admin.has(p),file+' admin '+p);
+  for(const p of ['/payments','/configuration','/assessment-format','/sms-notifications','/email-center'])assert.equal(teacher.has(p),false,file+' teacher '+p);
   assert.ok(accountantTeacher.has('/payments'));
   assert.equal(accountantTeacher.has('/sms-notifications'),false);
   assert.deepEqual([...accountant].sort(),['/dashboard','/payments','/change-password','/help'].sort());

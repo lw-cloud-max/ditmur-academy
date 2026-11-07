@@ -6,7 +6,7 @@ import GroupedMenu, { type MenuItem } from './GroupedMenu';
 import { 
   LayoutDashboard, UserPlus, MonitorPlay, Users, UserCircle, 
   GraduationCap, CalendarDays, ClipboardCheck, FileSpreadsheet,
-  Settings2, BookOpen, MessageSquare, MessageCircle, CreditCard, HelpCircle,
+  Settings2, BookOpen, MessageSquare, MessageCircle, Mail, CreditCard, HelpCircle,
   Settings, School, Trophy, Gamepad2, Lightbulb, Bot, Award, FolderOpen, Video, Database, Lock
 } from 'lucide-react';
 
@@ -29,6 +29,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
     { name: 'School Calendar', icon: CalendarDays, path: '/calendar' },
     { name: 'Attendance', icon: ClipboardCheck, path: '/school-attendance' },  
     { name: 'SMS Notifications', icon: MessageSquare, path: '/sms-notifications' },
+    { name: 'Email Center', icon: Mail, path: '/email-center' },
     { name: 'Behavior System', icon: Award, path: '/behavior' },
     { name: 'Question Bank', icon: Database, path: '/question-bank' },
     { name: 'Exam Practice', icon: BookOpen, path: '/exam-practice' },
@@ -93,7 +94,8 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
   const activeMenu = (userRole === 'STUDENT' ? studentMenu : userRole === 'PARENT' ? parentMenu : userRole === 'ACCOUNTANT' ? accountantMenu : staffMenu)
     .filter(item => item.path !== '/payments' || canSeeFinance || userRole === 'PARENT')
     .filter(item => !['/configuration', '/assessment-format'].includes(item.path) || (userRole === 'ADMIN' && session?.user?.id === 'admin-1'))
-    .filter(item => item.path !== '/sms-notifications' || (userRole === 'ADMIN' && session?.user?.id === 'admin-1'));
+    .filter(item => item.path !== '/sms-notifications' || (userRole === 'ADMIN' && session?.user?.id === 'admin-1'))
+    .filter(item => item.path !== '/email-center' || (userRole === 'ADMIN' && session?.user?.id === 'admin-1'));
 
   return (
     <aside className={`w-64 bg-gradient-to-b from-[#0A192F] to-[#001744] text-white h-screen min-h-0 shrink-0 flex flex-col border-r border-[#0033A0]/50 shadow-xl ${isMobile ? '' : 'hidden md:flex'}`}>

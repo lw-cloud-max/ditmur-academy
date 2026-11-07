@@ -25,7 +25,7 @@ const PATH_GROUP: Record<string, Group> = {
   '/behavior': 'Student Life', '/portfolio': 'Student Life', '/study-hub': 'Student Life',
   '/hall-of-fame': 'Student Life', '/trivia': 'Student Life',
   '/chat': 'Communication', '/messaging': 'Communication',
-  '/sms-notifications': 'Communication', '/video-meetings': 'Communication',
+  '/sms-notifications': 'Communication', '/email-center': 'Communication', '/video-meetings': 'Communication',
   '/payments': 'Finance',
   '/change-password': 'Account & Support', '/help': 'Account & Support'
 };
