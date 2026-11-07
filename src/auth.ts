@@ -1,7 +1,24 @@
 import NextAuth, { type DefaultSession } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import GoogleProvider from 'next-auth/providers/google';
 import { prisma } from '@/lib/prisma';
 import { checkPassword, hashPassword, isKnownDemoPassword } from '@/lib/passwords';
+import { findUniqueStaffOrParentByEmail } from '@/lib/email-account-lookup';
+
+const googleClientId = process.env.AUTH_GOOGLE_ID?.trim();
+const googleClientSecret = process.env.AUTH_GOOGLE_SECRET?.trim();
+const googleProvider = googleClientId && googleClientSecret
+  ? GoogleProvider({
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
+      authorization: { params: { prompt: 'select_account' } }
+    })
+  : null;
+
+function isVerifiedGoogleProfile(profile: unknown): boolean {
+  return !!profile && typeof profile === 'object' &&
+    (profile as { email_verified?: unknown }).email_verified === true;
+}
 
 declare module 'next-auth' {
   interface Session {
@@ -73,10 +90,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return null;
     }
-  })],
+  }), ...(googleProvider ? [googleProvider] : [])],
   callbacks: {
-    jwt({ token, user }) {
-      if (user) {
+    async signIn({ user, account, profile }) {
+      if (account?.provider !== 'google') return true;
+      if (!isVerifiedGoogleProfile(profile) || !user.email) return false;
+      // Only link to exactly one existing active Staff or Parent account. No
+      // student or environment-managed super-admin account is eligible.
+      return !!(await findUniqueStaffOrParentByEmail(user.email));
+    },
+    async jwt({ token, user, account, profile }) {
+      if (account?.provider === 'google') {
+        if (!isVerifiedGoogleProfile(profile) || !user?.email) throw new Error('Google account could not be verified.');
+        const localAccount = await findUniqueStaffOrParentByEmail(user.email);
+        if (!localAccount) throw new Error('Google account did not match one unique school account.');
+        token.id = localAccount.id;
+        token.role = localAccount.role;
+        token.name = localAccount.name;
+        token.email = localAccount.email;
+        token.staffRole = localAccount.staffRole;
+        // Accounts with no local password may use their verified Google login.
+        // Existing temporary passwords remain subject to the normal change rule.
+        token.mustChangePassword = localAccount.passwordConfigured ? localAccount.mustChangePassword : false;
+        token.sessionVersion = localAccount.sessionVersion;
+      } else if (user) {
         token.role = user.role;
         token.id = user.id;
         token.mustChangePassword = user.mustChangePassword;
@@ -94,9 +131,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.staffRole = typeof token.staffRole === 'string' ? token.staffRole : undefined;
       }
       return session;
+    },
+    redirect({ url, baseUrl }) {
+      // Avoid old Vercel aliases after OAuth; production returns use the
+      // school's canonical host. Local development remains on its own origin.
+      const safeBase = process.env.NODE_ENV === 'production' ? 'https://www.ditmuracademy.com' : baseUrl;
+      try {
+        const target = new URL(url, safeBase);
+        return target.origin === new URL(safeBase).origin ? target.toString() : safeBase;
+      } catch {
+        return safeBase;
+      }
     }
   },
-  pages: { signIn: '/login' },
+  pages: { signIn: '/login', error: '/login' },
   session: { strategy: 'jwt', maxAge: 30 * 24 * 60 * 60 },
   cookies: {
     sessionToken: { name: 'next-auth.session-token', options: { httpOnly: true, sameSite: 'lax', path: '/', secure: process.env.NODE_ENV === 'production' } },

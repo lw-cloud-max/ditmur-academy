@@ -5,6 +5,9 @@ import { prisma } from '@/lib/prisma';
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   if (path.startsWith('/api/auth')) return NextResponse.next();
+  // These routes are intentionally public; password-reset actions validate a
+  // signed, expiring, single-use token in their own handlers.
+  if (['/forgot-password', '/reset-password', '/api/forgot-password', '/api/reset-password'].includes(path)) return NextResponse.next();
   const session = await auth();
   const publicRoutes = ['/', '/login', '/apply', '/api/apply', '/programs/creche', '/programs/primary', '/programs/secondary', '/terms', '/privacy', '/manifest.json', '/sw.js'];
   const isPublic = publicRoutes.some(route => path === route || path.startsWith(route + '/'));

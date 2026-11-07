@@ -87,6 +87,6 @@ test('drawer dialog, keyboard, backdrop, route-close and zoom code remain presen
   assert.ok(mobile.includes(snippet),snippet);
  const layout=fs.readFileSync('src/app/layout.tsx','utf8');
  assert.doesNotMatch(layout,/maximumScale|userScalable/);
- const login=fs.readFileSync('src/app/login/page.tsx','utf8');
+ const login=fs.readFileSync('src/app/login/LoginForm.tsx','utf8');
  assert.match(login,/role="alert"/);assert.match(login,/autoComplete="username"/);assert.match(login,/autoComplete="current-password"/);
 });
